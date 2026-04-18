@@ -194,9 +194,13 @@ Salin output-nya ke `JWT_SECRET` di file `.env`.
 
 ## Kontributor
 
-| Nama | Role |
-|---|---|
-| Alfin Himawan Santosa | Backend Developer |
+| Nama | NIM | Role |
+|---|---|---|
+| Alfin Himawan Santosa | 24051130081 | Backend Developer & Database |
+| ⁠Muhammad Rafli Dharmanda Andoyo | 24051130087 | Backend Developer & Database |
+| Pramudya Tien Meylandri | 24051130088 | Backend Developer & Database |
+| Naufal Hanif Ramadhan Darwis | 24051130106 | Backend Developer & Database |
+| Muhammad Zaidaan | 24051130110 | Backend Developer & Database |
 
 ---
 
