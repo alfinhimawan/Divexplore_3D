@@ -1,27 +1,44 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class UserConsent extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      UserConsent.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
     }
   }
-  UserConsent.init({
-    id: DataTypes.UUID,
-    user_id: DataTypes.UUID,
-    policy_version: DataTypes.STRING,
-    is_agreed: DataTypes.BOOLEAN,
-    agreed_at: DataTypes.DATE
-  }, {
-    sequelize,
-    modelName: 'UserConsent',
-  });
+
+  UserConsent.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true,
+      },
+      user_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      policy_version: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      is_agreed: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      agreed_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+    },
+    {
+      sequelize,
+      modelName: "UserConsent",
+    },
+  );
+
   return UserConsent;
 };

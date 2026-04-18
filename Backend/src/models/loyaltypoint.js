@@ -1,26 +1,48 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class LoyaltyPoint extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      LoyaltyPoint.belongsTo(models.User, {
+        foreignKey: "user_id",
+        as: "user",
+      });
+      LoyaltyPoint.belongsTo(models.Order, {
+        foreignKey: "order_id",
+        as: "order",
+      });
     }
   }
-  LoyaltyPoint.init({
-    id: DataTypes.UUID,
-    user_id: DataTypes.UUID,
-    order_id: DataTypes.UUID,
-    points_earned: DataTypes.INTEGER
-  }, {
-    sequelize,
-    modelName: 'LoyaltyPoint',
-  });
+
+  LoyaltyPoint.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true,
+      },
+      user_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      order_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      points_earned: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+    },
+    {
+      sequelize,
+      modelName: "LoyaltyPoint",
+      updatedAt: false, // Tabel immutable — berfungsi sebagai log poin masuk
+    },
+  );
+
   return LoyaltyPoint;
 };

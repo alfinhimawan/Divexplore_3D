@@ -1,26 +1,43 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class Scene extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      Scene.hasMany(models.Product3dHotspot, {
+        foreignKey: "scene_id",
+        as: "hotspots",
+      });
     }
   }
-  Scene.init({
-    id: DataTypes.UUID,
-    nama_scene: DataTypes.STRING,
-    panorama_url: DataTypes.STRING,
-    is_active: DataTypes.BOOLEAN
-  }, {
-    sequelize,
-    modelName: 'Scene',
-  });
+
+  Scene.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true,
+      },
+      nama_scene: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      panorama_url: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      is_active: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
+    },
+    {
+      sequelize,
+      modelName: "Scene",
+    },
+  );
+
   return Scene;
 };

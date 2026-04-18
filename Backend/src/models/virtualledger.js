@@ -1,30 +1,63 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class VirtualLedger extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      VirtualLedger.belongsTo(models.Vendor, {
+        foreignKey: "vendor_id",
+        as: "vendor",
+      });
+      VirtualLedger.belongsTo(models.Order, {
+        foreignKey: "order_id",
+        as: "order",
+      });
     }
   }
-  VirtualLedger.init({
-    id: DataTypes.UUID,
-    vendor_id: DataTypes.UUID,
-    order_id: DataTypes.UUID,
-    pendapatan_kotor: DataTypes.DECIMAL,
-    biaya_midtrans: DataTypes.DECIMAL,
-    potongan_komisi: DataTypes.DECIMAL,
-    pendapatan_bersih: DataTypes.DECIMAL,
-    status_pencairan: DataTypes.STRING
-  }, {
-    sequelize,
-    modelName: 'VirtualLedger',
-  });
+
+  VirtualLedger.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true,
+      },
+      vendor_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      order_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      pendapatan_kotor: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: true,
+      },
+      biaya_midtrans: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: true,
+      },
+      potongan_komisi: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: true,
+      },
+      pendapatan_bersih: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: true,
+      },
+      status_pencairan: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "unpaid",
+      },
+    },
+    {
+      sequelize,
+      modelName: "VirtualLedger",
+    },
+  );
+
   return VirtualLedger;
 };

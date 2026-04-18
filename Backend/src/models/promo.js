@@ -1,27 +1,44 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class Promo extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      Promo.hasMany(models.Order, { foreignKey: "promo_id", as: "orders" });
     }
   }
-  Promo.init({
-    id: DataTypes.UUID,
-    kode_promo: DataTypes.STRING,
-    diskon_persen: DataTypes.INTEGER,
-    max_potongan: DataTypes.DECIMAL,
-    valid_until: DataTypes.DATE
-  }, {
-    sequelize,
-    modelName: 'Promo',
-  });
+
+  Promo.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true,
+      },
+      kode_promo: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      diskon_persen: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      max_potongan: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: true,
+      },
+      valid_until: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+    },
+    {
+      sequelize,
+      modelName: "Promo",
+    },
+  );
+
   return Promo;
 };

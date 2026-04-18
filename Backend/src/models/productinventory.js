@@ -1,27 +1,48 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class ProductInventory extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      ProductInventory.belongsTo(models.Product, {
+        foreignKey: "product_id",
+        as: "product",
+      });
     }
   }
-  ProductInventory.init({
-    id: DataTypes.UUID,
-    product_id: DataTypes.UUID,
-    tanggal_ketersediaan: DataTypes.DATEONLY,
-    available_qty: DataTypes.INTEGER,
-    locked_qty: DataTypes.INTEGER
-  }, {
-    sequelize,
-    modelName: 'ProductInventory',
-  });
+
+  ProductInventory.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true,
+      },
+      product_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      tanggal_ketersediaan: {
+        type: DataTypes.DATEONLY,
+        allowNull: false,
+      },
+      available_qty: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+      locked_qty: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+    },
+    {
+      sequelize,
+      modelName: "ProductInventory",
+    },
+  );
+
   return ProductInventory;
 };

@@ -1,28 +1,63 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class Order extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      Order.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
+      Order.belongsTo(models.Promo, { foreignKey: "promo_id", as: "promo" });
+      Order.hasMany(models.OrderItem, { foreignKey: "order_id", as: "items" });
+      Order.hasMany(models.VirtualLedger, {
+        foreignKey: "order_id",
+        as: "ledgers",
+      });
+      Order.hasMany(models.LoyaltyPoint, {
+        foreignKey: "order_id",
+        as: "loyaltyPoints",
+      });
+      Order.hasMany(models.Review, { foreignKey: "order_id", as: "reviews" });
+      Order.hasMany(models.PaymentLog, {
+        foreignKey: "order_id",
+        as: "paymentLogs",
+      });
     }
   }
-  Order.init({
-    id: DataTypes.UUID,
-    user_id: DataTypes.UUID,
-    promo_id: DataTypes.UUID,
-    total_pembayaran: DataTypes.DECIMAL,
-    status: DataTypes.STRING,
-    timeout_at: DataTypes.DATE
-  }, {
-    sequelize,
-    modelName: 'Order',
-  });
+
+  Order.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true,
+      },
+      user_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      promo_id: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
+      total_pembayaran: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: true,
+      },
+      status: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "pending",
+      },
+      timeout_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+    },
+    {
+      sequelize,
+      modelName: "Order",
+    },
+  );
+
   return Order;
 };

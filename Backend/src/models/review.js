@@ -1,28 +1,52 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class Review extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      Review.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
+      Review.belongsTo(models.Vendor, {
+        foreignKey: "vendor_id",
+        as: "vendor",
+      });
+      Review.belongsTo(models.Order, { foreignKey: "order_id", as: "order" });
     }
   }
-  Review.init({
-    id: DataTypes.UUID,
-    user_id: DataTypes.UUID,
-    vendor_id: DataTypes.UUID,
-    order_id: DataTypes.UUID,
-    rating: DataTypes.INTEGER,
-    komentar: DataTypes.TEXT
-  }, {
-    sequelize,
-    modelName: 'Review',
-  });
+
+  Review.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true,
+      },
+      user_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      vendor_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      order_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      rating: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      komentar: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+    },
+    {
+      sequelize,
+      modelName: "Review",
+    },
+  );
+
   return Review;
 };

@@ -1,29 +1,63 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class OrderItem extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      OrderItem.belongsTo(models.Order, {
+        foreignKey: "order_id",
+        as: "order",
+      });
+      OrderItem.belongsTo(models.Product, {
+        foreignKey: "product_id",
+        as: "product",
+      });
+      OrderItem.belongsTo(models.Vendor, {
+        foreignKey: "vendor_id",
+        as: "vendor",
+      });
     }
   }
-  OrderItem.init({
-    id: DataTypes.UUID,
-    order_id: DataTypes.UUID,
-    product_id: DataTypes.UUID,
-    vendor_id: DataTypes.UUID,
-    qty: DataTypes.INTEGER,
-    harga_satuan: DataTypes.DECIMAL,
-    subtotal: DataTypes.DECIMAL
-  }, {
-    sequelize,
-    modelName: 'OrderItem',
-  });
+
+  OrderItem.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true,
+      },
+      order_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      product_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      vendor_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      qty: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 1,
+      },
+      harga_satuan: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: false,
+      },
+      subtotal: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: false,
+      },
+    },
+    {
+      sequelize,
+      modelName: "OrderItem",
+    },
+  );
+
   return OrderItem;
 };

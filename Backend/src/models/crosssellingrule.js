@@ -1,25 +1,43 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class CrossSellingRule extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      CrossSellingRule.belongsTo(models.Product, {
+        foreignKey: "primary_product_id",
+        as: "primaryProduct",
+      });
+      CrossSellingRule.belongsTo(models.Product, {
+        foreignKey: "addon_product_id",
+        as: "addonProduct",
+      });
     }
   }
-  CrossSellingRule.init({
-    id: DataTypes.UUID,
-    primary_product_id: DataTypes.UUID,
-    addon_product_id: DataTypes.UUID
-  }, {
-    sequelize,
-    modelName: 'CrossSellingRule',
-  });
+
+  CrossSellingRule.init(
+    {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true,
+      },
+      primary_product_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+      addon_product_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
+    },
+    {
+      sequelize,
+      modelName: "CrossSellingRule",
+      updatedAt: false, // ERD tidak mendefinisikan updatedAt untuk tabel ini
+    },
+  );
+
   return CrossSellingRule;
 };
