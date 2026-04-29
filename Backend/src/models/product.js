@@ -45,14 +45,14 @@ module.exports = (sequelize, DataTypes) => {
       },
       nama_produk: {
         type: DataTypes.STRING,
-        allowNull: true,
+        allowNull: false, // Wajib diisi
       },
       harga: {
         type: DataTypes.DECIMAL(15, 2),
-        allowNull: true,
+        allowNull: false, // Wajib diisi
       },
       thumbnail_url: {
-        type: DataTypes.TEXT, // TEXT — konsisten dengan migration (URL S3 bisa panjang)
+        type: DataTypes.TEXT, // TEXT — URL bisa panjang (S3, CDN)
         allowNull: true,
       },
       is_active: {
@@ -64,6 +64,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       sequelize,
       modelName: "Product",
+      paranoid: true, // Aktifkan Soft Delete (mengisi deletedAt, bukan hapus baris)
     },
   );
 

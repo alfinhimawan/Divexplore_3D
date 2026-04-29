@@ -1,0 +1,5 @@
+# Abaikan file testing
+tes_google.html
+
+# Abaikan konfigurasi text editor
+.vscode/

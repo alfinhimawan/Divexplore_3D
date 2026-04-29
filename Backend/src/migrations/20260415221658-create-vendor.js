@@ -24,6 +24,10 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
       },
+      logo_url: {
+        type: Sequelize.TEXT, // TEXT — URL S3 bisa panjang
+        allowNull: true,
+      },
       nama_penanggung_jawab: {
         type: Sequelize.STRING,
         allowNull: false,

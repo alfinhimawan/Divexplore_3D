@@ -38,7 +38,7 @@ app.use(
       }
     },
     credentials: true, // Izinkan cookie/Authorization header
-  })
+  }),
 );
 app.use(compression());
 app.use(express.json());
@@ -57,8 +57,8 @@ app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100,
-    standardHeaders: true,  // Kirim header RateLimit-* standar RFC
-    legacyHeaders: false,   // Nonaktifkan header X-RateLimit-* lama
+    standardHeaders: true, // Kirim header RateLimit-* standar RFC
+    legacyHeaders: false, // Nonaktifkan header X-RateLimit-* lama
     message: {
       status: "error",
       message: "Terlalu banyak request, coba lagi dalam 15 menit.",
@@ -73,25 +73,40 @@ app.get("/", (req, res) =>
     .json({ status: "success", message: "DIVEXPLORE-3D API running" }),
 );
 
-// Routes (akan ditambahkan di sini nanti)
-// app.use("/api/auth", require("./src/routes/authRoutes"));
+app.use("/api/auth", require("./src/routes/authRoutes"));
+app.use("/api/vendors", require("./src/routes/vendorRoutes"));
+app.use("/api/admin", require("./src/routes/adminRoutes"));
+app.use("/api/products", require("./src/routes/productRoutes"));
+app.use("/api/orders", require("./src/routes/orderRoutes"));
+app.use("/api/webhooks", require("./src/routes/paymentRoutes"));
 
-// 404 — Route tidak ditemukan
+// 404 Not Found Handler
 app.use((req, res, next) => {
   const err = new Error(`Route ${req.originalUrl} tidak ditemukan`);
   err.statusCode = 404;
-  next(err); // lempar ke errorHandler
+  next(err); // Teruskan ke Global Error Handler
 });
 
 // Global Error Handler (harus paling bawah)
 app.use(require("./src/middlewares/errorHandler"));
+
+// Global Uncaught Exception Handler
+process.on("uncaughtException", (err) => {
+  logger.error("UNCAUGHT EXCEPTION! Shutting down...", {
+    error: err.message,
+    stack: err.stack,
+  });
+  process.exit(1);
+});
+
+let server;
 
 // Start Server
 db.sequelize
   .authenticate()
   .then(() => {
     logger.info(`Database connected successfully`);
-    app.listen(PORT, () =>
+    server = app.listen(PORT, () =>
       logger.info(`Server running on port ${PORT} [${process.env.NODE_ENV}]`),
     );
   })
@@ -99,3 +114,34 @@ db.sequelize
     logger.error("Database connection failed", { error: err.message });
     process.exit(1);
   });
+
+// Global Unhandled Rejection Handler
+process.on("unhandledRejection", (err) => {
+  logger.error("UNHANDLED REJECTION! Shutting down...", {
+    error: err.message,
+    stack: err.stack,
+  });
+  if (server) {
+    server.close(() => process.exit(1));
+  } else {
+    process.exit(1);
+  }
+});
+
+// Graceful Shutdown (SIGTERM/SIGINT)
+const gracefulShutdown = (signal) => {
+  logger.info(`${signal} RECEIVED. Shutting down gracefully...`);
+  if (server) {
+    server.close(async () => {
+      logger.info("HTTP server closed.");
+      await db.sequelize.close();
+      logger.info("Database connection closed.");
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM")); // Docker, Render, dsb
+process.on("SIGINT", () => gracefulShutdown("SIGINT")); // Ctrl+C di terminal

@@ -3,7 +3,7 @@ const logger = require("../utils/logger");
 
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
-  // Log error ke file
+  // Log detail error (message, stack, URL, method) ke Winston
   logger.error(err.message, {
     stack: err.stack,
     url: req.originalUrl,
