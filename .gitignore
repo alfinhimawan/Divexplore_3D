@@ -1,5 +1,15 @@
-# Abaikan file testing
-tes_google.html
+# Dependensi
+node_modules/
 
-# Abaikan konfigurasi text editor
+# File konfigurasi rahasia
+.env
+
+# Konfigurasi text editor dan OS
 .vscode/
+.idea/
+.DS_Store
+
+# Log file
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
