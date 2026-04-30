@@ -35,12 +35,10 @@ const createReview = async (req, res, next) => {
     }
 
     if (order.status !== "paid") {
-      return res
-        .status(403)
-        .json({
-          status: "error",
-          message: "Hanya pesanan yang lunas yang bisa di-review.",
-        });
+      return res.status(403).json({
+        status: "error",
+        message: "Hanya pesanan yang lunas yang bisa di-review.",
+      });
     }
 
     // Cek apakah sudah pernah review
@@ -48,12 +46,10 @@ const createReview = async (req, res, next) => {
       where: { order_id: orderId, user_id: userId },
     });
     if (existingReview) {
-      return res
-        .status(409)
-        .json({
-          status: "error",
-          message: "Anda sudah memberikan ulasan untuk pesanan ini.",
-        });
+      return res.status(409).json({
+        status: "error",
+        message: "Anda sudah memberikan ulasan untuk pesanan ini.",
+      });
     }
 
     // Ambil vendor pertama dari items pesanan ini

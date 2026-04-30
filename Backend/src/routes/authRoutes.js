@@ -16,4 +16,12 @@ router.post("/google", authController.googleLogin);
 // GET /api/auth/me — butuh token JWT
 router.get("/me", authenticate, authController.getMe);
 
+// Rute khusus wisatawan
+router.get(
+  "/me/points",
+  authenticate,
+  authorize("wisatawan"),
+  authController.getMyPoints,
+);
+
 module.exports = router;

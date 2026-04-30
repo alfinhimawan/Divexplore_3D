@@ -39,4 +39,25 @@ router.get(
 // Public (Harus di bawah route spesifik seperti /me)
 router.get("/:id", vendorController.getVendorById);
 
+router.post(
+  "/me/products/:id/inventory",
+  authenticate,
+  authorize("vendor"),
+  vendorController.manageInventory,
+);
+
+router.post(
+  "/me/products/:id/cross-selling",
+  authenticate,
+  authorize("vendor"),
+  vendorController.addCrossSellingRule,
+);
+
+router.get(
+  "/me/ledgers",
+  authenticate,
+  authorize("vendor"),
+  vendorController.getMyLedger,
+);
+
 module.exports = router;

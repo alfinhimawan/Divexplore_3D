@@ -55,12 +55,10 @@ const generateInvoiceBuffer = (order) => {
         );
 
       doc.moveDown(2);
-      doc
-        .fontSize(10)
-        .text("Terima kasih telah berbelanja di Divexplore-3D!", {
-          align: "center",
-          italic: true,
-        });
+      doc.fontSize(10).text("Terima kasih telah berbelanja di Divexplore-3D!", {
+        align: "center",
+        italic: true,
+      });
 
       // Finalize PDF file
       doc.end();

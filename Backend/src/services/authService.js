@@ -2,7 +2,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
-const { User } = require("../models");
+const { User, LoyaltyPoint } = require("../models");
 const { Op } = require("sequelize");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -143,4 +143,13 @@ const getMe = async (userId) => {
   return user;
 };
 
-module.exports = { register, login, googleLogin, getMe };
+// Get Loyalty Points
+const getMyPoints = async (userId) => {
+  const points = await LoyaltyPoint.findAll({
+    where: { user_id: userId },
+    order: [["createdAt", "DESC"]],
+  });
+  return points;
+};
+
+module.exports = { register, login, googleLogin, getMe, getMyPoints };

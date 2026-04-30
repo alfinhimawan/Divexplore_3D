@@ -122,4 +122,17 @@ const getMe = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, googleLogin, getMe };
+// Get Loyalty Points
+const getMyPoints = async (req, res, next) => {
+  try {
+    const points = await authService.getMyPoints(req.user.id);
+    res.status(200).json({
+      status: "success",
+      data: { points },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { register, login, googleLogin, getMe, getMyPoints };

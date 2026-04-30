@@ -17,8 +17,16 @@ router.get(
   authorize("wisatawan"),
   orderController.downloadInvoice,
 );
-router.post("/:orderId/reviews", authorize("wisatawan"), reviewController.createReview);
+router.post(
+  "/:orderId/reviews",
+  authorize("wisatawan"),
+  reviewController.createReview,
+);
 
-// (Opsional nanti ditambahkan GET /vendors/orders untuk vendor melihat pesanan masuk)
+// Vendor Routes
+router.get("/vendor", authorize("vendor"), orderController.getVendorOrders);
+
+// Admin Routes
+router.get("/admin", authorize("admin"), orderController.getAdminOrders);
 
 module.exports = router;

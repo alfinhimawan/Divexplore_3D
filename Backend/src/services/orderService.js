@@ -242,8 +242,57 @@ const getOrderById = async (orderId, userId = null) => {
   return order;
 };
 
+/**
+ * Ambil riwayat pesanan (Khusus untuk Vendor)
+ */
+const getVendorOrders = async (vendorId) => {
+  const orders = await Order.findAll({
+    include: [
+      {
+        model: OrderItem,
+        as: "items",
+        where: { vendor_id: vendorId },
+        include: [
+          {
+            model: Product,
+            as: "product",
+            attributes: ["nama_produk", "thumbnail_url"],
+          },
+        ],
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+  });
+  return orders;
+};
+
+/**
+ * Ambil semua riwayat pesanan platform (Khusus Admin)
+ */
+const getAdminOrders = async () => {
+  const orders = await Order.findAll({
+    include: [
+      {
+        model: OrderItem,
+        as: "items",
+        include: [
+          {
+            model: Product,
+            as: "product",
+            attributes: ["nama_produk"],
+          },
+        ],
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+  });
+  return orders;
+};
+
 module.exports = {
   createOrder,
   getWisatawanOrders,
   getOrderById,
+  getVendorOrders,
+  getAdminOrders,
 };

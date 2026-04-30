@@ -38,6 +38,15 @@ const documentSchema = Joi.object({
   }),
 });
 
+const manageInventorySchema = Joi.object({
+  tanggal_ketersediaan: Joi.date().iso().required(),
+  available_qty: Joi.number().integer().min(0).required(),
+});
+
+const crossSellingSchema = Joi.object({
+  addon_id: Joi.string().uuid().required(),
+});
+
 // POST /api/vendors
 const createVendor = async (req, res, next) => {
   try {
@@ -145,6 +154,61 @@ const getMyDocuments = async (req, res, next) => {
   }
 };
 
+// POST /api/vendors/me/products/:id/inventory
+const manageInventory = async (req, res, next) => {
+  try {
+    const { error, value } = manageInventorySchema.validate(req.body);
+    if (error)
+      return res
+        .status(400)
+        .json({ status: "error", message: error.details[0].message });
+
+    const vendor = await vendorService.getMyVendor(req.user.id);
+    const inventory = await vendorService.manageInventory(
+      vendor.id,
+      req.params.id,
+      value,
+    );
+
+    res.status(200).json({ status: "success", data: { inventory } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/vendors/me/products/:id/cross-selling
+const addCrossSellingRule = async (req, res, next) => {
+  try {
+    const { error, value } = crossSellingSchema.validate(req.body);
+    if (error)
+      return res
+        .status(400)
+        .json({ status: "error", message: error.details[0].message });
+
+    const vendor = await vendorService.getMyVendor(req.user.id);
+    const rule = await vendorService.addCrossSellingRule(
+      vendor.id,
+      req.params.id,
+      value.addon_id,
+    );
+
+    res.status(201).json({ status: "success", data: { rule } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/vendors/me/ledgers
+const getMyLedger = async (req, res, next) => {
+  try {
+    const vendor = await vendorService.getMyVendor(req.user.id);
+    const ledgers = await vendorService.getMyLedger(vendor.id);
+    res.status(200).json({ status: "success", data: { ledgers } });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createVendor,
   getMyVendor,
@@ -152,4 +216,7 @@ module.exports = {
   getVendorById,
   uploadDocument,
   getMyDocuments,
+  manageInventory,
+  addCrossSellingRule,
+  getMyLedger,
 };

@@ -1,6 +1,7 @@
 "use strict";
 const Joi = require("joi");
 const orderService = require("../services/orderService");
+const vendorService = require("../services/vendorService");
 
 // Schema Validasi
 const createOrderSchema = Joi.object({
@@ -89,8 +90,37 @@ const downloadInvoice = async (req, res, next) => {
   }
 };
 
+// GET /api/orders/vendor
+const getVendorOrders = async (req, res, next) => {
+  try {
+    const vendor = await vendorService.getMyVendor(req.user.id);
+    const orders = await orderService.getVendorOrders(vendor.id);
+    res.status(200).json({
+      status: "success",
+      data: { orders, total: orders.length },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/orders/admin
+const getAdminOrders = async (req, res, next) => {
+  try {
+    const orders = await orderService.getAdminOrders();
+    res.status(200).json({
+      status: "success",
+      data: { orders, total: orders.length },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
   downloadInvoice,
+  getVendorOrders,
+  getAdminOrders,
 };
