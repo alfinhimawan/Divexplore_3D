@@ -94,9 +94,7 @@ const sendMarketingEmail = async (userEmail, type, data) => {
       subject: subject,
       text: body,
     });
-    logger.info(
-      `Marketing Email Sent (${type}): ${nodemailer.getTestMessageUrl(info)}`,
-    );
+    logger.info(`Marketing Email Sent (${type}): ${nodemailer.getTestMessageUrl(info)}`);
   } catch (error) {
     logger.error(`Gagal mengirim email marketing ${type}:`, error);
   }
