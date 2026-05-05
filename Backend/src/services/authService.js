@@ -2,7 +2,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
-const { User, LoyaltyPoint } = require("../models");
+const { User, LoyaltyPoint, UserConsent } = require("../models");
 const { Op } = require("sequelize");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -152,4 +152,22 @@ const getMyPoints = async (userId) => {
   return points;
 };
 
-module.exports = { register, login, googleLogin, getMe, getMyPoints };
+// Record User Consent (GDPR Compliance)
+const recordConsent = async (userId, { policy_version, is_agreed }) => {
+  const consent = await UserConsent.create({
+    user_id: userId,
+    policy_version,
+    is_agreed,
+    agreed_at: is_agreed ? new Date() : null,
+  });
+  return consent;
+};
+
+module.exports = {
+  register,
+  login,
+  googleLogin,
+  getMe,
+  getMyPoints,
+  recordConsent,
+};

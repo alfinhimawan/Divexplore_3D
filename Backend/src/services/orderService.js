@@ -7,6 +7,7 @@ const {
   ProductInventory,
   AuditLog,
   Promo,
+  LoyaltyPoint,
 } = require("../models");
 const midtransClient = require("midtrans-client");
 
@@ -22,8 +23,10 @@ const snap = new midtransClient.Snap({
  *
  * @param {string} userId - ID Wisatawan
  * @param {Array} items - Array of { product_id, qty }
+ * @param {string} promoCode - Kode promo (opsional)
+ * @param {boolean} usePoints - Gunakan poin loyalitas (opsional)
  */
-const createOrder = async (userId, items, promoCode = null) => {
+const createOrder = async (userId, items, promoCode = null, usePoints = false) => {
   // Mulai Transaksi Database
   const transaction = await sequelize.transaction();
 
@@ -111,6 +114,45 @@ const createOrder = async (userId, items, promoCode = null) => {
       if (totalPembayaran < 0) totalPembayaran = 0;
     }
 
+    // 4.6 Kalkulasi Potongan Poin Loyalitas (WP-7.1.1)
+    let pointsUsed = 0;
+    if (usePoints && totalPembayaran > 0) {
+      const allPoints = await LoyaltyPoint.findAll({
+        where: { user_id: userId },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      const totalPointsEarned = allPoints.reduce((acc, p) => acc + (parseInt(p.points_earned) || 0), 0);
+      const totalPointsUsed = allPoints.reduce((acc, p) => acc + (parseInt(p.points_used) || 0), 0);
+      const balance = totalPointsEarned - totalPointsUsed;
+
+      if (balance > 0) {
+        // Konversi: 1 poin = Rp 1.000
+        const pointValue = balance * 1000;
+        
+        if (pointValue >= totalPembayaran) {
+          // Poin menutupi seluruh pembayaran
+          pointsUsed = Math.ceil(totalPembayaran / 1000);
+          totalPembayaran = 0;
+        } else {
+          // Poin hanya memotong sebagian
+          pointsUsed = balance;
+          totalPembayaran -= pointValue;
+        }
+
+        // Catat penggunaan poin
+        if (pointsUsed > 0) {
+          await LoyaltyPoint.create({
+            user_id: userId,
+            points_earned: 0,
+            points_used: pointsUsed,
+            // order_id akan diisi setelah newOrder dibuat
+          }, { transaction });
+        }
+      }
+    }
+
     // 5. Buat Record di tabel Orders
     // timeout_at di-set 15 menit dari sekarang
     const timeoutAt = new Date();
@@ -126,6 +168,17 @@ const createOrder = async (userId, items, promoCode = null) => {
       },
       { transaction },
     );
+
+    // Update LoyaltyPoint record dengan order_id jika tadi ada penggunaan poin
+    if (pointsUsed > 0) {
+      await LoyaltyPoint.update(
+        { order_id: newOrder.id },
+        { 
+          where: { user_id: userId, points_used: pointsUsed, order_id: null }, 
+          transaction 
+        }
+      );
+    }
 
     // 6. Buat Record di tabel OrderItems secara Bulk
     const orderItemsWithOrderId = orderItemsData.map((oi) => ({

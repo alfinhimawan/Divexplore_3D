@@ -9,5 +9,7 @@ router.get("/", promoController.getAllPromos);
 
 // Admin Only
 router.post("/", authenticate, authorize("admin"), promoController.createPromo);
+router.put("/:id", authenticate, authorize("admin"), promoController.updatePromo);
+router.delete("/:id", authenticate, authorize("admin"), promoController.deletePromo);
 
 module.exports = router;

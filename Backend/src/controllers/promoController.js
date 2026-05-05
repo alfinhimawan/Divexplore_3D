@@ -42,7 +42,34 @@ const createPromo = async (req, res, next) => {
   }
 };
 
+const updatePromo = async (req, res, next) => {
+  try {
+    const promo = await promoService.updatePromo(req.params.id, req.body);
+    res.status(200).json({
+      status: "success",
+      message: "Promo berhasil diperbarui.",
+      data: { promo },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deletePromo = async (req, res, next) => {
+  try {
+    const result = await promoService.deletePromo(req.params.id);
+    res.status(200).json({
+      status: "success",
+      message: result.message,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getAllPromos,
   createPromo,
+  updatePromo,
+  deletePromo,
 };

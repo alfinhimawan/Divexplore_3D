@@ -18,6 +18,7 @@ const createOrderSchema = Joi.object({
       "array.min": "Keranjang belanja tidak boleh kosong.",
     }),
   kode_promo: Joi.string().optional().allow(null, ""),
+  use_points: Joi.boolean().default(false),
 });
 
 // POST /api/orders
@@ -39,6 +40,7 @@ const createOrder = async (req, res, next) => {
       req.user.id,
       value.items,
       value.kode_promo,
+      value.use_points,
     );
 
     res.status(201).json({

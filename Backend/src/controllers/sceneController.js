@@ -69,8 +69,35 @@ const addHotspot = async (req, res, next) => {
   }
 };
 
+const updateScene = async (req, res, next) => {
+  try {
+    const scene = await sceneService.updateScene(req.params.id, req.body);
+    res.status(200).json({
+      status: "success",
+      message: "Scene berhasil diperbarui.",
+      data: { scene },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteScene = async (req, res, next) => {
+  try {
+    const result = await sceneService.deleteScene(req.params.id);
+    res.status(200).json({
+      status: "success",
+      message: result.message,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getAllScenes,
   createScene,
+  updateScene,
+  deleteScene,
   addHotspot,
 };
