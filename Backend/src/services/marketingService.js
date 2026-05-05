@@ -28,13 +28,10 @@ const logProductVisit = async (userId, productId) => {
 };
 
 /**
- * Trigger Strategi Retargeting & Notifikasi (Flowchart Digital Marketing)
- * Fungsi ini idealnya dijalankan via Cron Job (tapi untuk demo bisa manual).
+ * Case A: Reminder Pembayaran (Tunggu 1-2 Jam)
  */
-const triggerMarketingStrategy = async () => {
-  const reports = { reminder_payment: 0, loyalty_offer: 0, retargeting_visit: 0 };
-
-  // 1. Case A: Reminder Pembayaran (Tunggu 1-2 Jam)
+const runCaseA = async () => {
+  let count = 0;
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   const pendingOrders = await Order.findAll({
     where: {
@@ -46,13 +43,22 @@ const triggerMarketingStrategy = async () => {
 
   for (const order of pendingOrders) {
     if (order.user && order.user.email) {
-      await emailService.sendMarketingEmail(order.user.email, "REMINDER_PAYMENT", { order });
-      reports.reminder_payment++;
+      await emailService.sendMarketingEmail(
+        order.user.email,
+        "REMINDER_PAYMENT",
+        { order },
+      );
+      count++;
     }
   }
+  return count;
+};
 
-  // 2. Case B: Penawaran Loyalitas (History Pembelian)
-  // Mencari user yang pernah beli tapi tidak punya booking aktif
+/**
+ * Case B: Penawaran Loyalitas (History Pembelian)
+ */
+const runCaseB = async () => {
+  let count = 0;
   const loyalUsers = await User.findAll({
     where: { role: "wisatawan" },
     include: [
@@ -66,15 +72,24 @@ const triggerMarketingStrategy = async () => {
   });
 
   for (const user of loyalUsers) {
-    // Hanya kirim jika tidak ada order pending saat ini
-    const activeOrder = await Order.findOne({ where: { user_id: user.id, status: "pending" } });
+    const activeOrder = await Order.findOne({
+      where: { user_id: user.id, status: "pending" },
+    });
     if (!activeOrder && user.email) {
-      await emailService.sendMarketingEmail(user.email, "LOYALTY_OFFER", { user });
-      reports.loyalty_offer++;
+      await emailService.sendMarketingEmail(user.email, "LOYALTY_OFFER", {
+        user,
+      });
+      count++;
     }
   }
+  return count;
+};
 
-  // 3. Case C: Retargeting View Product (Tunggu 24 Jam)
+/**
+ * Case C: Retargeting View Product (Tunggu 24 Jam)
+ */
+const runCaseC = async () => {
+  let count = 0;
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const abandonedVisits = await ProductVisit.findAll({
     where: {
@@ -87,25 +102,48 @@ const triggerMarketingStrategy = async () => {
   });
 
   for (const visit of abandonedVisits) {
-    // Cek apakah user ini akhirnya beli produk tersebut atau tidak
     const hasBought = await Order.findOne({
       where: { user_id: visit.user_id, status: "paid" },
-      include: [{ model: OrderItem, as: "items", where: { product_id: visit.product_id } }],
+      include: [
+        {
+          model: OrderItem,
+          as: "items",
+          where: { product_id: visit.product_id },
+        },
+      ],
     });
 
     if (!hasBought && visit.user && visit.user.email) {
-      await emailService.sendMarketingEmail(visit.user.email, "RETARGETING_VISIT", { 
-        user: visit.user, 
-        product: visit.product 
-      });
-      reports.retargeting_visit++;
+      await emailService.sendMarketingEmail(
+        visit.user.email,
+        "RETARGETING_VISIT",
+        {
+          user: visit.user,
+          product: visit.product,
+        },
+      );
+      count++;
     }
   }
+  return count;
+};
 
+/**
+ * Trigger Strategi Retargeting & Notifikasi (Manual Trigger)
+ */
+const triggerMarketingStrategy = async () => {
+  const reports = {
+    reminder_payment: await runCaseA(),
+    loyalty_offer: await runCaseB(),
+    retargeting_visit: await runCaseC(),
+  };
   return reports;
 };
 
 module.exports = {
   logProductVisit,
+  runCaseA,
+  runCaseB,
+  runCaseC,
   triggerMarketingStrategy,
 };
