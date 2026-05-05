@@ -34,4 +34,11 @@ router.post(
   productController.addBundling,
 );
 
+// BARU: Mencatat kunjungan produk (untuk Retargeting)
+router.post(
+  "/:id/visit",
+  authenticate,
+  productController.logVisit,
+);
+
 module.exports = router;
