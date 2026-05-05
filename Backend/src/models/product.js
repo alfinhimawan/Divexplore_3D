@@ -47,6 +47,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false, // Wajib diisi
       },
+      deskripsi: {
+        type: DataTypes.TEXT,
+        allowNull: true, // Tidak wajib
+      },
       harga: {
         type: DataTypes.DECIMAL(15, 2),
         allowNull: false, // Wajib diisi
