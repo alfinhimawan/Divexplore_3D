@@ -2,6 +2,7 @@
 const Joi = require("joi");
 const productService = require("../services/productService");
 const vendorService = require("../services/vendorService");
+const marketingService = require("../services/marketingService");
 
 // Schema validasi — digunakan untuk POST (create)
 const createProductSchema = Joi.object({
@@ -72,6 +73,12 @@ const getAllProducts = async (req, res, next) => {
 const getProductById = async (req, res, next) => {
   try {
     const product = await productService.getProductById(req.params.id);
+
+    // Logging Kunjungan (WP-7.1.3)
+    if (req.user) {
+      marketingService.logProductVisit(req.user.id, req.params.id);
+    }
+
     res.status(200).json({ status: "success", data: { product } });
   } catch (err) {
     next(err);
