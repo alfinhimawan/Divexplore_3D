@@ -24,4 +24,7 @@ router.get(
   authController.getMyPoints,
 );
 
+// Record User Consent (GDPR)
+router.post("/consent", authenticate, authController.recordConsent);
+
 module.exports = router;

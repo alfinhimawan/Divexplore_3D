@@ -27,6 +27,17 @@ const createScene = async (data) => {
   return scene;
 };
 
+const updateScene = async (id, data) => {
+  const scene = await Scene.findByPk(id);
+  if (!scene) {
+    const err = new Error("Scene tidak ditemukan.");
+    err.statusCode = 404;
+    throw err;
+  }
+  await scene.update(data);
+  return scene;
+};
+
 // Menambahkan hotspot produk ke dalam scene (Admin Only)
 const addHotspot = async (sceneId, data) => {
   // Verifikasi scene ada
@@ -55,8 +66,21 @@ const addHotspot = async (sceneId, data) => {
   return hotspot;
 };
 
+const deleteScene = async (id) => {
+  const scene = await Scene.findByPk(id);
+  if (!scene) {
+    const err = new Error("Scene tidak ditemukan.");
+    err.statusCode = 404;
+    throw err;
+  }
+  await scene.destroy();
+  return { message: "Scene berhasil dihapus." };
+};
+
 module.exports = {
   getAllScenes,
   createScene,
+  updateScene,
+  deleteScene,
   addHotspot,
 };

@@ -42,7 +42,42 @@ const createPromo = async (req, res, next) => {
   }
 };
 
+const updatePromo = async (req, res, next) => {
+  try {
+    const { error, value } = promoSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        status: "error",
+        message: error.details.map((d) => d.message).join(", "),
+      });
+    }
+
+    const promo = await promoService.updatePromo(req.params.id, value);
+    res.status(200).json({
+      status: "success",
+      message: "Promo berhasil diperbarui.",
+      data: { promo },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deletePromo = async (req, res, next) => {
+  try {
+    const result = await promoService.deletePromo(req.params.id);
+    res.status(200).json({
+      status: "success",
+      message: result.message,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getAllPromos,
   createPromo,
+  updatePromo,
+  deletePromo,
 };

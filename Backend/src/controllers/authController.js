@@ -34,6 +34,8 @@ const consentSchema = Joi.object({
   is_agreed: Joi.boolean().required(),
 });
 
+
+
 // Register
 const register = async (req, res, next) => {
   try {
