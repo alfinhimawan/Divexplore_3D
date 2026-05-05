@@ -19,4 +19,7 @@ router.get("/abandoned-carts", adminController.getAbandonedCarts);
 // GET /api/admin/reports/gmv
 router.get("/reports/gmv", adminController.getGmvReport);
 
+// POST /api/admin/marketing/trigger
+router.post("/marketing/trigger", adminController.triggerMarketing);
+
 module.exports = router;

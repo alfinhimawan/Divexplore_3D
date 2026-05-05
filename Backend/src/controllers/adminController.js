@@ -1,6 +1,7 @@
 "use strict";
 const Joi = require("joi");
 const adminService = require("../services/adminService");
+const marketingService = require("../services/marketingService");
 
 const kycSchema = Joi.object({
   status_kyc: Joi.string()
@@ -115,9 +116,26 @@ const getGmvReport = async (req, res, next) => {
   }
 };
 
+
+// POST /api/admin/marketing/trigger (Trigger Strategi Notifikasi Otomatis)
+const triggerMarketing = async (req, res, next) => {
+  try {
+    const report = await marketingService.triggerMarketingStrategy();
+
+    res.status(200).json({
+      status: "success",
+      message: "Strategi marketing otomatis berhasil dijalankan.",
+      data: { report },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getAllVendors,
   updateKycStatus,
   getAbandonedCarts,
   getGmvReport,
+  triggerMarketing,
 };
