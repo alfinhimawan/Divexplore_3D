@@ -2,6 +2,20 @@
 const { Vendor, VendorDocument, User } = require("../models");
 const { Op } = require("sequelize");
 
+/**
+ * Tabel komisi platform per kategori vendor.
+ * Sumber: Tim E-Commerce Divexplore.
+ * Formula: C% = Mavg - (Whpp + Wrisk + Wvol) + Wfitur
+ * Wfitur selalu +2% sebagai kompensasi fitur 3D & sistem bundling.
+ */
+const KOMISI_PER_KATEGORI = {
+  peralatan: 7, // 12.5% - (3.5+0.0+4.0)% + 2% = 7%
+  aktivitas_tur: 10, // 17.5% - (5.0+4.5+0.0)% + 2% = 10%
+  homestay: 15, // 25.0% - (7.0+0.0+5.0)% + 2% = 15%
+  kuliner: 10, // 25.0% - (12.0+0.0+5.0)% + 2% = 10%
+  fotografi: 12, // 17.5% - (4.5+3.0+0.0)% + 2% = 12%
+};
+
 // List semua vendor beserta status KYC
 const getAllVendors = async (query = {}) => {
   const { search, status_kyc } = query;
@@ -48,7 +62,21 @@ const updateKycStatus = async (vendorId, { status_kyc, catatan_admin }) => {
   }
 
   // Update status KYC di vendor
-  await vendor.update({ status_kyc });
+  // Jika di-approve, otomatis isi persentase_komisi berdasarkan kategori vendor
+  const updateData = { status_kyc };
+  if (status_kyc === "approved") {
+    const komisi = KOMISI_PER_KATEGORI[vendor.kategori];
+    if (komisi !== undefined) {
+      updateData.persentase_komisi = komisi;
+    } else {
+      // Fallback 10% jika kategori tidak dikenal (safety net)
+      updateData.persentase_komisi = 10;
+      console.warn(
+        `Kategori vendor '${vendor.kategori}' tidak dikenal, komisi default 10% diterapkan.`,
+      );
+    }
+  }
+  await vendor.update(updateData);
 
   // Jika ada catatan admin, update di semua dokumen vendor
   if (catatan_admin) {
