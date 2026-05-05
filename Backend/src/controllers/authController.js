@@ -29,6 +29,11 @@ const googleSchema = Joi.object({
   }),
 });
 
+const consentSchema = Joi.object({
+  policy_version: Joi.string().required(),
+  is_agreed: Joi.boolean().required(),
+});
+
 // Register
 const register = async (req, res, next) => {
   try {
@@ -135,4 +140,32 @@ const getMyPoints = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, googleLogin, getMe, getMyPoints };
+// Record User Consent
+const recordConsent = async (req, res, next) => {
+  try {
+    const { error, value } = consentSchema.validate(req.body);
+    if (error)
+      return res
+        .status(400)
+        .json({ status: "error", message: error.details[0].message });
+
+    const consent = await authService.recordConsent(req.user.id, value);
+
+    res.status(201).json({
+      status: "success",
+      message: "Persetujuan kebijakan berhasil dicatat.",
+      data: { consent },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = {
+  register,
+  login,
+  googleLogin,
+  getMe,
+  getMyPoints,
+  recordConsent,
+};
