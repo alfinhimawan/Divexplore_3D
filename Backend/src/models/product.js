@@ -28,6 +28,10 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "addon_product_id",
         as: "crossSellingAsAddon",
       });
+      Product.hasMany(models.ProductAddon, {
+        foreignKey: "product_id",
+        as: "addons",
+      });
     }
   }
 
@@ -46,6 +50,10 @@ module.exports = (sequelize, DataTypes) => {
       nama_produk: {
         type: DataTypes.STRING,
         allowNull: false, // Wajib diisi
+      },
+      deskripsi: {
+        type: DataTypes.TEXT,
+        allowNull: true, // Tidak wajib
       },
       harga: {
         type: DataTypes.DECIMAL(15, 2),

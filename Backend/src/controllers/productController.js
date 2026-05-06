@@ -160,6 +160,26 @@ const addBundling = async (req, res, next) => {
   }
 };
 
+/**
+ * Mencatat kunjungan produk (Manual Trigger dari Frontend)
+ */
+const logVisit = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const marketingService = require("../services/marketingService");
+    await marketingService.logProductVisit(userId, id);
+
+    res.status(200).json({
+      status: "success",
+      message: "Kunjungan produk berhasil dicatat.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createProduct,
   getAllProducts,
@@ -167,4 +187,5 @@ module.exports = {
   updateProduct,
   deleteProduct,
   addBundling,
+  logVisit,
 };

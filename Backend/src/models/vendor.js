@@ -22,6 +22,10 @@ module.exports = (sequelize, DataTypes) => {
         as: "ledgers",
       });
       Vendor.hasMany(models.Review, { foreignKey: "vendor_id", as: "reviews" });
+      Vendor.hasMany(models.Withdrawal, {
+        foreignKey: "vendor_id",
+        as: "withdrawals",
+      });
     }
   }
 
@@ -37,6 +41,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.UUID,
         allowNull: false,
         unique: true,
+      },
+      saldo_saat_ini: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: false,
+        defaultValue: 0,
       },
       nama_toko: {
         type: DataTypes.STRING,

@@ -7,6 +7,7 @@ const compression = require("compression");
 const { rateLimit } = require("express-rate-limit");
 const db = require("./src/models");
 const logger = require("./src/utils/logger");
+const { initCronJobs } = require("./src/services/cronService");
 
 // Validasi Environment Variables Wajib
 // Fail fast: lebih baik crash sekarang daripada error misterius saat runtime
@@ -108,6 +109,10 @@ db.sequelize
   .authenticate()
   .then(() => {
     logger.info(`Database connected successfully`);
+
+    // Inisialisasi Otomatisasi Marketing (Cron Jobs)
+    initCronJobs();
+
     server = app.listen(PORT, () =>
       logger.info(`Server running on port ${PORT} [${process.env.NODE_ENV}]`),
     );
