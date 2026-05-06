@@ -9,7 +9,10 @@ const createSceneSchema = Joi.object({
 });
 
 const addHotspotSchema = Joi.object({
-  product_id: Joi.string().uuid().required(),
+  product_id: Joi.string().uuid().allow(null, ""), // Opsional jika tipe navigasi
+  target_scene_id: Joi.string().uuid().allow(null, ""), // Wajib jika tipe navigasi
+  type: Joi.string().valid("product", "navigation").default("product"),
+  icon_type: Joi.string().allow(null, ""),
   coordinates_json: Joi.string().required(), // misal: '{"x":10, "y":20, "z":30}'
   description: Joi.string().allow("", null),
 });
