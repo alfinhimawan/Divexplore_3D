@@ -12,6 +12,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "scene_id",
         as: "scene",
       });
+      // Asosiasi baru untuk navigasi antar scene
+      Product3dHotspot.belongsTo(models.Scene, {
+        foreignKey: "target_scene_id",
+        as: "targetScene",
+      });
     }
   }
 
@@ -25,11 +30,25 @@ module.exports = (sequelize, DataTypes) => {
       },
       product_id: {
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true, // Berubah jadi true untuk mendukung navigasi
       },
       scene_id: {
         type: DataTypes.UUID,
         allowNull: false,
+      },
+      target_scene_id: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
+      type: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "product",
+      },
+      icon_type: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: "shopping_cart",
       },
       coordinates_json: {
         type: DataTypes.TEXT,
