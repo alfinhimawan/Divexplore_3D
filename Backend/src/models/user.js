@@ -16,6 +16,7 @@ module.exports = (sequelize, DataTypes) => {
       });
       User.hasMany(models.AuditLog, { foreignKey: "user_id", as: "auditLogs" });
       User.hasMany(models.Review, { foreignKey: "user_id", as: "reviews" });
+      User.hasMany(models.Refund, { foreignKey: "user_id", as: "refunds" });
     }
   }
 
@@ -37,6 +38,18 @@ module.exports = (sequelize, DataTypes) => {
         unique: true,
       },
       password_hash: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      nomor_telepon: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      alamat: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      foto_profil_url: {
         type: DataTypes.STRING,
         allowNull: true,
       },
