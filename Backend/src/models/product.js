@@ -28,6 +28,10 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "addon_product_id",
         as: "crossSellingAsAddon",
       });
+      Product.hasMany(models.ProductAddon, {
+        foreignKey: "product_id",
+        as: "addons",
+      });
     }
   }
 
