@@ -48,7 +48,7 @@ export default function ProductDetailPage() {
     if (!isAuthenticated) {
       navigate('/login');
     } else {
-      alert(`Pesanan diproses! Total: Rp ${calculateTotal().toLocaleString('id-ID')}`);
+      navigate('/cart');
     }
   };
 
@@ -231,7 +231,7 @@ export default function ProductDetailPage() {
             </div>
 
             <div className={styles.actionButtons}>
-              <button className={styles.btnPrimary} onClick={handleBook}>
+              <button className={styles.btnPrimary} onClick={() => navigate('/cart')}>
                 <ShoppingCart size={18} />
                 Tambah ke Keranjang
               </button>
