@@ -62,7 +62,7 @@ export default function ProductDetailPage() {
         </div>
         <nav className={styles.navLinks}>
           <span className={styles.navLink} onClick={() => navigate('/')}>Destinasi</span>
-          <span className={styles.navLink}>Vendor</span>
+          <span className={styles.navLink} onClick={() => navigate('/catalog')} style={{color: 'white', fontWeight: 600}}>Katalog</span>
           <span className={styles.navLink}>Tentang</span>
         </nav>
         <div className={styles.userSection}>
