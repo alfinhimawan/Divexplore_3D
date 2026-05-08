@@ -160,6 +160,17 @@ const updateProfile = async (userId, data) => {
   return user;
 };
 
+// Get Current User
+const getMe = async (userId) => {
+  const user = await User.findByPk(userId);
+  if (!user) {
+    const err = new Error("User tidak ditemukan.");
+    err.statusCode = 404;
+    throw err;
+  }
+  return user;
+};
+
 // Get Loyalty Points
 const getMyPoints = async (userId) => {
   const points = await LoyaltyPoint.findAll({
