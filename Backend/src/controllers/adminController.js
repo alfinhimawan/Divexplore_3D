@@ -55,61 +55,26 @@ const updateKycStatus = async (req, res, next) => {
   }
 };
 
-// GET /api/admin/abandoned-carts (WP-7.1.2)
-// Digunakan oleh marketing untuk mem-follow up wisatawan yang tidak menyelesaikan pembayaran
+// GET /api/admin/abandoned-carts
 const getAbandonedCarts = async (req, res, next) => {
   try {
-    const { Order, User } = require("../models");
-    // Cari keranjang yang 'pending' (belum dibayar)
-    const abandonedOrders = await Order.findAll({
-      where: { status: "pending" },
-      include: [
-        {
-          model: User,
-          as: "user",
-          attributes: ["nama_lengkap", "email", "no_telepon"],
-        },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
-
+    const orders = await adminService.getAbandonedCarts();
     res.status(200).json({
       status: "success",
-      data: { orders: abandonedOrders, total: abandonedOrders.length },
+      data: { orders, total: orders.length },
     });
   } catch (err) {
     next(err);
   }
 };
 
-// GET /api/admin/reports/gmv (WP-7.1.3)
-// Laporan total pendapatan kotor dan bersih platform
+// GET /api/admin/reports/gmv
 const getGmvReport = async (req, res, next) => {
   try {
-    const { VirtualLedger, sequelize } = require("../models");
-
-    const result = await VirtualLedger.findOne({
-      attributes: [
-        [sequelize.fn("SUM", sequelize.col("pendapatan_kotor")), "total_gmv"],
-        [
-          sequelize.fn("SUM", sequelize.col("potongan_komisi")),
-          "total_komisi_platform",
-        ],
-        [
-          sequelize.fn("SUM", sequelize.col("biaya_midtrans")),
-          "total_biaya_midtrans",
-        ],
-      ],
-      raw: true,
-    });
-
+    const report = await adminService.getGmvReport();
     res.status(200).json({
       status: "success",
-      data: {
-        total_gmv: result.total_gmv || 0,
-        total_komisi_platform: result.total_komisi_platform || 0,
-        total_biaya_midtrans: result.total_biaya_midtrans || 0,
-      },
+      data: report,
     });
   } catch (err) {
     next(err);

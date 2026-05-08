@@ -16,6 +16,9 @@ router.post("/google", authController.googleLogin);
 // GET /api/auth/me — butuh token JWT
 router.get("/me", authenticate, authController.getMe);
 
+// PUT /api/auth/me — update profil
+router.put("/me", authenticate, authController.updateProfile);
+
 // Rute khusus wisatawan
 router.get(
   "/me/points",
@@ -26,5 +29,8 @@ router.get(
 
 // Record User Consent (GDPR)
 router.post("/consent", authenticate, authController.recordConsent);
+
+// Delete Account (Soft Delete - GDPR Right to be Forgotten)
+router.delete("/account", authenticate, authController.deleteAccount);
 
 module.exports = router;

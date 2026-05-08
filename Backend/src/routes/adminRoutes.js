@@ -19,7 +19,19 @@ router.get("/abandoned-carts", adminController.getAbandonedCarts);
 // GET /api/admin/reports/gmv
 router.get("/reports/gmv", adminController.getGmvReport);
 
+const refundController = require("../controllers/refundController");
+
 // POST /api/admin/marketing/trigger
 router.post("/marketing/trigger", adminController.triggerMarketing);
+
+const withdrawalController = require("../controllers/withdrawalController");
+
+// Refund Management
+router.get("/refunds", refundController.getAllRefunds);
+router.put("/refunds/:id", refundController.processRefund);
+
+// Withdrawal Management
+router.get("/withdrawals", withdrawalController.getAllWithdrawals);
+router.put("/withdrawals/:id", withdrawalController.processWithdrawal);
 
 module.exports = router;

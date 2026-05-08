@@ -10,10 +10,11 @@ const {
 } = require("../models");
 const midtransClient = require("midtrans-client");
 
-// Konfigurasi Midtrans Sandbox
+// Konfigurasi Midtrans (Otomatis deteksi Sandbox vs Production)
 const snap = new midtransClient.Snap({
-  isProduction: false,
-  serverKey: process.env.MIDTRANS_SERVER_KEY || "SB-Mid-server-DUMMY",
+  isProduction: process.env.NODE_ENV === "production",
+  serverKey: process.env.MIDTRANS_SERVER_KEY,
+  clientKey: process.env.MIDTRANS_CLIENT_KEY,
 });
 
 /**
@@ -49,53 +50,52 @@ const createOrder = async (userId, items, promoCode = null) => {
 
     // 1. Loop semua item yang mau dibeli
     for (const item of items) {
-      // Ambil detail produk (untuk dapat harga dan vendor_id)
-      const product = await Product.findByPk(item.product_id, { transaction });
+      const product = await Product.findByPk(item.product_id, {
+        include: ["addons"],
+        transaction,
+      });
       if (!product || !product.is_active) {
-        throw new Error(
-          `Produk dengan ID ${item.product_id} tidak ditemukan atau tidak aktif.`,
-        );
+        throw new Error(`Produk ${item.product_id} tidak ditemukan/aktif.`);
       }
 
-      // Ambil inventaris produk tersebut (Pilih yang stoknya mencukupi)
-      // Dalam implementasi nyata, tanggal_ketersediaan harus jadi parameter.
-      // Di sini kita ambil inventaris pertama yang cukup stoknya.
+      // Validasi & Update Inventaris
       const inventory = await ProductInventory.findOne({
         where: { product_id: product.id },
         transaction,
-        // Gunakan lock: true (SELECT ... FOR UPDATE) agar request lain mengantri
-        // sampai transaksi ini selesai (Mencegah Race Condition murni).
         lock: transaction.LOCK.UPDATE,
       });
 
-      if (!inventory) {
-        throw new Error(
-          `Inventaris untuk produk ${product.nama_produk} belum diatur.`,
-        );
+      if (!inventory || inventory.available_qty < item.qty) {
+        throw new Error(`Stok ${product.nama_produk} tidak mencukupi.`);
       }
 
-      if (inventory.available_qty < item.qty) {
-        throw new Error(
-          `Stok produk ${product.nama_produk} tidak mencukupi. Tersedia: ${inventory.available_qty}`,
-        );
-      }
-
-      // 2. Real-Time Inventory Locking: Kurangi available, tambah locked
       inventory.available_qty -= item.qty;
       inventory.locked_qty += item.qty;
       await inventory.save({ transaction });
 
-      // 3. Hitung subtotal
-      const subtotal = product.harga * item.qty;
+      // HITUNG HARGA PRODUK + ADD-ONS (Bundling UMKM)
+      let hargaFinalItem = parseFloat(product.harga);
+      if (item.addon_ids && item.addon_ids.length > 0) {
+        const { ProductAddon } = require("../models");
+        const selectedAddons = await ProductAddon.findAll({
+          where: { id: item.addon_ids, product_id: product.id },
+          transaction,
+        });
+        selectedAddons.forEach((addon) => {
+          hargaFinalItem += parseFloat(addon.harga);
+        });
+      }
+
+      const subtotal = hargaFinalItem * item.qty;
       totalNominal += subtotal;
 
-      // 4. Siapkan data untuk OrderItem
       orderItemsData.push({
         product_id: product.id,
         vendor_id: product.vendor_id,
         qty: item.qty,
-        harga_satuan: product.harga,
+        harga_satuan: hargaFinalItem,
         subtotal: subtotal,
+        metadata: item.addon_ids ? JSON.stringify(item.addon_ids) : null,
       });
     }
 
