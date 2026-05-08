@@ -79,6 +79,7 @@ module.exports = (sequelize, DataTypes) => {
       scopes: {
         withPassword: { attributes: {} }, // ambil semua kolom termasuk password_hash
       },
+      paranoid: true,
     },
   );
 
