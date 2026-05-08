@@ -67,8 +67,22 @@ const processRefund = async (req, res, next) => {
   }
 };
 
+// GET /api/admin/refunds
+const getAllRefunds = async (req, res, next) => {
+  try {
+    const refunds = await refundService.getAllRefunds(req.query);
+    res.status(200).json({
+      status: "success",
+      data: { refunds },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   requestRefund,
   getRefundStatus,
   processRefund,
+  getAllRefunds,
 };
