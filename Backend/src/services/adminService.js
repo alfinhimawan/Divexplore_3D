@@ -92,4 +92,50 @@ const updateKycStatus = async (vendorId, { status_kyc, catatan_admin }) => {
   return vendor.reload(); // kembalikan data terbaru
 };
 
-module.exports = { getAllVendors, updateKycStatus };
+/**
+ * Laporan GMV (Gross Merchandise Value) & Revenue
+ * Menggunakan data VirtualLedger untuk akurasi split payment.
+ */
+const getGmvReport = async () => {
+  const { VirtualLedger } = require("../models");
+  const stats = await VirtualLedger.findOne({
+    attributes: [
+      [sequelize.fn("SUM", sequelize.col("pendapatan_kotor")), "total_gmv"],
+      [sequelize.fn("SUM", sequelize.col("potongan_komisi")), "total_revenue"],
+      [sequelize.fn("SUM", sequelize.col("biaya_midtrans")), "total_midtrans_fees"],
+      [sequelize.fn("COUNT", sequelize.col("id")), "total_transactions"],
+    ],
+    raw: true,
+  });
+
+  return {
+    gmv: parseFloat(stats.total_gmv || 0),
+    revenue: parseFloat(stats.total_revenue || 0),
+    midtrans_fees: parseFloat(stats.total_midtrans_fees || 0),
+    total_transactions: parseInt(stats.total_transactions || 0),
+  };
+};
+
+/**
+ * Mendeteksi Abandoned Carts
+ * Order yang berstatus pending dan sudah melewati batas waktu bayar (timeout_at).
+ */
+const getAbandonedCarts = async () => {
+  const { Order, User } = require("../models");
+  const abandoned = await Order.findAll({
+    where: {
+      status: "pending",
+      timeout_at: { [Op.lt]: new Date() },
+    },
+    include: [{ model: User, as: "user", attributes: ["nama_lengkap", "email", "nomor_telepon"] }],
+    order: [["timeout_at", "DESC"]],
+  });
+  return abandoned;
+};
+
+module.exports = { 
+  getAllVendors, 
+  updateKycStatus, 
+  getGmvReport, 
+  getAbandonedCarts 
+};

@@ -10,17 +10,34 @@ const {
   User,
 } = require("../models");
 
+const crypto = require("crypto");
+
 /**
  * Handle Webhook dari Midtrans
  * Menerima payload (notifikasi) JSON dari Midtrans.
- *
- * Catatan: Di *production*, Anda WAJIB memvalidasi 'signature_key'
- * menggunakan SHA512(order_id + status_code + gross_amount + ServerKey).
- * Di simulasi Sandbox ini, kita fokus ke logika mutasi status & stok.
  */
 const handleMidtransWebhook = async (payload) => {
-  const { order_id, transaction_status, transaction_id, payment_type } =
-    payload;
+  const {
+    order_id,
+    transaction_status,
+    transaction_id,
+    payment_type,
+    status_code,
+    gross_amount,
+    signature_key,
+  } = payload;
+
+  // PENTING: Validasi Signature Key (PCI-DSS & Security Compliance)
+  // SHA512(order_id + status_code + gross_amount + ServerKey)
+  const serverKey = process.env.MIDTRANS_SERVER_KEY;
+  const hash = crypto
+    .createHash("sha512")
+    .update(`${order_id}${status_code}${gross_amount}${serverKey}`)
+    .digest("hex");
+
+  if (hash !== signature_key) {
+    throw new Error("Invalid signature key. Keamanan terancam!");
+  }
 
   // Bungkus dalam transaksi database untuk keamanan data
   const transaction = await sequelize.transaction();

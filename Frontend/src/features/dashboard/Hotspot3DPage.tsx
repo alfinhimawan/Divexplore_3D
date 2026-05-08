@@ -153,7 +153,7 @@ export default function Hotspot3DPage() {
         </div>
         <nav className={styles.navLinks}>
           <span className={styles.navLink} style={{color: 'white', fontWeight: 600}}>Destinasi</span>
-          <span className={styles.navLink}>Vendor</span>
+          <span className={styles.navLink} onClick={() => navigate('/catalog')}>Katalog</span>
           <span className={styles.navLink}>Tentang</span>
         </nav>
         <div className={styles.userSection}>

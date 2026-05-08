@@ -9,6 +9,8 @@ const reviewController = require("../controllers/reviewController");
 // Semua route order wajib login
 router.use(authenticate);
 
+const refundController = require("../controllers/refundController");
+
 // Wisatawan routes
 router.post("/", authorize("wisatawan"), orderController.createOrder);
 router.get("/me", authorize("wisatawan"), orderController.getMyOrders);
@@ -21,6 +23,18 @@ router.post(
   "/:orderId/reviews",
   authorize("wisatawan"),
   reviewController.createReview,
+);
+
+// Refund routes (Wisatawan)
+router.post(
+  "/:id/refund",
+  authorize("wisatawan"),
+  refundController.requestRefund,
+);
+router.get(
+  "/:id/refund-status",
+  authorize("wisatawan"),
+  refundController.getRefundStatus,
 );
 
 // Vendor Routes

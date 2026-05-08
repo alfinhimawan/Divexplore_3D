@@ -53,11 +53,27 @@ router.post(
   vendorController.addCrossSellingRule,
 );
 
+const withdrawalController = require("../controllers/withdrawalController");
+
 router.get(
   "/me/ledgers",
   authenticate,
   authorize("vendor"),
   vendorController.getMyLedger,
+);
+
+// Withdrawal Routes
+router.post(
+  "/me/withdrawals",
+  authenticate,
+  authorize("vendor"),
+  withdrawalController.requestWithdrawal,
+);
+router.get(
+  "/me/withdrawals",
+  authenticate,
+  authorize("vendor"),
+  withdrawalController.getMyWithdrawals,
 );
 
 module.exports = router;

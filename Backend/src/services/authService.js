@@ -2,7 +2,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
-const { User, LoyaltyPoint } = require("../models");
+const { User, LoyaltyPoint, UserConsent, AuditLog } = require("../models");
 const { Op } = require("sequelize");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -71,6 +71,14 @@ const login = async ({ email, password }) => {
 
   const token = signToken(user);
 
+  // PILAR 4 GDPR: Accountability (Audit Log)
+  await AuditLog.create({
+    user_id: user.id,
+    tabel_terdampak: "Users",
+    data_lama: "Login Activity",
+    data_baru: "Success Login",
+  });
+
   // Hapus password_hash dari objek sebelum dikirim ke client
   const userSafe = user.toJSON();
   delete userSafe.password_hash;
@@ -132,14 +140,23 @@ const googleLogin = async ({ id_token }) => {
   return { user, token };
 };
 
-// Get Profile
-const getMe = async (userId) => {
+// Update Profile
+const updateProfile = async (userId, data) => {
   const user = await User.findByPk(userId);
   if (!user) {
     const err = new Error("User tidak ditemukan.");
     err.statusCode = 404;
     throw err;
   }
+
+  // Update field yang diizinkan
+  await user.update({
+    nama_lengkap: data.nama_lengkap || user.nama_lengkap,
+    nomor_telepon: data.nomor_telepon || user.nomor_telepon,
+    alamat: data.alamat || user.alamat,
+    foto_profil_url: data.foto_profil_url || user.foto_profil_url,
+  });
+
   return user;
 };
 
@@ -152,4 +169,38 @@ const getMyPoints = async (userId) => {
   return points;
 };
 
-module.exports = { register, login, googleLogin, getMe, getMyPoints };
+// Record User Consent (GDPR Compliance)
+const recordConsent = async (userId, { policy_version, is_agreed }) => {
+  const consent = await UserConsent.create({
+    user_id: userId,
+    policy_version,
+    is_agreed,
+    agreed_at: is_agreed ? new Date() : null,
+  });
+  return consent;
+};
+
+// Soft Delete Account (Right to be Forgotten)
+const deleteAccount = async (userId) => {
+  const user = await User.findByPk(userId);
+  if (!user) {
+    const err = new Error("User tidak ditemukan.");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // Sequelize .destroy() otomatis jadi soft delete karena paranoid: true
+  await user.destroy();
+  return { message: "Akun berhasil dinonaktifkan (Soft Delete)." };
+};
+
+module.exports = {
+  register,
+  login,
+  googleLogin,
+  getMe,
+  getMyPoints,
+  recordConsent,
+  deleteAccount,
+  updateProfile,
+};

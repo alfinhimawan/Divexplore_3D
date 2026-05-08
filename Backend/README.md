@@ -13,7 +13,9 @@
 - **Role-Based Access Control (RBAC)**: Pemisahan akses tingkat tinggi antara Admin, Wisatawan (B2C), dan Vendor (B2B). 
 - **Google Identity Services (GIS)**: Autentikasi modern Oauth 2.0 (Google Login) khusus untuk Wisatawan agar minim friksi (*Frictionless*).
 - **Automated Virtual Ledger**: Algoritma pembagian dana *Split Payment* otomatis (Komisi Platform vs Pendapatan Bersih Vendor).
-
+- **GDPR Compliance (Pilar 1-5)**: Implementasi *Right to be Forgotten* (Soft Delete), *Audit Logs* aktivitas sensitif, dan sistem *Consent* (Persetujuan Kebijakan).
+- **Refund & Withdrawal Workflow**: Alur pengembalian dana wisatawan dan penarikan dana vendor yang aman dengan *Database Lock* dan *Inventory Release* otomatis.
+- **Real-Time Inventory Locking**: Penguncian stok otomatis selama 15 menit saat checkout untuk menjamin ketersediaan kuota bagi pembeli.
 ---
 
 ## 🛠️ Tech Stack
@@ -156,55 +158,122 @@ Backend/
 
 ---
 
-## 🗄️ Skema Database (17 Tabel)
+## 🗄️ Skema Database (21 Tabel)
 
-Sistem menggunakan **17 tabel** dengan tipe data `UUID` sebagai *Primary Key* dan mendukung fitur *Soft Deletes* (`deletedAt`) untuk menjaga integritas data riwayat pesanan (*Referential Integrity*).
-
-| Grup | Tabel |
+| Domain | Tabel |
 |---|---|
-| **Pengguna & Keamanan** | `Users`, `UserConsents` |
-| **Vendor & KYC** | `Vendors`, `VendorDocuments` |
+| **Inti (Core)** | `Users`, `Vendors` |
 | **Katalog & 3D** | `Scenes`, `Products`, `Product3dHotspots`, `CrossSellingRules` |
 | **Inventory** | `ProductInventories` |
 | **Transaksi** | `Orders`, `OrderItems`, `Promos` |
-| **Keuangan & Loyalty** | `VirtualLedgers`, `LoyaltyPoints` |
-| **Log & Review** | `AuditLogs`, `Reviews`, `PaymentLogs` |
+| **Keuangan & Loyalty**| `VirtualLedgers`, `LoyaltyPoints`, `Refunds`, `Withdrawals` |
+| **Keamanan & GDPR** | `AuditLogs`, `UserConsents`, `VendorDocuments` |
+| **Log & Marketing** | `PaymentLogs`, `Reviews`, `ProductVisits` |
 
 ---
 
-## 🌐 API Endpoints
+## 🌐 API Testing Guide (Postman Structure)
 
+Berikut adalah detail endpoint lengkap sesuai urutan folder pengujian di Postman:
+
+### **📂 00 - Health Check**
 | Method | Endpoint | Deskripsi | Auth / Role |
 |---|---|---|---|
-| **Public & Auth** | | | |
-| `GET` | `/` | Health check server | — |
-| `POST` | `/api/auth/register` | Registrasi manual (otomatis jadi Vendor) | — |
-| `POST` | `/api/auth/login` | Login standar dengan email & password | — |
-| `POST` | `/api/auth/google` | Login via Google (Otomatis jadi Wisatawan) | — |
-| `GET` | `/api/auth/me` | Lihat profil user aktif | ✅ All |
-| **Vendor Management** | | | |
-| `POST` | `/api/vendors/` | Buat profil bisnis vendor | ✅ Vendor |
+| `GET` | `/` | Health check server aktif | — |
+| `GET` | `/any-route` | Tes Error Handler (404 Not Found) | — |
+
+### **📂 01 - Auth**
+| Method | Endpoint | Deskripsi | Auth / Role |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | Registrasi manual vendor baru | — |
+| `POST` | `/api/auth/google` | Login via Google (Wisatawan) | — |
+| `POST` | `/api/auth/login` | Login manual (Admin/Vendor) | — |
+| `GET` | `/api/auth/me` | Lihat profil user yang sedang aktif | ✅ All |
+| `PUT` | `/api/auth/me` | Update profil (Telepon, Alamat, Foto) | ✅ All |
+| `DELETE` | `/api/auth/account`| Hapus akun (Soft Delete - GDPR) | ✅ All |
+| `POST` | `/api/auth/consent` | Pencatatan persetujuan privasi | ✅ All |
+
+### **📂 02 - Vendor**
+| Method | Endpoint | Deskripsi | Auth / Role |
+|---|---|---|---|
+| `POST` | `/api/vendors` | Inisialisasi profil bisnis vendor | ✅ Vendor |
 | `GET` | `/api/vendors/me` | Lihat profil bisnis sendiri | ✅ Vendor |
-| `PUT` | `/api/vendors/me` | Update profil bisnis | ✅ Vendor |
-| `POST` | `/api/vendors/me/documents` | Upload dokumen KYC (KTP/Legal) | ✅ Vendor |
-| `GET` | `/api/vendors/me/documents` | Lihat dokumen KYC sendiri | ✅ Vendor |
-| `POST` | `/api/vendors/me/products` | Buat produk/paket wisata baru | ✅ Vendor |
-| `GET` | `/api/vendors/me/products` | Lihat seluruh katalog produk sendiri | ✅ Vendor |
-| **Admin Area** | | | |
-| `GET` | `/api/admin/vendors` | Lihat daftar semua vendor | ✅ Admin |
-| `PUT` | `/api/admin/vendors/:id/kyc` | Approve/Reject dokumen KYC vendor | ✅ Admin |
-| `GET` | `/api/admin/reports/gmv` | Analisis total transaksi (GMV Tracker) | ✅ Admin |
-| `GET` | `/api/admin/abandoned-carts`| Daftar keranjang yang ditinggalkan | ✅ Admin |
-| **Catalog & Products**| | | |
-| `GET` | `/api/products` | Lihat seluruh katalog produk publik | — |
-| `GET` | `/api/products/:id` | Detail sebuah produk wisata | — |
-| **Orders & Transactions**| | | |
-| `POST` | `/api/orders` | Checkout transaksi & Snap Midtrans | ✅ All |
-| `GET` | `/api/orders/:id` | Detail transaksi/pesanan | ✅ All |
-| `GET` | `/api/orders/:id/invoice` | Download Struk PDF otomatis | ✅ All |
-| `POST` | `/api/orders/:id/reviews` | Beri rating & ulasan (Harus Paid) | ✅ Wisatawan |
-| **Payments** | | | |
-| `POST` | `/api/payments/webhook` | Menangkap sinyal sukses dari Midtrans | — |
+| `PUT` | `/api/vendors/me` | Update data bisnis/toko | ✅ Vendor |
+| `POST` | `/api/vendors/me/documents`| Upload dokumen KYC (KTP/NIB) | ✅ Vendor |
+| `GET` | `/api/vendors/me/documents`| Lihat status verifikasi dokumen | ✅ Vendor |
+| `GET` | `/api/vendors/me/ledgers`| Buku kas & riwayat komisi vendor | ✅ Vendor |
+
+### **📂 03 - Admin**
+| Method | Endpoint | Deskripsi | Auth / Role |
+|---|---|---|---|
+| `GET` | `/api/admin/vendors` | Lihat daftar seluruh vendor | ✅ Admin |
+| `PUT` | `/api/admin/vendors/:id/kyc`| Approve/Reject dokumen KYC vendor | ✅ Admin |
+| `GET` | `/api/admin/reports/gmv` | Analisis omzet (GMV Tracker) | ✅ Admin |
+| `GET` | `/api/admin/abandoned-carts`| Daftar transaksi tertunda | ✅ Admin |
+| `GET` | `/api/admin/refunds` | Lihat semua pengajuan refund | ✅ Admin |
+| `PUT` | `/api/admin/refunds/:id`| Approve/Reject permintaan refund | ✅ Admin |
+| `GET` | `/api/admin/withdrawals` | Lihat semua pengajuan penarikan | ✅ Admin |
+| `PUT` | `/api/admin/withdrawals/:id`| Proses transfer dana ke vendor | ✅ Admin |
+| `POST` | `/api/admin/marketing/trigger`| Pemicu strategi marketing otomatis | ✅ Admin |
+
+### **📂 04 - Scenes & Hotspots (3D)**
+| Method | Endpoint | Deskripsi | Auth / Role |
+|---|---|---|---|
+| `GET` | `/api/scenes` | Daftar semua ruangan 3D | — |
+| `GET` | `/api/scenes/:id` | Detail ruangan + koordinat produk | — |
+
+### **📂 05 - Products**
+| Method | Endpoint | Deskripsi | Auth / Role |
+|---|---|---|---|
+| `GET` | `/api/products` | Katalog produk publik | — |
+| `GET` | `/api/products/:id` | Detail produk + ulasan + metadata 3D | — |
+| `POST` | `/api/products` | Vendor menambah produk baru | ✅ Vendor |
+| `PUT` | `/api/products/:id` | Vendor update data produk | ✅ Vendor |
+| `DELETE` | `/api/products/:id` | Vendor menghapus produk | ✅ Vendor |
+| `POST` | `/api/products/:id/bundling`| Menambah aturan bundling produk | ✅ Vendor |
+| `POST` | `/api/products/:id/visit` | Mencatat kunjungan produk | — |
+
+### **📂 06 - Inventory**
+| Method | Endpoint | Deskripsi | Auth / Role |
+|---|---|---|---|
+| `POST` | `/api/vendors/me/products/:id/inventory` | Atur kuota stok per tanggal | ✅ Vendor |
+
+### **📂 07 - Promos**
+| Method | Endpoint | Deskripsi | Auth / Role |
+|---|---|---|---|
+| `GET` | `/api/promos` | Melihat daftar promo yang aktif | — |
+| `POST` | `/api/promos` | Admin membuat kode diskon baru | ✅ Admin |
+| `PUT` | `/api/promos/:id` | Admin memperbarui promo | ✅ Admin |
+| `DELETE` | `/api/promos/:id` | Admin menghapus promo | ✅ Admin |
+
+### **📂 08 - Orders**
+| Method | Endpoint | Deskripsi | Auth / Role |
+|---|---|---|---|
+| `POST` | `/api/orders` | Checkout & Snap Midtrans (Locking) | ✅ All |
+| `GET` | `/api/orders/me` | Riwayat pesanan saya | ✅ All |
+| `GET` | `/api/orders/:id` | Detail transaksi spesifik | ✅ All |
+| `GET` | `/api/orders/:id/invoice`| Download Struk PDF otomatis | ✅ All |
+| `POST` | `/api/orders/:id/refund`| Ajukan pengembalian dana (Refund) | ✅ Wisatawan |
+| `GET` | `/api/orders/:id/refund-status`| Cek status pengajuan refund | ✅ Wisatawan |
+
+### **📂 09 - Payments**
+| Method | Endpoint | Deskripsi | Auth / Role |
+|---|---|---|---|
+| `POST` | `/api/webhooks/midtrans` | Webhook update status bayar | — |
+
+### **📂 10 - Reviews**
+| Method | Endpoint | Deskripsi | Auth / Role |
+|---|---|---|---|
+| `POST` | `/api/orders/:orderId/reviews`| Beri rating bintang 1-5 | ✅ Wisatawan |
+| `GET` | `/api/products/:productId/reviews`| Lihat ulasan publik produk | — |
+
+### **📂 11 - Vendor Dashboard**
+| Method | Endpoint | Deskripsi | Auth / Role |
+|---|---|---|---|
+| `GET` | `/api/vendors/me/ledgers`| Buku kas & riwayat komisi vendor | ✅ Vendor |
+| `POST` | `/api/vendors/me/withdrawals`| Request tarik dana ke bank | ✅ Vendor |
+| `GET` | `/api/vendors/me/withdrawals`| Riwayat penarikan dana | ✅ Vendor |
+| `POST` | `/api/vendors/me/products/:id/cross-selling`| Atur rekomendasi produk terkait | ✅ Vendor |
 
 ---
 

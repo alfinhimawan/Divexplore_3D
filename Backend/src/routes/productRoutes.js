@@ -4,9 +4,12 @@ const router = express.Router();
 const productController = require("../controllers/productController");
 const { authenticate, authorize } = require("../middlewares/authenticate");
 
+const reviewController = require("../controllers/reviewController");
+
 // Public Routes — Tidak memerlukan login
 router.get("/", productController.getAllProducts);
 router.get("/:id", productController.getProductById);
+router.get("/:productId/reviews", reviewController.getProductReviews);
 
 // Protected Routes — Memerlukan login & role vendor
 router.post(

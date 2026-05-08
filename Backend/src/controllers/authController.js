@@ -36,6 +36,13 @@ const consentSchema = Joi.object({
 
 
 
+const updateProfileSchema = Joi.object({
+  nama_lengkap: Joi.string().min(2).max(100),
+  nomor_telepon: Joi.string().allow(null, ""),
+  alamat: Joi.string().allow(null, ""),
+  foto_profil_url: Joi.string().uri().allow(null, ""),
+});
+
 // Register
 const register = async (req, res, next) => {
   try {
@@ -79,6 +86,13 @@ const login = async (req, res, next) => {
 
     const { user, token } = await authService.login(value);
 
+    // Set HttpOnly Cookie untuk keamanan tambahan
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
+    });
+
     res.status(200).json({
       status: "success",
       message: "Login berhasil.",
@@ -103,6 +117,13 @@ const googleLogin = async (req, res, next) => {
     }
 
     const { user, token } = await authService.googleLogin(value);
+
+    // Set HttpOnly Cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
+    });
 
     res.status(200).json({
       status: "success",
@@ -163,6 +184,44 @@ const recordConsent = async (req, res, next) => {
   }
 };
 
+// Soft Delete Account
+const deleteAccount = async (req, res, next) => {
+  try {
+    const result = await authService.deleteAccount(req.user.id);
+
+    // Hapus cookie token setelah akun dihapus
+    res.clearCookie("token");
+
+    res.status(200).json({
+      status: "success",
+      message: result.message,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Update Profile
+const updateProfile = async (req, res, next) => {
+  try {
+    const { error, value } = updateProfileSchema.validate(req.body);
+    if (error)
+      return res
+        .status(400)
+        .json({ status: "error", message: error.details[0].message });
+
+    const user = await authService.updateProfile(req.user.id, value);
+
+    res.status(200).json({
+      status: "success",
+      message: "Profil berhasil diperbarui.",
+      data: { user },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -170,4 +229,6 @@ module.exports = {
   getMe,
   getMyPoints,
   recordConsent,
+  deleteAccount,
+  updateProfile,
 };
