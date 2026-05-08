@@ -46,13 +46,16 @@
 ```mermaid
 graph TD
     Client[Frontend / Wisatawan / Vendor] -->|REST API| API[Node.js Express Backend]
-    API -->|Read / Write| DB[(PostgreSQL Database)]
-    API <-->|Stream / Fetch| Cloudinary[Cloudinary Cloud Storage]
-    API <-->|Charge / Webhook| Midtrans[Midtrans Payment Gateway]
-    API -->|Buffer to PDF| Mailer[SMTP Email Service]
     
-    subgraph "Automated Background Workers"
+    subgraph "Internal Infrastructure"
+        API <-->|Read / Write| DB[(PostgreSQL Database)]
         Cron[Node-Cron Scheduler] -->|Release Inventory| DB
+    end
+    
+    subgraph "External Cloud Services"
+        API <-->|Stream / Fetch| Cloudinary[Cloudinary Cloud Storage]
+        API <-->|Charge / Webhook| Midtrans[Midtrans Payment Gateway]
+        API -->|Buffer to PDF| Mailer[SMTP Email Service]
         Cron -->|Marketing / Retargeting| Mailer
     end
 ```
@@ -494,20 +497,6 @@ Setiap 10.00    → Kirim retargeting email (berdasarkan riwayat kunjungan)
 
 ---
 
-## 🧮 Formula Komisi Vendor (E-Commerce Logic)
-
-Sistem secara otomatis mengkalkulasi komisi ideal untuk setiap vendor saat proses verifikasi (KYC) disetujui. Formula ini menghitung nilai tengah pasar, dikurangi beban operasional vendor, dan ditambah nilai fitur platform Divexplore.
-
-**Formula Matematis:**
-`C% = Mavg - (Whpp + Wrisk + Wvol) + Wfitur`
-
-| Kategori Bisnis | Rata-Rata Pasar | Komisi Final | Alasan Bisnis (Business Value) |
-|---|---|---|---|
-| **Peralatan & Perlengkapan** | 10 - 15% | **7%** | Margin terbatas terpotong HPP. Komisi rendah menjaga harga sewa tetap terjangkau. |
-| **Aktivitas & Open Tur** | 15 - 20% | **10%** | Vendor menanggung risiko tinggi (nyawa wisatawan & asuransi perjalanan). |
-| **Akomodasi Homestay** | 15 - 30% | **15%** | Volume transaksi raksasa dan pasar premium, mendominasi GMV platform. |
-| **Kuliner & Oleh-Oleh** | 20 - 30% | **10%** | Margin F&B tipis, menanggung beban kurir, komisi diringankan untuk memacu omzet. |
-| **Fotografi & Dokumentasi** | 15 - 20% | **12%** | Jasa murni (tanpa HPP fisik berat), namun ada risiko kerusakan alat mahal/kamera *underwater*. |
 
 ---
 
