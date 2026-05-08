@@ -44,4 +44,15 @@ router.post(
   productController.logVisit,
 );
 
+// Add-on Management (ProductAddon CRUD)
+const addonController = require("../controllers/addonController");
+
+// Public: Wisatawan bisa lihat add-on sebelum checkout
+router.get("/:productId/addons", addonController.getAddons);
+
+// Vendor Only: Kelola add-on produk
+router.post("/:productId/addons", authenticate, authorize("vendor"), addonController.createAddon);
+router.put("/:productId/addons/:addonId", authenticate, authorize("vendor"), addonController.updateAddon);
+router.delete("/:productId/addons/:addonId", authenticate, authorize("vendor"), addonController.deleteAddon);
+
 module.exports = router;

@@ -85,6 +85,12 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: "pending",
       },
+      rating: {
+        type: DataTypes.DECIMAL(3, 2),
+        allowNull: true,
+        defaultValue: null,
+        comment: "Rata-rata rating 1.00 - 5.00, dikalkulasi ulang setiap ada review baru",
+      },
     },
     {
       sequelize,
