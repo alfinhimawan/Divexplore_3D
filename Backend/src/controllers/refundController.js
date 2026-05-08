@@ -19,10 +19,16 @@ const requestRefund = async (req, res, next) => {
   try {
     const { error, value } = refundRequestSchema.validate(req.body);
     if (error) {
-      return res.status(400).json({ status: "error", message: error.details[0].message });
+      return res
+        .status(400)
+        .json({ status: "error", message: error.details[0].message });
     }
 
-    const refund = await refundService.requestRefund(req.user.id, req.params.id, value);
+    const refund = await refundService.requestRefund(
+      req.user.id,
+      req.params.id,
+      value,
+    );
 
     res.status(201).json({
       status: "success",
@@ -37,7 +43,10 @@ const requestRefund = async (req, res, next) => {
 // GET /api/orders/:id/refund-status
 const getRefundStatus = async (req, res, next) => {
   try {
-    const refund = await refundService.getRefundStatus(req.user.id, req.params.id);
+    const refund = await refundService.getRefundStatus(
+      req.user.id,
+      req.params.id,
+    );
     res.status(200).json({
       status: "success",
       data: { refund },
@@ -52,7 +61,9 @@ const processRefund = async (req, res, next) => {
   try {
     const { error, value } = adminProcessSchema.validate(req.body);
     if (error) {
-      return res.status(400).json({ status: "error", message: error.details[0].message });
+      return res
+        .status(400)
+        .json({ status: "error", message: error.details[0].message });
     }
 
     const refund = await refundService.processRefund(req.params.id, value);

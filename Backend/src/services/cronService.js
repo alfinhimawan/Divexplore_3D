@@ -21,7 +21,12 @@ const initCronJobs = () => {
   cron.schedule("*/5 * * * *", async () => {
     logger.info("[CRON] #0 — Order Expiration Check...");
     try {
-      const { Order, OrderItem, ProductInventory, sequelize } = require("../models");
+      const {
+        Order,
+        OrderItem,
+        ProductInventory,
+        sequelize,
+      } = require("../models");
       const expiredOrders = await Order.findAll({
         where: {
           status: "pending",
@@ -44,7 +49,10 @@ const initCronJobs = () => {
               lock: t.LOCK.UPDATE,
             });
             if (inventory) {
-              inventory.locked_qty = Math.max(0, inventory.locked_qty - item.qty);
+              inventory.locked_qty = Math.max(
+                0,
+                inventory.locked_qty - item.qty,
+              );
               inventory.available_qty += item.qty;
               await inventory.save({ transaction: t });
             }
@@ -53,7 +61,9 @@ const initCronJobs = () => {
           await order.update({ status: "cancelled" }, { transaction: t });
         });
       }
-      logger.info(`[CRON] #0 — ${expiredOrders.length} order expired dibatalkan & stok dilepas.`);
+      logger.info(
+        `[CRON] #0 — ${expiredOrders.length} order expired dibatalkan & stok dilepas.`,
+      );
     } catch (err) {
       logger.error("[CRON] #0 — Gagal:", err);
     }
@@ -95,7 +105,9 @@ const initCronJobs = () => {
     }
   });
 
-  logger.info("[CRON] Semua cron job (expiration + marketing) berhasil diinisialisasi.");
+  logger.info(
+    "[CRON] Semua cron job (expiration + marketing) berhasil diinisialisasi.",
+  );
 };
 
 module.exports = { initCronJobs };

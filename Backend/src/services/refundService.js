@@ -1,25 +1,39 @@
 "use strict";
-const { sequelize, Refund, Order, OrderItem, ProductInventory, User, AuditLog } = require("../models");
+const {
+  sequelize,
+  Refund,
+  Order,
+  OrderItem,
+  ProductInventory,
+  User,
+  AuditLog,
+} = require("../models");
 
 /**
  * Wisatawan request refund untuk order yang sudah paid.
  */
 const requestRefund = async (userId, orderId, alasan_refund) => {
-  const order = await Order.findOne({ where: { id: orderId, user_id: userId } });
+  const order = await Order.findOne({
+    where: { id: orderId, user_id: userId },
+  });
   if (!order) {
     const err = new Error("Pesanan tidak ditemukan atau bukan milik Anda.");
     err.statusCode = 404;
     throw err;
   }
   if (order.status !== "paid") {
-    const err = new Error("Refund hanya bisa dilakukan untuk pesanan yang sudah dibayar.");
+    const err = new Error(
+      "Refund hanya bisa dilakukan untuk pesanan yang sudah dibayar.",
+    );
     err.statusCode = 400;
     throw err;
   }
 
   const existing = await Refund.findOne({ where: { order_id: orderId } });
   if (existing) {
-    const err = new Error("Permintaan refund untuk pesanan ini sudah pernah diajukan.");
+    const err = new Error(
+      "Permintaan refund untuk pesanan ini sudah pernah diajukan.",
+    );
     err.statusCode = 409;
     throw err;
   }
@@ -53,7 +67,11 @@ const getAllRefunds = async ({ status } = {}) => {
   return await Refund.findAll({
     where,
     include: [
-      { model: Order, as: "order", attributes: ["id", "total_pembayaran", "status"] },
+      {
+        model: Order,
+        as: "order",
+        attributes: ["id", "total_pembayaran", "status"],
+      },
       { model: User, as: "user", attributes: ["nama_lengkap", "email"] },
     ],
     order: [["createdAt", "DESC"]],
@@ -81,10 +99,16 @@ const processRefund = async (refundId, { status, catatan_admin }, adminId) => {
 
     // 2. Jika APPROVED -> Ubah status order & Lepas Inventaris agar bisa dijual lagi
     if (status === "approved") {
-      await Order.update({ status: "refunded" }, { where: { id: refund.order_id }, transaction });
+      await Order.update(
+        { status: "refunded" },
+        { where: { id: refund.order_id }, transaction },
+      );
 
       // LOGIKA PELEPASAN STOK (Crucial!)
-      const orderItems = await OrderItem.findAll({ where: { order_id: refund.order_id }, transaction });
+      const orderItems = await OrderItem.findAll({
+        where: { order_id: refund.order_id },
+        transaction,
+      });
       for (const item of orderItems) {
         const inventory = await ProductInventory.findOne({
           where: { product_id: item.product_id },
@@ -99,12 +123,15 @@ const processRefund = async (refundId, { status, catatan_admin }, adminId) => {
     }
 
     // 3. Audit log (Capaian Partner)
-    await AuditLog.create({
-      user_id: adminId,
-      tabel_terdampak: "Refunds",
-      data_lama: JSON.stringify(dataLama),
-      data_baru: JSON.stringify(refund),
-    }, { transaction });
+    await AuditLog.create(
+      {
+        user_id: adminId,
+        tabel_terdampak: "Refunds",
+        data_lama: JSON.stringify(dataLama),
+        data_baru: JSON.stringify(refund),
+      },
+      { transaction },
+    );
 
     await transaction.commit();
     return refund;
@@ -115,9 +142,16 @@ const processRefund = async (refundId, { status, catatan_admin }, adminId) => {
 };
 
 const getRefundStatus = async (userId, orderId) => {
-  const refund = await Refund.findOne({ where: { order_id: orderId, user_id: userId } });
+  const refund = await Refund.findOne({
+    where: { order_id: orderId, user_id: userId },
+  });
   if (!refund) throw new Error("Permintaan refund tidak ditemukan.");
   return refund;
 };
 
-module.exports = { requestRefund, getRefundStatus, getAllRefunds, processRefund };
+module.exports = {
+  requestRefund,
+  getRefundStatus,
+  getAllRefunds,
+  processRefund,
+};

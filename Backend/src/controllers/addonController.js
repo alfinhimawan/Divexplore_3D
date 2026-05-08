@@ -26,15 +26,27 @@ const getAddons = async (req, res, next) => {
 // POST /api/products/:productId/addons
 const createAddon = async (req, res, next) => {
   try {
-    const { error, value } = addonSchema.validate(req.body, { abortEarly: false });
+    const { error, value } = addonSchema.validate(req.body, {
+      abortEarly: false,
+    });
     if (error) {
       return res.status(400).json({
         status: "error",
         message: error.details.map((d) => d.message).join(", "),
       });
     }
-    const addon = await addonService.createAddon(req.user.id, req.params.productId, value);
-    res.status(201).json({ status: "success", message: "Add-on berhasil ditambahkan.", data: { addon } });
+    const addon = await addonService.createAddon(
+      req.user.id,
+      req.params.productId,
+      value,
+    );
+    res
+      .status(201)
+      .json({
+        status: "success",
+        message: "Add-on berhasil ditambahkan.",
+        data: { addon },
+      });
   } catch (err) {
     next(err);
   }
@@ -43,15 +55,28 @@ const createAddon = async (req, res, next) => {
 // PUT /api/products/:productId/addons/:addonId
 const updateAddon = async (req, res, next) => {
   try {
-    const { error, value } = addonSchema.validate(req.body, { abortEarly: false });
+    const { error, value } = addonSchema.validate(req.body, {
+      abortEarly: false,
+    });
     if (error) {
       return res.status(400).json({
         status: "error",
         message: error.details.map((d) => d.message).join(", "),
       });
     }
-    const addon = await addonService.updateAddon(req.user.id, req.params.productId, req.params.addonId, value);
-    res.status(200).json({ status: "success", message: "Add-on berhasil diperbarui.", data: { addon } });
+    const addon = await addonService.updateAddon(
+      req.user.id,
+      req.params.productId,
+      req.params.addonId,
+      value,
+    );
+    res
+      .status(200)
+      .json({
+        status: "success",
+        message: "Add-on berhasil diperbarui.",
+        data: { addon },
+      });
   } catch (err) {
     next(err);
   }
@@ -60,7 +85,11 @@ const updateAddon = async (req, res, next) => {
 // DELETE /api/products/:productId/addons/:addonId
 const deleteAddon = async (req, res, next) => {
   try {
-    await addonService.deleteAddon(req.user.id, req.params.productId, req.params.addonId);
+    await addonService.deleteAddon(
+      req.user.id,
+      req.params.productId,
+      req.params.addonId,
+    );
     res.status(204).send();
   } catch (err) {
     next(err);

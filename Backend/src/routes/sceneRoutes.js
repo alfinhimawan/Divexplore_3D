@@ -9,8 +9,18 @@ router.get("/", sceneController.getAllScenes);
 
 // Admin Only (Hanya tim teknis Divexplore yang bisa buat scene dan memetakan hotspot)
 router.post("/", authenticate, authorize("admin"), sceneController.createScene);
-router.put("/:id", authenticate, authorize("admin"), sceneController.updateScene);
-router.delete("/:id", authenticate, authorize("admin"), sceneController.deleteScene);
+router.put(
+  "/:id",
+  authenticate,
+  authorize("admin"),
+  sceneController.updateScene,
+);
+router.delete(
+  "/:id",
+  authenticate,
+  authorize("admin"),
+  sceneController.deleteScene,
+);
 
 router.post(
   "/:id/hotspots",

@@ -13,7 +13,13 @@ const getAllScenes = async () => {
           {
             model: Product,
             as: "product",
-            attributes: ["id", "nama_produk", "harga", "kategori", "thumbnail_url"],
+            attributes: [
+              "id",
+              "nama_produk",
+              "harga",
+              "kategori",
+              "thumbnail_url",
+            ],
             include: [
               {
                 model: Vendor,
@@ -95,7 +101,9 @@ const addHotspot = async (sceneId, data) => {
     product_id: data.type === "navigation" ? null : data.product_id,
     target_scene_id: data.type === "navigation" ? data.target_scene_id : null,
     type: data.type || "product",
-    icon_type: data.icon_type || (data.type === "navigation" ? "arrow_up" : "shopping_cart"),
+    icon_type:
+      data.icon_type ||
+      (data.type === "navigation" ? "arrow_up" : "shopping_cart"),
     coordinates_json: data.coordinates_json,
     description: data.description,
   });

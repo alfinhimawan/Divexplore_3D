@@ -168,7 +168,9 @@ const createOrder = async (userId, items, promoCode = null) => {
     } catch (midtransErr) {
       // Gunakan logger agar error tercatat di file log (bukan hanya console)
       const logger = require("../utils/logger");
-      logger.error("Gagal generate Midtrans Token", { error: midtransErr.message });
+      logger.error("Gagal generate Midtrans Token", {
+        error: midtransErr.message,
+      });
     }
 
     return {

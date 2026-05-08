@@ -102,7 +102,10 @@ const getGmvReport = async () => {
     attributes: [
       [sequelize.fn("SUM", sequelize.col("pendapatan_kotor")), "total_gmv"],
       [sequelize.fn("SUM", sequelize.col("potongan_komisi")), "total_revenue"],
-      [sequelize.fn("SUM", sequelize.col("biaya_midtrans")), "total_midtrans_fees"],
+      [
+        sequelize.fn("SUM", sequelize.col("biaya_midtrans")),
+        "total_midtrans_fees",
+      ],
       [sequelize.fn("COUNT", sequelize.col("id")), "total_transactions"],
     ],
     raw: true,
@@ -127,15 +130,21 @@ const getAbandonedCarts = async () => {
       status: "pending",
       timeout_at: { [Op.lt]: new Date() },
     },
-    include: [{ model: User, as: "user", attributes: ["nama_lengkap", "email", "nomor_telepon"] }],
+    include: [
+      {
+        model: User,
+        as: "user",
+        attributes: ["nama_lengkap", "email", "nomor_telepon"],
+      },
+    ],
     order: [["timeout_at", "DESC"]],
   });
   return abandoned;
 };
 
-module.exports = { 
-  getAllVendors, 
-  updateKycStatus, 
-  getGmvReport, 
-  getAbandonedCarts 
+module.exports = {
+  getAllVendors,
+  updateKycStatus,
+  getGmvReport,
+  getAbandonedCarts,
 };

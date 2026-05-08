@@ -25,13 +25,22 @@ const adminWithdrawalSchema = Joi.object({
 const requestWithdrawal = async (req, res, next) => {
   try {
     const { error, value } = withdrawalRequestSchema.validate(req.body);
-    if (error) return res.status(400).json({ status: "error", message: error.details[0].message });
+    if (error)
+      return res
+        .status(400)
+        .json({ status: "error", message: error.details[0].message });
 
     // Cari ID Vendor dari User yang sedang login
     const vendor = await Vendor.findOne({ where: { user_id: req.user.id } });
-    if (!vendor) return res.status(403).json({ status: "error", message: "Anda bukan akun vendor." });
+    if (!vendor)
+      return res
+        .status(403)
+        .json({ status: "error", message: "Anda bukan akun vendor." });
 
-    const withdrawal = await withdrawalService.requestWithdrawal(vendor.id, value);
+    const withdrawal = await withdrawalService.requestWithdrawal(
+      vendor.id,
+      value,
+    );
 
     res.status(201).json({
       status: "success",
@@ -47,7 +56,10 @@ const requestWithdrawal = async (req, res, next) => {
 const getMyWithdrawals = async (req, res, next) => {
   try {
     const vendor = await Vendor.findOne({ where: { user_id: req.user.id } });
-    if (!vendor) return res.status(403).json({ status: "error", message: "Anda bukan akun vendor." });
+    if (!vendor)
+      return res
+        .status(403)
+        .json({ status: "error", message: "Anda bukan akun vendor." });
 
     const withdrawals = await withdrawalService.getVendorWithdrawals(vendor.id);
     res.status(200).json({
@@ -63,9 +75,15 @@ const getMyWithdrawals = async (req, res, next) => {
 const processWithdrawal = async (req, res, next) => {
   try {
     const { error, value } = adminWithdrawalSchema.validate(req.body);
-    if (error) return res.status(400).json({ status: "error", message: error.details[0].message });
+    if (error)
+      return res
+        .status(400)
+        .json({ status: "error", message: error.details[0].message });
 
-    const withdrawal = await withdrawalService.processWithdrawal(req.params.id, value);
+    const withdrawal = await withdrawalService.processWithdrawal(
+      req.params.id,
+      value,
+    );
 
     res.status(200).json({
       status: "success",

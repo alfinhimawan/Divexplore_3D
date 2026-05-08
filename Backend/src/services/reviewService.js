@@ -17,28 +17,35 @@ const createReview = async (userId, orderId, data) => {
 
     if (!order) throw new Error("Pesanan tidak ditemukan.");
     if (order.status !== "paid" && order.status !== "completed") {
-      throw new Error("Review hanya bisa diberikan untuk pesanan yang sudah dibayar.");
+      throw new Error(
+        "Review hanya bisa diberikan untuk pesanan yang sudah dibayar.",
+      );
     }
 
     // 2. Cek apakah produk yang di-review ada dalam pesanan tersebut
     const item = order.items.find((i) => i.product_id === data.product_id);
-    if (!item) throw new Error("Produk ini tidak ada dalam riwayat pesanan Anda.");
+    if (!item)
+      throw new Error("Produk ini tidak ada dalam riwayat pesanan Anda.");
 
     // 3. Cek apakah sudah pernah review produk ini untuk order ini
     const existing = await Review.findOne({
       where: { order_id: orderId, product_id: data.product_id },
       transaction,
     });
-    if (existing) throw new Error("Anda sudah memberikan review untuk produk ini.");
+    if (existing)
+      throw new Error("Anda sudah memberikan review untuk produk ini.");
 
     // 4. Simpan Review
-    const review = await Review.create({
-      user_id: userId,
-      order_id: orderId,
-      product_id: data.product_id,
-      rating: data.rating,
-      komentar: data.komentar,
-    }, { transaction });
+    const review = await Review.create(
+      {
+        user_id: userId,
+        order_id: orderId,
+        product_id: data.product_id,
+        rating: data.rating,
+        komentar: data.komentar,
+      },
+      { transaction },
+    );
 
     // 5. Kalkulasi Rata-Rata Rating Vendor (sesuai Alur BA)
     // Ambil vendor_id dari product yang baru di-review
@@ -50,7 +57,9 @@ const createReview = async (userId, orderId, data) => {
 
     if (product?.vendor_id) {
       const avgResult = await Review.findOne({
-        attributes: [[sequelize.fn("AVG", sequelize.col("rating")), "avg_rating"]],
+        attributes: [
+          [sequelize.fn("AVG", sequelize.col("rating")), "avg_rating"],
+        ],
         where: { vendor_id: product.vendor_id },
         raw: true,
         transaction,
@@ -62,7 +71,7 @@ const createReview = async (userId, orderId, data) => {
 
       await Vendor.update(
         { rating: avgRating },
-        { where: { id: product.vendor_id }, transaction }
+        { where: { id: product.vendor_id }, transaction },
       );
     }
 

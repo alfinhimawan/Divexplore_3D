@@ -35,7 +35,9 @@ const updateAddon = async (userId, productId, addonId, data) => {
   const vendor = await vendorService.getMyVendor(userId);
   const addon = await ProductAddon.findOne({
     where: { id: addonId, product_id: productId },
-    include: [{ model: Product, as: "product", where: { vendor_id: vendor.id } }],
+    include: [
+      { model: Product, as: "product", where: { vendor_id: vendor.id } },
+    ],
   });
   if (!addon) {
     const err = new Error("Add-on tidak ditemukan.");
@@ -52,7 +54,9 @@ const deleteAddon = async (userId, productId, addonId) => {
   const vendor = await vendorService.getMyVendor(userId);
   const addon = await ProductAddon.findOne({
     where: { id: addonId, product_id: productId },
-    include: [{ model: Product, as: "product", where: { vendor_id: vendor.id } }],
+    include: [
+      { model: Product, as: "product", where: { vendor_id: vendor.id } },
+    ],
   });
   if (!addon) {
     const err = new Error("Add-on tidak ditemukan.");

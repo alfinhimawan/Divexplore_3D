@@ -34,8 +34,6 @@ const consentSchema = Joi.object({
   is_agreed: Joi.boolean().required(),
 });
 
-
-
 const updateProfileSchema = Joi.object({
   nama_lengkap: Joi.string().min(2).max(100),
   nomor_telepon: Joi.string().allow(null, ""),

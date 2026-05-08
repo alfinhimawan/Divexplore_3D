@@ -28,6 +28,7 @@
 | **Runtime** | Node.js v24 |
 | **Framework** | Express.js v5 |
 | **Database** | PostgreSQL |
+| **Cloud Storage** | Cloudinary (Image, PDF, 3D Assets) |
 | **ORM** | Sequelize v6 + Sequelize CLI |
 | **Authentication** | JWT (`jsonwebtoken`) + Google OAuth 2.0 (`google-auth-library`) |
 | **Input Validation** | Joi |
@@ -47,6 +48,7 @@
 - [PostgreSQL](https://www.postgresql.org/) (berjalan lokal / via DBeaver)
 - Akun Google Cloud Console (untuk OAuth)
 - Akun Midtrans (Sandbox)
+- Akun Cloudinary (Free Tier)
 
 ### 2. Clone Repository
 ```bash
@@ -406,6 +408,15 @@ Berikut adalah detail endpoint lengkap sesuai urutan folder pengujian di Postman
 | Request Fund Withdrawal | `POST` | `/api/vendors/me/withdrawals` | Request tarik dana ke rekening bank | ✅ Vendor |
 | View Withdrawal History | `GET` | `/api/vendors/me/withdrawals` | Riwayat & status penarikan dana | ✅ Vendor |
 | Set Cross-Selling Rule | `POST` | `/api/vendors/me/products/:id/cross-selling` | Atur rekomendasi produk terkait | ✅ Vendor |
+
+### **📂 12 - Media Uploads (Cloudinary)**
+| Nama Request | Method | Endpoint | Deskripsi | Auth / Role |
+|---|---|---|---|---|
+| Upload Foto Profil (Max 5MB) | `POST` | `/api/upload/profile` | Upload foto profil User/Vendor | ✅ All |
+| Upload Foto Produk (Max 5MB) | `POST` | `/api/upload/product` | Upload logo & foto produk (Products) | ✅ Vendor |
+| Upload Dokumen KYC (Max 10MB) | `POST` | `/api/upload/document` | Upload dokumen verifikasi KTP/NIB | ✅ Vendor |
+| Upload Panorama 360 (Max 10MB) | `POST` | `/api/upload/panorama` | Upload background 360° untuk Scene | ✅ Admin |
+| Upload 3D Asset (Max 30MB) | `POST` | `/api/upload/3d-model` | Upload file mentah 3D (.glb/.gltf) | ✅ Admin |
 
 ---
 

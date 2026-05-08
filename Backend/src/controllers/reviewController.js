@@ -14,9 +14,16 @@ const reviewSchema = Joi.object({
 const createReview = async (req, res, next) => {
   try {
     const { error, value } = reviewSchema.validate(req.body);
-    if (error) return res.status(400).json({ status: "error", message: error.details[0].message });
+    if (error)
+      return res
+        .status(400)
+        .json({ status: "error", message: error.details[0].message });
 
-    const review = await reviewService.createReview(req.user.id, req.params.orderId, value);
+    const review = await reviewService.createReview(
+      req.user.id,
+      req.params.orderId,
+      value,
+    );
 
     res.status(201).json({
       status: "success",
