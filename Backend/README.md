@@ -16,6 +16,9 @@
 - **GDPR Compliance (Pilar 1-5)**: Implementasi *Right to be Forgotten* (Soft Delete), *Audit Logs* aktivitas sensitif, dan sistem *Consent* (Persetujuan Kebijakan).
 - **Refund & Withdrawal Workflow**: Alur pengembalian dana wisatawan dan penarikan dana vendor yang aman dengan *Database Lock* dan *Inventory Release* otomatis.
 - **Real-Time Inventory Locking**: Penguncian stok otomatis selama 15 menit saat checkout untuk menjamin ketersediaan kuota bagi pembeli.
+- **Order Expiration Automation**: Cron Job berjalan setiap 5 menit untuk membatalkan order expired dan melepas stok yang terkunci secara otomatis.
+- **ProductAddon Bundling**: Wisatawan dapat memilih layanan tambahan (Sewa Kamera, Guide, Souvenir) dalam satu keranjang belanja terintegrasi.
+
 ---
 
 ## 🛠️ Tech Stack
@@ -26,11 +29,14 @@
 | **Framework** | Express.js v5 |
 | **Database** | PostgreSQL |
 | **ORM** | Sequelize v6 + Sequelize CLI |
-| **Authentication** | JWT + Google OAuth 2.0 |
+| **Authentication** | JWT (`jsonwebtoken`) + Google OAuth 2.0 (`google-auth-library`) |
+| **Input Validation** | Joi |
 | **Payment Gateway** | Midtrans API (Snap & Core API) |
 | **Document Generator** | PDFKit (Buffer Streaming) |
 | **Email Services** | Nodemailer |
-| **Logging & Security**| Winston, Helmet, express-rate-limit |
+| **Task Scheduler** | node-cron (Order Expiration + Marketing Automation) |
+| **Logging** | Winston (file + console, level-based) |
+| **Security** | Helmet, cors, express-rate-limit, bcrypt |
 
 ---
 
@@ -95,7 +101,9 @@ Lihat file [`.env.example`](.env.example) untuk daftar lengkap. Berikut yang waj
 | `JWT_SECRET` | *(generate via crypto)* | Secret key JWT — minimal 64 karakter |
 | `JWT_EXPIRES_IN` | `7d` | Durasi token |
 | `GOOGLE_CLIENT_ID` | *(dari Google Console)* | Untuk Google OAuth |
-| `MIDTRANS_SERVER_KEY`| *(dari Midtrans)* | Server Key Midtrans Sandbox |
+| `MIDTRANS_SERVER_KEY`| *(dari Midtrans Sandbox)* | Server Key — jangan pernah expose ke frontend |
+| `MIDTRANS_CLIENT_KEY`| *(dari Midtrans Sandbox)* | Client Key — aman dikirim ke frontend |
+| `MIDTRANS_MERCHANT_ID`| `M3XXXXX` | Merchant ID dari dashboard Midtrans |
 
 > ⚠️ **JANGAN** commit file `.env` ke GitHub. File ini sudah di-exclude via `.gitignore`.
 
@@ -133,27 +141,76 @@ npm run db:seed:undo          # Hapus semua data seeder
 
 ```
 Backend/
-├── logs/                   # Log file (auto-generated, tidak di-commit)
+├── logs/                         # Log file (auto-generated, tidak di-commit)
+│   ├── combined.log              # Semua log level
+│   └── error.log                 # Hanya error level
 ├── src/
 │   ├── config/
-│   │   └── config.js       # Konfigurasi database per environment
-│   ├── controllers/        # Handler request/response
+│   │   └── config.js             # Konfigurasi koneksi DB per environment
+│   ├── controllers/              # Handler HTTP request/response
+│   │   ├── addonController.js    # CRUD add-on produk
+│   │   ├── adminController.js    # Dashboard & laporan admin
+│   │   ├── authController.js     # Register, Login, Google OAuth, GDPR
+│   │   ├── orderController.js    # Checkout, invoice, riwayat
+│   │   ├── productController.js  # CRUD produk & bundling
+│   │   ├── promoController.js    # CRUD kode promo
+│   │   ├── refundController.js   # Pengajuan & proses refund
+│   │   ├── reviewController.js   # Ulasan & rating produk
+│   │   ├── sceneController.js    # CRUD scene & hotspot 3D
+│   │   ├── vendorController.js   # Profil vendor & KYC
+│   │   └── withdrawalController.js # Penarikan dana vendor
 │   ├── middlewares/
-│   │   ├── authenticate.js # JWT auth guard + role authorization
-│   │   └── errorHandler.js # Global error handler
-│   ├── migrations/         # Migration file Sequelize (17 tabel)
-│   ├── models/             # Model Sequelize (ORM)
-│   ├── routes/             # Definisi endpoint API
-│   ├── seeders/            # Data awal untuk development
-│   ├── services/           # Business logic
+│   │   ├── authenticate.js       # JWT auth guard + role authorization (RBAC)
+│   │   └── errorHandler.js       # Global error handler (catch-all)
+│   ├── migrations/               # Migration file Sequelize (26 file, 21 tabel)
+│   ├── models/                   # Model Sequelize (ORM mapping ke DB)
+│   │   ├── auditlog.js           # Log aktivitas sensitif
+│   │   ├── loyaltypoint.js       # Poin reward wisatawan
+│   │   ├── order.js              # Header transaksi
+│   │   ├── orderitem.js          # Detail item + metadata add-on
+│   │   ├── product.js            # Katalog produk wisata
+│   │   ├── productaddon.js       # Layanan tambahan produk
+│   │   ├── productinventory.js   # Stok & kuota
+│   │   ├── productvisit.js       # Log kunjungan produk (marketing)
+│   │   ├── promo.js              # Kode diskon
+│   │   ├── refund.js             # Pengajuan refund
+│   │   ├── review.js             # Ulasan & rating
+│   │   ├── scene.js              # Ruangan 3D
+│   │   ├── scene3dhotspot.js     # Titik interaktif di scene
+│   │   ├── user.js               # Data user (semua role)
+│   │   ├── userconsent.js        # GDPR consent log
+│   │   ├── vendor.js             # Profil bisnis vendor
+│   │   ├── vendordocument.js     # Dokumen KYC
+│   │   ├── virtualledger.js      # Buku kas virtual
+│   │   └── withdrawal.js         # Request penarikan dana
+│   ├── routes/                   # Definisi endpoint API
+│   │   ├── adminRoutes.js
+│   │   ├── authRoutes.js
+│   │   ├── orderRoutes.js
+│   │   ├── paymentRoutes.js      # Midtrans webhook
+│   │   ├── productRoutes.js
+│   │   ├── promoRoutes.js
+│   │   ├── sceneRoutes.js
+│   │   └── vendorRoutes.js
+│   ├── seeders/                  # Data dummy untuk development & testing
+│   ├── services/                 # Business logic (tidak boleh ada di controller)
+│   │   ├── addonService.js       # Logika CRUD add-on
+│   │   ├── authService.js        # Logika registrasi, login, JWT
+│   │   ├── cronService.js        # Semua Cron Job (expiration + marketing)
+│   │   ├── emailService.js       # Nodemailer wrapper
+│   │   ├── marketingService.js   # Strategi retargeting & loyalty
+│   │   ├── orderService.js       # Checkout engine + Midtrans integration
+│   │   ├── reviewService.js      # Ulasan + kalkulasi rating vendor
+│   │   ├── sceneService.js       # Logika scene & hotspot
+│   │   └── vendorService.js      # Profil & KYC vendor
 │   └── utils/
-│       └── logger.js       # Winston logger
-├── .env                    # Environment variables (tidak di-commit)
-├── .env.example            # Template .env untuk tim
+│       └── logger.js             # Winston logger (file + console)
+├── .env                          # Environment variables (tidak di-commit)
+├── .env.example                  # Template .env untuk tim
 ├── .gitignore
-├── .sequelizerc            # Konfigurasi path Sequelize CLI
+├── .sequelizerc                  # Konfigurasi path Sequelize CLI
 ├── package.json
-└── server.js               # Entry point aplikasi
+└── server.js                     # Entry point: middleware, routes, cron, graceful shutdown
 ```
 
 ---
@@ -190,8 +247,9 @@ Berikut adalah detail endpoint lengkap sesuai urutan folder pengujian di Postman
 | `POST` | `/api/auth/login` | Login manual (Admin/Vendor) | — |
 | `GET` | `/api/auth/me` | Lihat profil user yang sedang aktif | ✅ All |
 | `PUT` | `/api/auth/me` | Update profil (Telepon, Alamat, Foto) | ✅ All |
-| `DELETE` | `/api/auth/account`| Hapus akun (Soft Delete - GDPR) | ✅ All |
+| `GET` | `/api/auth/me/points` | Lihat saldo loyalty points | ✅ Wisatawan |
 | `POST` | `/api/auth/consent` | Pencatatan persetujuan privasi | ✅ All |
+| `DELETE` | `/api/auth/account` | Hapus akun (Soft Delete - GDPR) | ✅ All |
 
 ### **📂 02 - Vendor**
 | Method | Endpoint | Deskripsi | Auth / Role |
@@ -199,28 +257,32 @@ Berikut adalah detail endpoint lengkap sesuai urutan folder pengujian di Postman
 | `POST` | `/api/vendors` | Inisialisasi profil bisnis vendor | ✅ Vendor |
 | `GET` | `/api/vendors/me` | Lihat profil bisnis sendiri | ✅ Vendor |
 | `PUT` | `/api/vendors/me` | Update data bisnis/toko | ✅ Vendor |
-| `POST` | `/api/vendors/me/documents`| Upload dokumen KYC (KTP/NIB) | ✅ Vendor |
-| `GET` | `/api/vendors/me/documents`| Lihat status verifikasi dokumen | ✅ Vendor |
-| `GET` | `/api/vendors/me/ledgers`| Buku kas & riwayat komisi vendor | ✅ Vendor |
+| `GET` | `/api/vendors/:id` | Lihat profil publik vendor | — |
+| `POST` | `/api/vendors/me/documents` | Upload dokumen KYC (KTP/NIB) | ✅ Vendor |
+| `GET` | `/api/vendors/me/documents` | Lihat status verifikasi dokumen | ✅ Vendor |
+| `GET` | `/api/vendors/me/ledgers` | Buku kas & riwayat komisi vendor | ✅ Vendor |
 
 ### **📂 03 - Admin**
 | Method | Endpoint | Deskripsi | Auth / Role |
 |---|---|---|---|
 | `GET` | `/api/admin/vendors` | Lihat daftar seluruh vendor | ✅ Admin |
-| `PUT` | `/api/admin/vendors/:id/kyc`| Approve/Reject dokumen KYC vendor | ✅ Admin |
+| `PUT` | `/api/admin/vendors/:id/kyc` | Approve/Reject dokumen KYC vendor | ✅ Admin |
 | `GET` | `/api/admin/reports/gmv` | Analisis omzet (GMV Tracker) | ✅ Admin |
-| `GET` | `/api/admin/abandoned-carts`| Daftar transaksi tertunda | ✅ Admin |
+| `GET` | `/api/admin/abandoned-carts` | Daftar transaksi tertunda | ✅ Admin |
+| `POST` | `/api/admin/marketing/trigger` | Pemicu strategi marketing otomatis | ✅ Admin |
 | `GET` | `/api/admin/refunds` | Lihat semua pengajuan refund | ✅ Admin |
-| `PUT` | `/api/admin/refunds/:id`| Approve/Reject permintaan refund | ✅ Admin |
+| `PUT` | `/api/admin/refunds/:id` | Approve/Reject permintaan refund | ✅ Admin |
 | `GET` | `/api/admin/withdrawals` | Lihat semua pengajuan penarikan | ✅ Admin |
-| `PUT` | `/api/admin/withdrawals/:id`| Proses transfer dana ke vendor | ✅ Admin |
-| `POST` | `/api/admin/marketing/trigger`| Pemicu strategi marketing otomatis | ✅ Admin |
+| `PUT` | `/api/admin/withdrawals/:id` | Proses transfer dana ke vendor | ✅ Admin |
 
 ### **📂 04 - Scenes & Hotspots (3D)**
 | Method | Endpoint | Deskripsi | Auth / Role |
 |---|---|---|---|
 | `GET` | `/api/scenes` | Daftar semua ruangan 3D | — |
-| `GET` | `/api/scenes/:id` | Detail ruangan + koordinat produk | — |
+| `POST` | `/api/scenes` | Buat scene 3D baru | ✅ Admin |
+| `PUT` | `/api/scenes/:id` | Update data scene 3D | ✅ Admin |
+| `DELETE` | `/api/scenes/:id` | Hapus scene 3D | ✅ Admin |
+| `POST` | `/api/scenes/:id/hotspots` | Tambah hotspot produk/navigasi ke scene | ✅ Admin |
 
 ### **📂 05 - Products**
 | Method | Endpoint | Deskripsi | Auth / Role |
@@ -230,8 +292,13 @@ Berikut adalah detail endpoint lengkap sesuai urutan folder pengujian di Postman
 | `POST` | `/api/products` | Vendor menambah produk baru | ✅ Vendor |
 | `PUT` | `/api/products/:id` | Vendor update data produk | ✅ Vendor |
 | `DELETE` | `/api/products/:id` | Vendor menghapus produk | ✅ Vendor |
-| `POST` | `/api/products/:id/bundling`| Menambah aturan bundling produk | ✅ Vendor |
-| `POST` | `/api/products/:id/visit` | Mencatat kunjungan produk | — |
+| `POST` | `/api/products/:id/bundling` | Menambah aturan bundling produk | ✅ Vendor |
+| `POST` | `/api/products/:id/visit` | Mencatat kunjungan produk | ✅ All |
+| `GET` | `/api/products/:productId/addons` | Lihat daftar add-on produk | — |
+| `POST` | `/api/products/:productId/addons` | Vendor membuat add-on baru | ✅ Vendor |
+| `PUT` | `/api/products/:productId/addons/:addonId` | Vendor update add-on | ✅ Vendor |
+| `DELETE` | `/api/products/:productId/addons/:addonId` | Vendor hapus add-on | ✅ Vendor |
+| `GET` | `/api/products/:productId/reviews` | Lihat ulasan publik produk | — |
 
 ### **📂 06 - Inventory**
 | Method | Endpoint | Deskripsi | Auth / Role |
@@ -249,31 +316,79 @@ Berikut adalah detail endpoint lengkap sesuai urutan folder pengujian di Postman
 ### **📂 08 - Orders**
 | Method | Endpoint | Deskripsi | Auth / Role |
 |---|---|---|---|
-| `POST` | `/api/orders` | Checkout & Snap Midtrans (Locking) | ✅ All |
-| `GET` | `/api/orders/me` | Riwayat pesanan saya | ✅ All |
-| `GET` | `/api/orders/:id` | Detail transaksi spesifik | ✅ All |
-| `GET` | `/api/orders/:id/invoice`| Download Struk PDF otomatis | ✅ All |
-| `POST` | `/api/orders/:id/refund`| Ajukan pengembalian dana (Refund) | ✅ Wisatawan |
-| `GET` | `/api/orders/:id/refund-status`| Cek status pengajuan refund | ✅ Wisatawan |
+| `POST` | `/api/orders` | Checkout & Snap Midtrans (Inventory Locking) | ✅ Wisatawan |
+| `GET` | `/api/orders/me` | Riwayat pesanan saya | ✅ Wisatawan |
+| `GET` | `/api/orders/:id/invoice` | Download Struk PDF otomatis | ✅ Wisatawan |
+| `POST` | `/api/orders/:id/refund` | Ajukan pengembalian dana (Refund) | ✅ Wisatawan |
+| `GET` | `/api/orders/:id/refund-status` | Cek status pengajuan refund | ✅ Wisatawan |
+| `POST` | `/api/orders/:orderId/reviews` | Beri rating bintang 1-5 | ✅ Wisatawan |
+| `GET` | `/api/orders/vendor` | Lihat pesanan masuk (Vendor) | ✅ Vendor |
+| `GET` | `/api/orders/admin` | Lihat seluruh pesanan (Admin) | ✅ Admin |
 
 ### **📂 09 - Payments**
 | Method | Endpoint | Deskripsi | Auth / Role |
 |---|---|---|---|
-| `POST` | `/api/webhooks/midtrans` | Webhook update status bayar | — |
+| `POST` | `/api/webhooks/midtrans` | Webhook update status bayar dari Midtrans | — |
 
 ### **📂 10 - Reviews**
 | Method | Endpoint | Deskripsi | Auth / Role |
 |---|---|---|---|
-| `POST` | `/api/orders/:orderId/reviews`| Beri rating bintang 1-5 | ✅ Wisatawan |
-| `GET` | `/api/products/:productId/reviews`| Lihat ulasan publik produk | — |
+| `POST` | `/api/orders/:orderId/reviews` | Beri rating bintang 1-5 (via Orders) | ✅ Wisatawan |
+| `GET` | `/api/products/:productId/reviews` | Lihat ulasan publik produk | — |
 
 ### **📂 11 - Vendor Dashboard**
 | Method | Endpoint | Deskripsi | Auth / Role |
 |---|---|---|---|
-| `GET` | `/api/vendors/me/ledgers`| Buku kas & riwayat komisi vendor | ✅ Vendor |
-| `POST` | `/api/vendors/me/withdrawals`| Request tarik dana ke bank | ✅ Vendor |
-| `GET` | `/api/vendors/me/withdrawals`| Riwayat penarikan dana | ✅ Vendor |
-| `POST` | `/api/vendors/me/products/:id/cross-selling`| Atur rekomendasi produk terkait | ✅ Vendor |
+| `GET` | `/api/vendors/me/ledgers` | Buku kas & riwayat komisi vendor | ✅ Vendor |
+| `POST` | `/api/vendors/me/withdrawals` | Request tarik dana ke rekening bank | ✅ Vendor |
+| `GET` | `/api/vendors/me/withdrawals` | Riwayat & status penarikan dana | ✅ Vendor |
+| `POST` | `/api/vendors/me/products/:id/cross-selling` | Atur rekomendasi produk terkait | ✅ Vendor |
+
+---
+
+## 🔄 Alur Bisnis Utama (Business Flow)
+
+### Sampling Flow (Target Presentasi Dosen)
+```
+[Wisatawan]
+    ↓
+  1. Login Google OAuth → Dapat JWT Token
+    ↓
+  2. Lihat Scene 3D → GET /api/scenes/:id (koordinat hotspot)
+    ↓
+  3. Klik Produk di Hotspot → GET /api/products/:id + add-ons
+    ↓
+  4. Checkout (POST /api/orders)
+      → Inventory LOCK 15 menit
+      → Promo Code dihitung
+      → Add-on harga dijumlah
+      → Audit Log dicatat
+    ↓
+  5. Bayar via Midtrans Snap (snap_token dari response)
+    ↓
+  6. Midtrans Webhook → POST /api/webhooks/midtrans
+      → Signature SHA512 divalidasi
+      → Status Order → "paid"
+      → Inventory "locked" → "sold"
+      → VirtualLedger dibuat (komisi terhitung)
+      → Loyalty Points diberikan
+      → Invoice PDF dikirim via Email
+```
+
+### Alur Admin
+```
+[Admin] → Approve KYC Vendor → Vendor bisa berjualan
+[Admin] → Review Refund Request → Approve → Stok otomatis kembali
+[Admin] → Review Withdrawal → Transfer manual → Konfirmasi di sistem
+```
+
+### Alur Otomasi (Cron Jobs)
+```
+Setiap 5 menit  → Batalkan order expired + release inventory
+Setiap 30 menit → Kirim email reminder bayar (wisatawan pending)
+Setiap 09.00    → Kirim penawaran loyalty point (wisatawan aktif)
+Setiap 10.00    → Kirim retargeting email (berdasarkan riwayat kunjungan)
+```
 
 ---
 

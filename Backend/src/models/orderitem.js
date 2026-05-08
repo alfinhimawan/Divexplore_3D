@@ -52,6 +52,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DECIMAL(15, 2),
         allowNull: false,
       },
+      metadata: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        comment: "Menyimpan addon_ids dan data tambahan yang dipilih wisatawan",
+      },
     },
     {
       sequelize,

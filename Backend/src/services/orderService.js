@@ -157,17 +157,18 @@ const createOrder = async (userId, items, promoCode = null) => {
       const parameter = {
         transaction_details: {
           order_id: newOrder.id,
-          gross_amount: Math.round(totalPembayaran), // Midtrans butuh integer
+          gross_amount: Math.round(totalPembayaran),
         },
         credit_card: { secure: true },
         customer_details: {
-          first_name: "Wisatawan", // Nanti bisa diisi nama user dari DB jika diperlukan
+          first_name: "Wisatawan",
         },
       };
       snapResponse = await snap.createTransaction(parameter);
     } catch (midtransErr) {
-      console.error("Gagal generate Midtrans Token:", midtransErr);
-      // Lanjutkan saja, biarkan Frontend menangani ketiadaan token
+      // Gunakan logger agar error tercatat di file log (bukan hanya console)
+      const logger = require("../utils/logger");
+      logger.error("Gagal generate Midtrans Token", { error: midtransErr.message });
     }
 
     return {

@@ -40,8 +40,31 @@ const createReview = async (userId, orderId, data) => {
       komentar: data.komentar,
     }, { transaction });
 
-    // 5. Update Rating Produk secara denormalisasi (Opsional tapi bagus untuk performa)
-    // Di sini kita biarkan dinamis saja saat ditarik di Product API.
+    // 5. Kalkulasi Rata-Rata Rating Vendor (sesuai Alur BA)
+    // Ambil vendor_id dari product yang baru di-review
+    const { Vendor, Product } = require("../models");
+    const product = await Product.findByPk(data.product_id, {
+      attributes: ["vendor_id"],
+      transaction,
+    });
+
+    if (product?.vendor_id) {
+      const avgResult = await Review.findOne({
+        attributes: [[sequelize.fn("AVG", sequelize.col("rating")), "avg_rating"]],
+        where: { vendor_id: product.vendor_id },
+        raw: true,
+        transaction,
+      });
+
+      const avgRating = avgResult?.avg_rating
+        ? parseFloat(parseFloat(avgResult.avg_rating).toFixed(2))
+        : null;
+
+      await Vendor.update(
+        { rating: avgRating },
+        { where: { id: product.vendor_id }, transaction }
+      );
+    }
 
     await transaction.commit();
     return review;
