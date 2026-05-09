@@ -1,32 +1,199 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="id">
 <head>
-    <title>Test Google Login Divexplore</title>
-    <meta name="referrer" content="strict-origin-when-cross-origin">
-    <!-- Script resmi dari Google -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Divexplore 3D — Google Login Test</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    .card {
+      background: rgba(255,255,255,0.07);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+    }
+    h1 { font-size: 1.6rem; margin-bottom: 0.3rem; }
+    p.sub { font-size: 0.85rem; opacity: 0.6; margin-bottom: 2rem; }
+    #g_signin { display: flex; justify-content: center; margin-bottom: 1.5rem; }
+    #result {
+      background: rgba(0,0,0,0.35);
+      border-radius: 12px;
+      padding: 1.2rem;
+      text-align: left;
+      font-size: 0.78rem;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 320px;
+      overflow-y: auto;
+      display: none;
+      margin-top: 1rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.3rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    .badge.success { background: #22c55e22; color: #4ade80; border: 1px solid #22c55e55; }
+    .badge.error   { background: #ef444422; color: #f87171; border: 1px solid #ef444455; }
+    .profile {
+      display: none;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      text-align: left;
+    }
+    .profile img { border-radius: 50%; width: 52px; height: 52px; }
+    .profile .info h3 { font-size: 0.95rem; }
+    .profile .info p  { font-size: 0.78rem; opacity: 0.65; }
+    .btn-row { display: flex; gap: 0.6rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+    button {
+      padding: 0.55rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.85; }
+    #btn-copy { background: #3b82f6; color: white; display: none; }
+    #btn-postman { background: #f97316; color: white; display: none; }
+  </style>
 </head>
+<body>
+<div class="card">
+  <h1>🌊 Divexplore 3D</h1>
+  <p class="sub">Halaman Uji Coba Google OAuth Login</p>
 
-<body style="padding: 50px; font-family: sans-serif;">
-    <h2>Silakan Login dengan Gmail Anda</h2>
-
-    <!-- GANTI DATA-CLIENT_ID DI BAWAH DENGAN MILIK ANDA -->
-    <div id="g_id_onload" data-client_id="907559743141-sdfob8odiaeg0dmgbh35gd5bp8fdaknk.apps.googleusercontent.com"
-        data-callback="handleCredentialResponse">
+  <!-- Tombol resmi dari Google -->
+  <div id="g_signin">
+    <div id="g_id_onload"
+      data-client_id="907559743141-sdfob8odiaeg0dmgbh35gd5bp8fdaknk.apps.googleusercontent.com"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
     </div>
-    <div class="g_id_signin" data-type="standard"></div>
+    <div class="g_id_signin"
+      data-type="standard"
+      data-size="large"
+      data-theme="outline"
+      data-text="sign_in_with"
+      data-shape="pill">
+    </div>
+  </div>
 
-    <h3>Token Rahasia (Copy ini ke Postman):</h3>
-    <textarea id="tokenBox" style="width:100%; height:150px;"></textarea>
+  <!-- Profil user -->
+  <div class="profile" id="profile-box">
+    <img id="profile-pic" src="" alt="avatar" />
+    <div class="info">
+      <h3 id="profile-name">—</h3>
+      <p id="profile-email">—</p>
+    </div>
+  </div>
 
-    <script>
-        // Fungsi ini akan dipanggil otomatis saat Anda selesai klik akun Gmail
-        function handleCredentialResponse(response) {
-            console.log("Token dari Google: " + response.credential);
-            document.getElementById("tokenBox").value = response.credential;
-        }
-    </script>
+  <!-- Badge status -->
+  <div id="badge-box"></div>
+
+  <!-- Tombol aksi -->
+  <div class="btn-row">
+    <button id="btn-copy" onclick="copyToken()">📋 Salin JWT Token</button>
+    <button id="btn-postman" onclick="showPostmanTip()">🚀 Cara Pakai di Postman</button>
+  </div>
+
+  <!-- Output JSON dari backend -->
+  <div id="result"></div>
+</div>
+
+<script>
+  let jwtToken = null;
+
+  async function handleCredentialResponse(response) {
+    const googleToken = response.credential;
+
+    // Decode payload Google untuk tampilkan profil foto & nama
+    const payload = JSON.parse(atob(googleToken.split('.')[1]));
+    document.getElementById('profile-pic').src  = payload.picture || '';
+    document.getElementById('profile-name').textContent  = payload.name;
+    document.getElementById('profile-email').textContent = payload.email;
+    document.getElementById('profile-box').style.display = 'flex';
+
+    const resultBox = document.getElementById('result');
+    const badgeBox  = document.getElementById('badge-box');
+    resultBox.style.display = 'block';
+    resultBox.textContent = '⏳ Menghubungi backend Divexplore di localhost:5000...';
+    badgeBox.innerHTML = '';
+
+    try {
+      const res  = await fetch('http://localhost:5000/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_token: googleToken })
+      });
+      const data = await res.json();
+
+      if (data.status === 'success') {
+        jwtToken = data.data.token;
+        badgeBox.innerHTML = '<span class="badge success">✅ Login Berhasil! JWT Token Diterima.</span>';
+        document.getElementById('btn-copy').style.display    = 'inline-block';
+        document.getElementById('btn-postman').style.display = 'inline-block';
+      } else {
+        badgeBox.innerHTML = `<span class="badge error">❌ Gagal: ${data.message || 'Unknown error'}</span>`;
+      }
+
+      resultBox.textContent = JSON.stringify(data, null, 2);
+
+    } catch (err) {
+      badgeBox.innerHTML = '<span class="badge error">❌ Backend Tidak Merespon</span>';
+      resultBox.textContent =
+        'ERROR: ' + err.message +
+        '\n\n> Pastikan server backend sudah berjalan:\n  npm run dev  (di folder Backend)\n\n> Pastikan CORS sudah mengizinkan origin file:///';
+    }
+  }
+
+  function copyToken() {
+    if (!jwtToken) return;
+    navigator.clipboard.writeText(jwtToken).then(() => {
+      const btn = document.getElementById('btn-copy');
+      btn.textContent = '✅ Token Tersalin!';
+      setTimeout(() => { btn.textContent = '📋 Salin JWT Token'; }, 2000);
+    });
+  }
+
+  function showPostmanTip() {
+    const resultBox = document.getElementById('result');
+    resultBox.textContent =
+      'CARA PAKAI JWT TOKEN DI POSTMAN:\n\n' +
+      '1. Copy JWT Token di atas (klik tombol "Salin JWT Token")\n' +
+      '2. Buka Postman\n' +
+      '3. Pilih request manapun yang butuh Auth\n' +
+      '4. Klik tab "Authorization"\n' +
+      '5. Type: Bearer Token\n' +
+      '6. Paste token ke kolom "Token"\n\n' +
+      'ATAU (Cara Otomatis):\n' +
+      '1. Buka tab Environment di Postman\n' +
+      '2. Set variable "wisatawan_token" = (paste token di sini)\n' +
+      '3. Semua request di folder "08 - Orders" & "01 - Auth" akan otomatis pakai token ini!';
+  }
+</script>
 </body>
-
 </html>

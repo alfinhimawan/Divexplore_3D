@@ -51,6 +51,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
+      deskripsi_toko: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
       logo_url: {
         type: DataTypes.TEXT,
         allowNull: true,

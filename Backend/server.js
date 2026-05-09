@@ -21,9 +21,11 @@ const PORT = process.env.PORT || 5000;
 
 // Daftar origin yang diizinkan mengakses API
 const ALLOWED_ORIGINS = [
-  "http://localhost:3000", // React/Next.js dev
-  "http://localhost:5173", // Vite dev
-  "http://localhost:5000", // Self (testing)
+  "http://localhost:3000",    // React/Next.js dev
+  "http://localhost:5173",    // Vite dev
+  "http://localhost:5000",    // Self (testing)
+  "http://localhost:5500",    // Live Server VSCode
+  "http://127.0.0.1:5500",    // Live Server VSCode (alias)
 ];
 
 // Security & Performance Middleware

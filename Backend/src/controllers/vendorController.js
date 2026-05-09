@@ -9,6 +9,7 @@ const vendorSchema = Joi.object({
   no_telepon_bisnis: Joi.string().min(8).max(20).required(),
   kategori: Joi.string().required(),
   alamat_lengkap: Joi.string().min(10).required(),
+  deskripsi_toko: Joi.string().optional().allow(null, ""),
   link_google_maps: Joi.string().uri().required().messages({
     "string.uri": "Link Google Maps harus berupa URL yang valid.",
   }),
@@ -21,6 +22,7 @@ const updateVendorSchema = Joi.object({
   no_telepon_bisnis: Joi.string().min(8).max(20),
   kategori: Joi.string(),
   alamat_lengkap: Joi.string().min(10),
+  deskripsi_toko: Joi.string().optional().allow(null, ""),
   link_google_maps: Joi.string().uri(),
   logo_url: Joi.string().uri().optional().allow(null, ""),
 }).min(1); // minimal 1 field yang diubah

@@ -5,24 +5,35 @@ const logger = require("../utils/logger");
 let transporter;
 
 /**
- * Inisialisasi Ethereal Email (Fake SMTP untuk Testing)
+ * Inisialisasi Transport Nodemailer (Real SMTP vs Ethereal)
  */
 const initNodemailer = async () => {
   try {
-    // Generate test account dari ethereal
-    const testAccount = await nodemailer.createTestAccount();
-
-    transporter = nodemailer.createTransport({
-      host: "smtp.ethereal.email",
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-
-    logger.info("Nodemailer: Ethereal SMTP Ready for Testing");
+    // Jika kredensial SMTP asli tersedia di .env (GMAIL / PRODUCTION)
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+      logger.info(`Nodemailer: Real SMTP Ready (${process.env.SMTP_USER})`);
+    } 
+    // Jika tidak ada di .env, gunakan Fake SMTP (ETHEREAL / DEVELOPMENT)
+    else {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      logger.info("Nodemailer: Ethereal SMTP Ready for Testing");
+    }
   } catch (error) {
     logger.error("Gagal inisialisasi Nodemailer", error);
   }
