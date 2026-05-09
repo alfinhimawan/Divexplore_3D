@@ -254,6 +254,206 @@ Backend/
 
 ## 🌐 API Testing Guide (Postman Structure)
 
+> 💡 **Katalog Produk E-Commerce (Testing Data)**  
+> Untuk memudahkan pengujian endpoint `POST /api/products` dan `POST /api/products/:id/addons`, Anda dapat menyalin *raw JSON Payload* yang berisi data produk resmi dari tim E-Commerce dengan membuka menu di bawah ini:
+>
+> <details>
+> <summary><b>📦 Buka Data Lengkap JSON Payload Produk (Semua Vendor)</b></summary>
+> 
+> ### 1. Vendor Aktivitas & Open Tur
+> ```json
+> {"nama_produk": "Open Tur Island Hopping (Sharing Boat)", "deskripsi": "Keliling 3 pulau dengan Glass Bottom Boat. Harga 1 pax.", "harga": 150000, "is_active": true}
+> {"nama_produk": "Open Tur Island Hopping (Private Boat)", "deskripsi": "Perjalanan keliling 3 pulau secara private. Harga 1 kapal.", "harga": 1200000, "is_active": true}
+> {"nama_produk": "Discovery Scuba Dive (DSD) 1 Log", "deskripsi": "Penyelaman tanpa sertifikasi didampingi Dive Master PADI.", "harga": 900000, "is_active": true}
+> {"nama_produk": "Fun Dive (2 Log)", "deskripsi": "Penyelaman khusus wisatawan bersertifikasi.", "harga": 1500000, "is_active": true}
+> {"nama_produk": "Sewa Jetski (15 Menit)", "deskripsi": "Pacu adrenalin di perairan aman didampingi instruktur.", "harga": 250000, "is_active": true}
+> {"nama_produk": "Banana Boat", "deskripsi": "Kapasitas 5 orang selama 15 menit.", "harga": 75000, "is_active": true}
+> {"nama_produk": "Stand-up Paddle", "deskripsi": "Eksplorasi laut dangkal secara ramah lingkungan. Harga per jam.", "harga": 100000, "is_active": true}
+> {"nama_produk": "Kayak Transparan", "deskripsi": "Menikmati pemandangan bawah laut dari atas kayak transparan. Harga per jam.", "harga": 150000, "is_active": true}
+> ```
+> 
+> ### 2. Vendor Peralatan & Perlengkapan (Add-on)
+> ```json
+> {"nama_produk": "Set Snorkel Premium + Kaki Katak", "deskripsi": "Sewa harian peralatan dasar dengan kualitas kaca anti-embun.", "harga": 75000, "is_active": true}
+> {"nama_produk": "Kamera Aksi (GoPro/Insta360)", "deskripsi": "Sewa harian dokumentasi aksi bawah air.", "harga": 200000, "is_active": true}
+> {"nama_produk": "Dry Bag (Tas Anti Air 10L)", "deskripsi": "Tas kedap air pelindung barang. Beli putus.", "harga": 85000, "is_active": true}
+> {"nama_produk": "Sunblock Ramah Terumbu Karang", "deskripsi": "Tabir surya aman untuk koral. Beli putus.", "harga": 120000, "is_active": true}
+> {"nama_produk": "Rash Guard / Wetsuit Ringan", "deskripsi": "Pakaian pelindung ubur-ubur & sinar UV. Sewa harian.", "harga": 50000, "is_active": true}
+> ```
+> 
+> ### 3. Vendor Akomodasi Homestay
+> ```json
+> {"nama_produk": "Standard Garden View", "deskripsi": "Kamar standar dengan pemandangan taman.", "harga": 400000, "is_active": true}
+> {"nama_produk": "Deluxe Ocean View", "deskripsi": "Kamar luas balkon pantai, termasuk sarapan. Kapasitas 2 Org.", "harga": 850000, "is_active": true}
+> {"nama_produk": "Private Family Bungalow", "deskripsi": "Bungalow mewah kolam renang pribadi. Kapasitas 4 Org.", "harga": 2000000, "is_active": true}
+> {"nama_produk": "[Add-on] Paket Spa / Sauna", "deskripsi": "Relaksasi otot tubuh pasca-aktivitas menyelam.", "harga": 250000, "is_active": true}
+> ```
+> 
+> ### 4. Vendor Kuliner & Oleh-Oleh (UMKM)
+> ```json
+> // Sambal Seafood Pak Sukardi
+> {"nama_produk": "Paket Seafood Platter Saus Sukardi", "deskripsi": "Kombinasi udang, cumi, kerang saus pedas (2 Orang).", "harga": 250000, "is_active": true}
+> {"nama_produk": "Kepiting Saus Padang Pesisir", "deskripsi": "Kepiting bakau bumbu saus padang.", "harga": 150000, "is_active": true}
+> {"nama_produk": "Cumi Bakar Madu Pedas", "deskripsi": "Cumi utuh dibakar olesan madu dan sambal terasi.", "harga": 75000, "is_active": true}
+> {"nama_produk": "Udang Bakar Jimbaran", "deskripsi": "Udang besar bumbu kuning plus sambal matah.", "harga": 85000, "is_active": true}
+> {"nama_produk": "Plecing Kangkung Seafood", "deskripsi": "Kangkung segar dengan taburan udang rebon.", "harga": 25000, "is_active": true}
+> {"nama_produk": "Es Kuwut Khas Lombok", "deskripsi": "Serutan kelapa, melon, selasih, perasan jeruk nipis.", "harga": 25000, "is_active": true}
+> 
+> // Warung Ikan Bakar Ibu Marwah
+> {"nama_produk": "Ikan Kerapu Bakar Bumbu Taliwang", "deskripsi": "Kerapu bakar pedas khas Taliwang plus nasi.", "harga": 90000, "is_active": true}
+> {"nama_produk": "Ikan Kakap Merah Bakar Kecap", "deskripsi": "Kakap segar bakar kecap manis gurih.", "harga": 85000, "is_active": true}
+> {"nama_produk": "Sate Pusut Ikan Marlin", "deskripsi": "Sate lilit daging marlin cincang (5 tusuk).", "harga": 40000, "is_active": true}
+> {"nama_produk": "Ikan Baronang Bakar Rica-Rica", "deskripsi": "Ikan baronang bakar siraman bumbu rica-rica pedas.", "harga": 80000, "is_active": true}
+> {"nama_produk": "Sup Ikan Kuah Asam", "deskripsi": "Sup ikan laut bening rasa asam pedas.", "harga": 60000, "is_active": true}
+> {"nama_produk": "Es Kelapa Muda Jeruk Nipis", "deskripsi": "Kelapa utuh dingin perasan jeruk nipis.", "harga": 20000, "is_active": true}
+> 
+> // Oleh-Oleh Bahari DIVEXPLORER
+> {"nama_produk": "Dodol Rumput Laut Premium", "deskripsi": "Camilan ekstrak rumput laut asli Lombok.", "harga": 40000, "is_active": true}
+> {"nama_produk": "Sambal Roa Pesisir Lombok", "deskripsi": "Sambal botol ikan roa asap.", "harga": 35000, "is_active": true}
+> {"nama_produk": "Kerupuk Kulit Ikan Tenggiri", "deskripsi": "Kerupuk renyah kulit ikan laut segar.", "harga": 30000, "is_active": true}
+> {"nama_produk": "Abon Ikan Tuna Pedas Manis", "deskripsi": "Lauk awetan ikan tuna pilihan 250gr.", "harga": 45000, "is_active": true}
+> {"nama_produk": "Ikan Asin Tenggiri Belah", "deskripsi": "Ikan asin kualitas ekspor kemasan vakum.", "harga": 50000, "is_active": true}
+> {"nama_produk": "Teri Crispy Balado Daun Jeruk", "deskripsi": "Camilan teri kering balado daun jeruk.", "harga": 25000, "is_active": true}
+> {"nama_produk": "Kopi Bubuk Rumput Laut", "deskripsi": "Kopi Robusta dipadu ekstrak rumput laut.", "harga": 30000, "is_active": true}
+> {"nama_produk": "Cumi Asin Kering Premium", "deskripsi": "Cumi asin kualitas super 200gr.", "harga": 60000, "is_active": true}
+> {"nama_produk": "Keripik Teripang Emas", "deskripsi": "Camilan bergizi tinggi dari teripang laut.", "harga": 75000, "is_active": true}
+> {"nama_produk": "[Bundling] Hampers Bahari", "deskripsi": "Dodol, Sambal, Abon, Kerupuk gratis totebag.", "harga": 200000, "is_active": true}
+> ```
+> 
+> ### 5. Vendor Fotografi & Dokumentasi
+> ```json
+> {"nama_produk": "Fotografer Darat/Pantai", "deskripsi": "Sesi foto pesisir kamera Mirrorless/DSLR. Sewa per jam.", "harga": 300000, "is_active": true}
+> {"nama_produk": "Pendampingan Foto Bawah Air", "deskripsi": "Fotografer bersertifikat menyelam. Sewa per jam.", "harga": 500000, "is_active": true}
+> {"nama_produk": "Dokumentasi Udara (Drone)", "deskripsi": "Rekaman video estetik dari atas pulau oleh Pilot DJI profesional. Sewa per jam.", "harga": 600000, "is_active": true}
+> ```
+> </details>
+>
+> <details>
+> <summary><b>⚙️ Buka Data Lengkap JSON Payload Seluruh Endpoint (Auth, Transaksi, Admin, dsb)</b></summary>
+> 
+> ### 1. Register Wisatawan (`POST /api/auth/register`)
+> ```json
+> {
+>   "nama_lengkap": "Budi Wisatawan",
+>   "email": "budi.wisatawan@divexplore.com",
+>   "password": "PasswordRahasia123!",
+>   "nomor_telepon": "081234567890",
+>   "consent_given": true
+> }
+> ```
+> 
+> ### 2. Register Vendor (`POST /api/auth/register-vendor`)
+> ```json
+> {
+>   "nama_lengkap": "Sukardi Seafood",
+>   "email": "sukardi.vendor@divexplore.com",
+>   "password": "PasswordRahasia123!",
+>   "nomor_telepon": "089876543210",
+>   "nama_perusahaan": "Warung Seafood Pak Sukardi",
+>   "bidang_bisnis": "kuliner",
+>   "alamat_operasional": "Pantai Senggigi, Lombok Barat",
+>   "consent_given": true
+> }
+> ```
+> 
+> ### 3. Login (`POST /api/auth/login`)
+> ```json
+> {
+>   "email": "budi.wisatawan@divexplore.com",
+>   "password": "PasswordRahasia123!"
+> }
+> ```
+> 
+> ### 4. Checkout Order / Reservasi (`POST /api/orders/checkout`)
+> ```json
+> {
+>   "items": [
+>     {
+>       "product_id": "UUID-PRODUK-DISINI",
+>       "qty": 2
+>     }
+>   ],
+>   "metode_pembayaran": "midtrans"
+> }
+> ```
+> 
+> ### 5. Memberi Ulasan (`POST /api/reviews`)
+> ```json
+> {
+>   "order_id": "UUID-ORDER-DISINI",
+>   "product_id": "UUID-PRODUK-DISINI",
+>   "rating": 5,
+>   "komentar": "Pelayanannya sangat bagus, alat snorkelingnya bersih dan perahunya tepat waktu!"
+> }
+> ```
+>
+> ### 6. Admin Verifikasi Vendor KYC (`PUT /api/admin/vendors/:id/approve`)
+> ```json
+> {
+>   "status_verifikasi": "approved"
+> }
+> ```
+>
+> ### 7. Buat Promo / Voucher (`POST /api/promos`)
+> ```json
+> {
+>   "kode_promo": "SUMMER3D",
+>   "tipe_diskon": "percentage",
+>   "nilai_diskon": 15,
+>   "tanggal_mulai": "2026-06-01",
+>   "tanggal_selesai": "2026-06-30",
+>   "kuota": 100,
+>   "is_active": true
+> }
+> ```
+>
+> ### 8. Setup Bundling Add-ons (`POST /api/products/:id/addons`)
+> ```json
+> {
+>   "addon_product_id": "UUID-PRODUK-ADDON-DISINI",
+>   "tipe_rekomendasi": "cross_sell",
+>   "diskon_bundling": 5000
+> }
+> ```
+>
+> ### 9. Vendor Tarik Dana / Withdrawal (`POST /api/withdrawals`)
+> ```json
+> {
+>   "jumlah": 500000,
+>   "bank_tujuan": "BCA",
+>   "nomor_rekening": "1234567890",
+>   "nama_pemilik_rekening": "Pak Sukardi"
+> }
+> ```
+>
+> ### 10. Pengajuan Refund (`POST /api/orders/:id/refund`)
+> ```json
+> {
+>   "alasan_refund": "Cuaca buruk, pihak pelabuhan melarang kapal berlayar."
+> }
+> ```
+>
+> ### 11. Buat 3D Scene / Ruang Virtual (`POST /api/scenes`)
+> ```json
+> {
+>   "nama_scene": "Pulau Gili Trawangan 360",
+>   "deskripsi": "Spot diving dan snorkeling terindah di Gili Trawangan.",
+>   "is_active": true
+> }
+> ```
+>
+> ### 12. Pasang 3D Hotspot di Model (`POST /api/scenes/:id/hotspots`)
+> ```json
+> {
+>   "product_id": "UUID-PRODUK-DISINI",
+>   "posisi_x": 1.5,
+>   "posisi_y": 2.0,
+>   "posisi_z": -1.0,
+>   "judul_hotspot": "Klik untuk sewa Snorkel!"
+> }
+> ```
+> </details>
+
 ### 🚦 Standard HTTP Status Codes
 Seluruh *endpoint* mematuhi standar RESTful dengan format balasan (Response) JSON terstruktur:
 *   `200 OK` / `201 Created` : Operasi berhasil (Format: `{"status": "success", "data": {...}}`).

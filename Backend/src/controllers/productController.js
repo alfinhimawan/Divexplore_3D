@@ -17,6 +17,7 @@ const createProductSchema = Joi.object({
   thumbnail_url: Joi.string().uri().optional().allow(null, "").messages({
     "string.uri": "Thumbnail URL harus berupa URL yang valid.",
   }),
+  deskripsi: Joi.string().optional().allow(null, ""),
   is_active: Joi.boolean().optional(),
 });
 
@@ -25,6 +26,7 @@ const updateProductSchema = Joi.object({
   nama_produk: Joi.string().min(3).max(150),
   harga: Joi.number().positive(),
   thumbnail_url: Joi.string().uri().optional().allow(null, ""),
+  deskripsi: Joi.string().optional().allow(null, ""),
   is_active: Joi.boolean(),
 }).min(1); // Minimal 1 field wajib dikirim
 
