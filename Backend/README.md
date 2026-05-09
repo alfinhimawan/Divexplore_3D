@@ -336,23 +336,20 @@ Backend/
 > {
 >   "nama_lengkap": "Budi Wisatawan",
 >   "email": "budi.wisatawan@divexplore.com",
->   "password": "PasswordRahasia123!",
->   "nomor_telepon": "081234567890",
->   "consent_given": true
+>   "password": "PasswordRahasia123!"
 > }
 > ```
 > 
-> ### 2. Register Vendor (`POST /api/auth/register-vendor`)
+> ### 2. Mendaftar Menjadi Vendor (`POST /api/vendors`)
+> *Catatan: User harus login terlebih dahulu dengan Token JWT.*
 > ```json
 > {
->   "nama_lengkap": "Sukardi Seafood",
->   "email": "sukardi.vendor@divexplore.com",
->   "password": "PasswordRahasia123!",
->   "nomor_telepon": "089876543210",
->   "nama_perusahaan": "Warung Seafood Pak Sukardi",
->   "bidang_bisnis": "kuliner",
->   "alamat_operasional": "Pantai Senggigi, Lombok Barat",
->   "consent_given": true
+>   "nama_toko": "Warung Seafood Pak Sukardi",
+>   "nama_penanggung_jawab": "Bapak Sukardi",
+>   "no_telepon_bisnis": "089876543210",
+>   "kategori": "Kuliner",
+>   "alamat_lengkap": "Pantai Senggigi, Lombok Barat",
+>   "link_google_maps": "https://maps.google.com/contoh"
 > }
 > ```
 > 
@@ -373,24 +370,24 @@ Backend/
 >       "qty": 2
 >     }
 >   ],
->   "metode_pembayaran": "midtrans"
+>   "kode_promo": "SUMMER3D"
 > }
 > ```
 > 
 > ### 5. Memberi Ulasan (`POST /api/reviews`)
 > ```json
 > {
->   "order_id": "UUID-ORDER-DISINI",
 >   "product_id": "UUID-PRODUK-DISINI",
 >   "rating": 5,
 >   "komentar": "Pelayanannya sangat bagus, alat snorkelingnya bersih dan perahunya tepat waktu!"
 > }
 > ```
 >
-> ### 6. Admin Verifikasi Vendor KYC (`PUT /api/admin/vendors/:id/approve`)
+> ### 6. Admin Verifikasi Vendor KYC (`PUT /api/admin/vendors/:id/kyc`)
 > ```json
 > {
->   "status_verifikasi": "approved"
+>   "status_kyc": "approved",
+>   "catatan_admin": "Dokumen NIB dan KTP sesuai."
 > }
 > ```
 >
@@ -398,31 +395,26 @@ Backend/
 > ```json
 > {
 >   "kode_promo": "SUMMER3D",
->   "tipe_diskon": "percentage",
->   "nilai_diskon": 15,
->   "tanggal_mulai": "2026-06-01",
->   "tanggal_selesai": "2026-06-30",
->   "kuota": 100,
->   "is_active": true
+>   "diskon_persen": 15,
+>   "max_potongan": 50000,
+>   "valid_until": "2026-06-30T23:59:59Z"
 > }
 > ```
 >
-> ### 8. Setup Bundling Add-ons (`POST /api/products/:id/addons`)
+> ### 8. Setup Bundling Add-ons (`POST /api/vendors/me/products/:id/cross-selling`)
 > ```json
 > {
->   "addon_product_id": "UUID-PRODUK-ADDON-DISINI",
->   "tipe_rekomendasi": "cross_sell",
->   "diskon_bundling": 5000
+>   "addon_id": "UUID-PRODUK-ADDON-DISINI"
 > }
 > ```
 >
-> ### 9. Vendor Tarik Dana / Withdrawal (`POST /api/withdrawals`)
+> ### 9. Vendor Tarik Dana / Withdrawal (`POST /api/vendors/me/withdrawals`)
 > ```json
 > {
 >   "jumlah": 500000,
->   "bank_tujuan": "BCA",
+>   "nama_bank": "BCA",
 >   "nomor_rekening": "1234567890",
->   "nama_pemilik_rekening": "Pak Sukardi"
+>   "nama_pemilik_rekening": "Bapak Sukardi"
 > }
 > ```
 >
@@ -437,7 +429,7 @@ Backend/
 > ```json
 > {
 >   "nama_scene": "Pulau Gili Trawangan 360",
->   "deskripsi": "Spot diving dan snorkeling terindah di Gili Trawangan.",
+>   "panorama_url": "https://cloudinary.com/contoh.jpg",
 >   "is_active": true
 > }
 > ```
@@ -446,10 +438,11 @@ Backend/
 > ```json
 > {
 >   "product_id": "UUID-PRODUK-DISINI",
->   "posisi_x": 1.5,
->   "posisi_y": 2.0,
->   "posisi_z": -1.0,
->   "judul_hotspot": "Klik untuk sewa Snorkel!"
+>   "target_scene_id": "",
+>   "type": "product",
+>   "icon_type": "info",
+>   "coordinates_json": "{\"x\": 1.5, \"y\": 2.0, \"z\": -1.0}",
+>   "description": "Klik untuk menyewa perlengkapan Snorkel!"
 > }
 > ```
 > </details>
