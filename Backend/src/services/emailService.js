@@ -102,7 +102,29 @@ const sendMarketingEmail = async (userEmail, type, data) => {
   }
 };
 
+/**
+ * Kirim Email Notifikasi Umum (Ke Vendor, Admin, dll)
+ */
+const sendGeneralEmail = async (toEmail, subject, textBody) => {
+  if (!transporter) return;
+
+  try {
+    const info = await transporter.sendMail({
+      from: '"Divexplore Notification" <no-reply@divexplore3d.com>',
+      to: toEmail,
+      subject: subject,
+      text: textBody,
+    });
+    logger.info(
+      `General Email Sent to ${toEmail}: ${nodemailer.getTestMessageUrl(info)}`,
+    );
+  } catch (error) {
+    logger.error(`Gagal mengirim email general ke ${toEmail}:`, error);
+  }
+};
+
 module.exports = {
   sendInvoiceEmail,
   sendMarketingEmail,
+  sendGeneralEmail,
 };

@@ -54,7 +54,11 @@ const updateKycStatus = async (vendorId, { status_kyc, catatan_admin }) => {
     throw err;
   }
 
-  const vendor = await Vendor.findByPk(vendorId);
+  const vendor = await Vendor.findByPk(vendorId, {
+    include: [
+      { model: User, as: "user", attributes: ["email", "nama_lengkap"] },
+    ],
+  });
   if (!vendor) {
     const err = new Error("Vendor tidak ditemukan.");
     err.statusCode = 404;
@@ -87,6 +91,14 @@ const updateKycStatus = async (vendorId, { status_kyc, catatan_admin }) => {
       },
       { where: { vendor_id: vendorId } },
     );
+  }
+
+  // WP-3.1.4: Kirim email notifikasi ke Vendor terkait perubahan status KYC
+  if (vendor.user && vendor.user.email) {
+    const emailService = require("./emailService");
+    const subject = `Update Status Verifikasi KYC - ${vendor.nama_toko}`;
+    const textBody = `Halo ${vendor.user.nama_lengkap},\n\nStatus verifikasi (KYC) toko Anda (${vendor.nama_toko}) saat ini telah diperbarui menjadi: ${status_kyc.toUpperCase()}.\n\nCatatan Admin: ${catatan_admin || "-"}\n\nTerima kasih,\nTim Admin Divexplore 3D`;
+    emailService.sendGeneralEmail(vendor.user.email, subject, textBody);
   }
 
   return vendor.reload(); // kembalikan data terbaru

@@ -9,6 +9,7 @@
 - **ACID Transactions & Row-Level Locking**: Menggunakan `transaction.LOCK.UPDATE` untuk mencegah *Double Booking* dan *Race Condition* saat 1.000 user checkout bersamaan.
 - **Buffer-Streaming PDF Generator**: Struk PDF (*Invoice*) digenerate murni di memori RAM server menggunakan Buffer, membebaskan server dari tumpukan file fisik.
 - **Asynchronous Webhook Processing**: Menangkap notifikasi Midtrans secara *non-blocking* dan mengirimkan Email via *Nodemailer* tanpa memperlambat respon *Payment Gateway*.
+- **Automated Email Notifications**: Terintegrasi penuh dengan sistem pengiriman 3 jenis email otomatis di latar belakang: *Invoice PDF* (transaksi lunas), *Marketing/Retargeting* (mengingatkan *abandoned cart*), dan *General Alerts* (notifikasi Admin memverifikasi KYC ke Vendor).
 - **Zero-Data Storage (PCI-DSS Compliance)**: Tidak ada satupun kolom *Credit Card* yang disimpan di database lokal.
 - **Role-Based Access Control (RBAC)**: Pemisahan akses tingkat tinggi antara Admin, Wisatawan (B2C), dan Vendor (B2B). 
 - **Google Identity Services (GIS)**: Autentikasi modern Oauth 2.0 (Google Login) khusus untuk Wisatawan agar minim friksi (*Frictionless*).
@@ -55,7 +56,7 @@ graph TD
     subgraph "External Cloud Services"
         API <-->|Stream / Fetch| Cloudinary[Cloudinary Cloud Storage]
         API <-->|Charge / Webhook| Midtrans[Midtrans Payment Gateway]
-        API -->|Buffer to PDF| Mailer[SMTP Email Service]
+        API -->|Invoice & Admin Alerts| Mailer[SMTP Email Service]
         Cron -->|Marketing / Retargeting| Mailer
     end
 ```
