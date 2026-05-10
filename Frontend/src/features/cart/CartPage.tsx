@@ -91,7 +91,7 @@ export default function CartPage() {
     if (!isAuthenticated) {
       navigate('/login');
     } else {
-      alert(`Pesanan diproses! Total: Rp ${total.toLocaleString('id-ID')}`);
+      navigate('/checkout');
     }
   };
 
