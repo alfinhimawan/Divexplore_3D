@@ -231,9 +231,15 @@ export default function ProductDetailPage() {
             </div>
 
             <div className={styles.actionButtons}>
-              <button className={styles.btnPrimary} onClick={() => navigate('/cart')}>
+              <button className={styles.btnPrimary} onClick={() => {
+                if (!isAuthenticated) {
+                  navigate('/login');
+                } else {
+                  navigate('/cart');
+                }
+              }}>
                 <ShoppingCart size={18} />
-                Tambah ke Keranjang
+                {isAuthenticated ? 'Tambah ke Keranjang' : '🔒 Masuk untuk Memesan'}
               </button>
               <button className={styles.btnSuccess} onClick={handleBook}>
                 <Zap size={18} />
@@ -438,7 +444,7 @@ export default function ProductDetailPage() {
               </div>
               <div className={styles.relatedFooter}>
                 <div className={styles.relatedPrice}>Rp 65.000<span>/porsi</span></div>
-                <button className={styles.addBtn}>Tambah</button>
+                <button className={styles.addBtn} onClick={() => { if (!isAuthenticated) { navigate('/login'); } }}>{ isAuthenticated ? 'Tambah' : '🔒 Masuk'}</button>
               </div>
             </div>
           </div>
@@ -456,7 +462,7 @@ export default function ProductDetailPage() {
               </div>
               <div className={styles.relatedFooter}>
                 <div className={styles.relatedPrice}>Rp 450.000<span>/malam</span></div>
-                <button className={styles.addBtn}>Tambah</button>
+                <button className={styles.addBtn} onClick={() => { if (!isAuthenticated) { navigate('/login'); } }}>{ isAuthenticated ? 'Tambah' : '🔒 Masuk'}</button>
               </div>
             </div>
           </div>
@@ -474,7 +480,7 @@ export default function ProductDetailPage() {
               </div>
               <div className={styles.relatedFooter}>
                 <div className={styles.relatedPrice}>Rp 35.000<span>/pcs</span></div>
-                <button className={styles.addBtn}>Tambah</button>
+                <button className={styles.addBtn} onClick={() => { if (!isAuthenticated) { navigate('/login'); } }}>{ isAuthenticated ? 'Tambah' : '🔒 Masuk'}</button>
               </div>
             </div>
           </div>
@@ -492,7 +498,7 @@ export default function ProductDetailPage() {
               </div>
               <div className={styles.relatedFooter}>
                 <div className={styles.relatedPrice}>Rp 120.000<span>/orang</span></div>
-                <button className={styles.addBtn}>Tambah</button>
+                <button className={styles.addBtn} onClick={() => { if (!isAuthenticated) { navigate('/login'); } }}>{ isAuthenticated ? 'Tambah' : '🔒 Masuk'}</button>
               </div>
             </div>
           </div>
@@ -510,7 +516,7 @@ export default function ProductDetailPage() {
               </div>
               <div className={styles.relatedFooter}>
                 <div className={styles.relatedPrice}>Rp 80.000<span>/hari</span></div>
-                <button className={styles.addBtn}>Tambah</button>
+                <button className={styles.addBtn} onClick={() => { if (!isAuthenticated) { navigate('/login'); } }}>{ isAuthenticated ? 'Tambah' : '🔒 Masuk'}</button>
               </div>
             </div>
           </div>
