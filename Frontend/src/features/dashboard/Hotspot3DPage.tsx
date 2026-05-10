@@ -135,9 +135,13 @@ export default function Hotspot3DPage() {
   const [selectedHotspot, setSelectedHotspot] = useState(MOCK_HOTSPOTS[2]); // Default selection
   const [isBundled, setIsBundled] = useState(false);
 
-  const handleActionClick = () => {
+  const handleDetailClick = () => {
+    navigate('/product');
+  };
+
+  const handleCartClick = () => {
     if (isAuthenticated) {
-      navigate('/product');
+      navigate('/cart');
     } else {
       navigate('/login');
     }
@@ -255,8 +259,8 @@ export default function Hotspot3DPage() {
             </div>
             
             <div className={styles.actions}>
-              <button className={styles.btnOutline} onClick={handleActionClick}>Lihat Detail</button>
-              <button className={styles.btnPrimary} onClick={handleActionClick}>
+              <button className={styles.btnOutline} onClick={handleDetailClick}>Lihat Detail</button>
+              <button className={styles.btnPrimary} onClick={handleCartClick}>
                 <ShoppingCart size={18} />
                 Tambah ke Keranjang
               </button>

@@ -324,3 +324,6 @@
 }
 .socialIcons { display: flex; gap: 12px; cursor: pointer; }
 .socialIcons span:hover { color: #0ea5e9; }
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }

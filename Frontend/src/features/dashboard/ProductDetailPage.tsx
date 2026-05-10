@@ -44,10 +44,29 @@ export default function ProductDetailPage() {
     return perPerson * quantity;
   };
 
+  const saveToCart = () => {
+    const cartItem = {
+      id: '1',
+      name: 'Snorkeling Gili Premium',
+      type: 'SNORKELING',
+      location: 'Lombok',
+      price: 350000,
+      quantity: quantity,
+      image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
+      addons: [
+        ...(addons.makanSiang ? [{ name: 'Makan Siang', price: 75000 }] : []),
+        ...(addons.sewaAlat ? [{ name: 'Sewa Alat Selam', price: 100000 }] : []),
+        ...(addons.antarJemput ? [{ name: 'Antar-Jemput', price: 50000 }] : [])
+      ]
+    };
+    localStorage.setItem('divexplore_cart', JSON.stringify([cartItem]));
+  };
+
   const handleBook = () => {
     if (!isAuthenticated) {
       navigate('/login');
     } else {
+      saveToCart();
       navigate('/cart');
     }
   };
@@ -235,6 +254,7 @@ export default function ProductDetailPage() {
                 if (!isAuthenticated) {
                   navigate('/login');
                 } else {
+                  saveToCart();
                   navigate('/cart');
                 }
               }}>

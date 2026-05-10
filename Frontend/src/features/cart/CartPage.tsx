@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthContext';
 import { 
@@ -28,32 +28,30 @@ export default function CartPage() {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
   
-  // Mock cart items
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: '1',
-      name: 'Snorkeling Gili Premium',
-      type: 'SNORKELING',
-      location: 'Lombok',
-      price: 350000,
-      quantity: 2,
-      image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-      addons: [
-        { name: 'Makan Siang', price: 75000 },
-        { name: 'Sewa Alat Selam', price: 100000 }
-      ]
-    },
-    {
-      id: '2',
-      name: 'Gili Sea Garden Resort',
-      type: 'HOTEL',
-      location: 'Gili Trawangan, Lombok',
-      price: 450000,
-      quantity: 1,
-      image: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=400&q=80',
-      addons: []
-    }
-  ]);
+  // Read from localStorage or use default
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    const saved = localStorage.getItem('divexplore_cart');
+    if (saved) return JSON.parse(saved);
+    return [
+      {
+        id: '1',
+        name: 'Snorkeling Gili Premium',
+        type: 'SNORKELING',
+        location: 'Lombok',
+        price: 350000,
+        quantity: 2,
+        image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
+        addons: [
+          { name: 'Makan Siang', price: 75000 },
+          { name: 'Sewa Alat Selam', price: 100000 }
+        ]
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('divexplore_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
 
   const updateQuantity = (id: string, delta: number) => {
     setCartItems(items => 
