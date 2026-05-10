@@ -41,6 +41,7 @@ const createReview = async (userId, orderId, data) => {
         user_id: userId,
         order_id: orderId,
         product_id: data.product_id,
+        vendor_id: item.vendor_id,
         rating: data.rating,
         komentar: data.komentar,
       },

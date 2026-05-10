@@ -38,7 +38,7 @@ const requestWithdrawal = async (req, res, next) => {
         .json({ status: "error", message: "Anda bukan akun vendor." });
 
     const withdrawal = await withdrawalService.requestWithdrawal(
-      vendor.id,
+      req.user.id,
       value,
     );
 
@@ -61,7 +61,7 @@ const getMyWithdrawals = async (req, res, next) => {
         .status(403)
         .json({ status: "error", message: "Anda bukan akun vendor." });
 
-    const withdrawals = await withdrawalService.getVendorWithdrawals(vendor.id);
+    const withdrawals = await withdrawalService.getMyWithdrawals(req.user.id);
     res.status(200).json({
       status: "success",
       data: { withdrawals },

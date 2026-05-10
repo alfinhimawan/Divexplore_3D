@@ -90,7 +90,7 @@ const processWithdrawal = async (
   const transaction = await sequelize.transaction();
   try {
     const withdrawal = await Withdrawal.findByPk(withdrawalId, {
-      include: [{ model: Vendor, as: "vendor" }],
+      include: [{ model: Vendor, as: "vendor", required: true }],
       transaction,
       lock: transaction.LOCK.UPDATE, // Lock vendor agar pengembalian saldo aman
     });

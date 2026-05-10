@@ -116,6 +116,10 @@ const handleMidtransWebhook = async (payload) => {
             },
             { transaction },
           );
+
+          // Update Saldo Vendor
+          vendor.saldo_saat_ini = parseFloat(vendor.saldo_saat_ini) + pendapatanBersih;
+          await vendor.save({ transaction });
         }
       }
 

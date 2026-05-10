@@ -128,6 +128,11 @@ Lihat file [`.env.example`](.env.example) untuk daftar lengkap. Berikut yang waj
 | `MIDTRANS_SERVER_KEY`| *(dari Midtrans Sandbox)* | Server Key — jangan pernah expose ke frontend |
 | `MIDTRANS_CLIENT_KEY`| *(dari Midtrans Sandbox)* | Client Key — aman dikirim ke frontend |
 | `MIDTRANS_MERCHANT_ID`| `M3XXXXX` | Merchant ID dari dashboard Midtrans |
+| `CLOUDINARY_CLOUD_NAME`| `your_cloud_name` | Konfigurasi media storage Cloudinary |
+| `CLOUDINARY_API_KEY`| `your_api_key` | API Key Cloudinary |
+| `CLOUDINARY_API_SECRET`| `your_api_secret` | API Secret Cloudinary |
+| `SMTP_USER` | `email@gmail.com` | Opsional: Akun Gmail untuk Nodemailer |
+| `SMTP_PASS` | `password_app` | Opsional: App Password Gmail untuk Nodemailer |
 
 > ⚠️ **JANGAN** commit file `.env` ke GitHub. File ini sudah di-exclude via `.gitignore`.
 
@@ -189,23 +194,25 @@ Backend/
 │   ├── migrations/               # Migration file Sequelize (26 file, 21 tabel)
 │   ├── models/                   # Model Sequelize (ORM mapping ke DB)
 │   │   ├── auditlog.js           # Log aktivitas sensitif
+│   │   ├── crosssellingrule.js   # Aturan rekomendasi produk terkait
 │   │   ├── loyaltypoint.js       # Poin reward wisatawan
 │   │   ├── order.js              # Header transaksi
-│   │   ├── orderitem.js          # Detail item + metadata add-on
+│   │   ├── orderitem.js          # Detail item transaksi
+│   │   ├── paymentlog.js         # Log notifikasi Midtrans
 │   │   ├── product.js            # Katalog produk wisata
+│   │   ├── product3dhotspot.js   # Titik interaktif navigasi & produk di scene
 │   │   ├── productaddon.js       # Layanan tambahan produk
-│   │   ├── productinventory.js   # Stok & kuota
+│   │   ├── productinventory.js   # Stok & kuota harian
 │   │   ├── productvisit.js       # Log kunjungan produk (marketing)
 │   │   ├── promo.js              # Kode diskon
-│   │   ├── refund.js             # Pengajuan refund
+│   │   ├── refund.js             # Pengajuan pengembalian dana
 │   │   ├── review.js             # Ulasan & rating
-│   │   ├── scene.js              # Ruangan 3D
-│   │   ├── scene3dhotspot.js     # Titik interaktif di scene
-│   │   ├── user.js               # Data user (semua role)
+│   │   ├── scene.js              # Ruangan virtual 360°
+│   │   ├── user.js               # Data user (Wisatawan/Vendor/Admin)
 │   │   ├── userconsent.js        # GDPR consent log
 │   │   ├── vendor.js             # Profil bisnis vendor
-│   │   ├── vendordocument.js     # Dokumen KYC
-│   │   ├── virtualledger.js      # Buku kas virtual
+│   │   ├── vendordocument.js     # Dokumen KYC vendor
+│   │   ├── virtualledger.js      # Buku kas virtual & komisi
 │   │   └── withdrawal.js         # Request penarikan dana
 │   ├── routes/                   # Definisi endpoint API
 │   │   ├── adminRoutes.js
@@ -244,7 +251,7 @@ Backend/
 | Domain | Tabel |
 |---|---|
 | **Inti (Core)** | `Users`, `Vendors` |
-| **Katalog & 3D** | `Scenes`, `Products`, `Product3dHotspots`, `CrossSellingRules` |
+| **Katalog & 3D** | `Scenes`, `Products`, `Scene3DHotspots`, `ProductAddons`, `CrossSellingRules` |
 | **Inventory** | `ProductInventories` |
 | **Transaksi** | `Orders`, `OrderItems`, `Promos` |
 | **Keuangan & Loyalty**| `VirtualLedgers`, `LoyaltyPoints`, `Refunds`, `Withdrawals` |
@@ -254,199 +261,6 @@ Backend/
 ---
 
 ## 🌐 API Testing Guide (Postman Structure)
-
-> 💡 **Katalog Produk E-Commerce (Testing Data)**  
-> Untuk memudahkan pengujian endpoint `POST /api/products` dan `POST /api/products/:id/addons`, Anda dapat menyalin *raw JSON Payload* yang berisi data produk resmi dari tim E-Commerce dengan membuka menu di bawah ini:
->
-> <details>
-> <summary><b>📦 Buka Data Lengkap JSON Payload Produk (Semua Vendor)</b></summary>
-> 
-> ### 1. Vendor Aktivitas & Open Tur
-> ```json
-> {"nama_produk": "Open Tur Island Hopping (Sharing Boat)", "deskripsi": "Keliling 3 pulau dengan Glass Bottom Boat. Harga 1 pax.", "harga": 150000, "is_active": true}
-> {"nama_produk": "Open Tur Island Hopping (Private Boat)", "deskripsi": "Perjalanan keliling 3 pulau secara private. Harga 1 kapal.", "harga": 1200000, "is_active": true}
-> {"nama_produk": "Discovery Scuba Dive (DSD) 1 Log", "deskripsi": "Penyelaman tanpa sertifikasi didampingi Dive Master PADI.", "harga": 900000, "is_active": true}
-> {"nama_produk": "Fun Dive (2 Log)", "deskripsi": "Penyelaman khusus wisatawan bersertifikasi.", "harga": 1500000, "is_active": true}
-> {"nama_produk": "Sewa Jetski (15 Menit)", "deskripsi": "Pacu adrenalin di perairan aman didampingi instruktur.", "harga": 250000, "is_active": true}
-> {"nama_produk": "Banana Boat", "deskripsi": "Kapasitas 5 orang selama 15 menit.", "harga": 75000, "is_active": true}
-> {"nama_produk": "Stand-up Paddle", "deskripsi": "Eksplorasi laut dangkal secara ramah lingkungan. Harga per jam.", "harga": 100000, "is_active": true}
-> {"nama_produk": "Kayak Transparan", "deskripsi": "Menikmati pemandangan bawah laut dari atas kayak transparan. Harga per jam.", "harga": 150000, "is_active": true}
-> ```
-> 
-> ### 2. Vendor Peralatan & Perlengkapan (Add-on)
-> ```json
-> {"nama_produk": "Set Snorkel Premium + Kaki Katak", "deskripsi": "Sewa harian peralatan dasar dengan kualitas kaca anti-embun.", "harga": 75000, "is_active": true}
-> {"nama_produk": "Kamera Aksi (GoPro/Insta360)", "deskripsi": "Sewa harian dokumentasi aksi bawah air.", "harga": 200000, "is_active": true}
-> {"nama_produk": "Dry Bag (Tas Anti Air 10L)", "deskripsi": "Tas kedap air pelindung barang. Beli putus.", "harga": 85000, "is_active": true}
-> {"nama_produk": "Sunblock Ramah Terumbu Karang", "deskripsi": "Tabir surya aman untuk koral. Beli putus.", "harga": 120000, "is_active": true}
-> {"nama_produk": "Rash Guard / Wetsuit Ringan", "deskripsi": "Pakaian pelindung ubur-ubur & sinar UV. Sewa harian.", "harga": 50000, "is_active": true}
-> ```
-> 
-> ### 3. Vendor Akomodasi Homestay
-> ```json
-> {"nama_produk": "Standard Garden View", "deskripsi": "Kamar standar dengan pemandangan taman.", "harga": 400000, "is_active": true}
-> {"nama_produk": "Deluxe Ocean View", "deskripsi": "Kamar luas balkon pantai, termasuk sarapan. Kapasitas 2 Org.", "harga": 850000, "is_active": true}
-> {"nama_produk": "Private Family Bungalow", "deskripsi": "Bungalow mewah kolam renang pribadi. Kapasitas 4 Org.", "harga": 2000000, "is_active": true}
-> {"nama_produk": "[Add-on] Paket Spa / Sauna", "deskripsi": "Relaksasi otot tubuh pasca-aktivitas menyelam.", "harga": 250000, "is_active": true}
-> ```
-> 
-> ### 4. Vendor Kuliner & Oleh-Oleh (UMKM)
-> ```json
-> // Sambal Seafood Pak Sukardi
-> {"nama_produk": "Paket Seafood Platter Saus Sukardi", "deskripsi": "Kombinasi udang, cumi, kerang saus pedas (2 Orang).", "harga": 250000, "is_active": true}
-> {"nama_produk": "Kepiting Saus Padang Pesisir", "deskripsi": "Kepiting bakau bumbu saus padang.", "harga": 150000, "is_active": true}
-> {"nama_produk": "Cumi Bakar Madu Pedas", "deskripsi": "Cumi utuh dibakar olesan madu dan sambal terasi.", "harga": 75000, "is_active": true}
-> {"nama_produk": "Udang Bakar Jimbaran", "deskripsi": "Udang besar bumbu kuning plus sambal matah.", "harga": 85000, "is_active": true}
-> {"nama_produk": "Plecing Kangkung Seafood", "deskripsi": "Kangkung segar dengan taburan udang rebon.", "harga": 25000, "is_active": true}
-> {"nama_produk": "Es Kuwut Khas Lombok", "deskripsi": "Serutan kelapa, melon, selasih, perasan jeruk nipis.", "harga": 25000, "is_active": true}
-> 
-> // Warung Ikan Bakar Ibu Marwah
-> {"nama_produk": "Ikan Kerapu Bakar Bumbu Taliwang", "deskripsi": "Kerapu bakar pedas khas Taliwang plus nasi.", "harga": 90000, "is_active": true}
-> {"nama_produk": "Ikan Kakap Merah Bakar Kecap", "deskripsi": "Kakap segar bakar kecap manis gurih.", "harga": 85000, "is_active": true}
-> {"nama_produk": "Sate Pusut Ikan Marlin", "deskripsi": "Sate lilit daging marlin cincang (5 tusuk).", "harga": 40000, "is_active": true}
-> {"nama_produk": "Ikan Baronang Bakar Rica-Rica", "deskripsi": "Ikan baronang bakar siraman bumbu rica-rica pedas.", "harga": 80000, "is_active": true}
-> {"nama_produk": "Sup Ikan Kuah Asam", "deskripsi": "Sup ikan laut bening rasa asam pedas.", "harga": 60000, "is_active": true}
-> {"nama_produk": "Es Kelapa Muda Jeruk Nipis", "deskripsi": "Kelapa utuh dingin perasan jeruk nipis.", "harga": 20000, "is_active": true}
-> 
-> // Oleh-Oleh Bahari DIVEXPLORER
-> {"nama_produk": "Dodol Rumput Laut Premium", "deskripsi": "Camilan ekstrak rumput laut asli Lombok.", "harga": 40000, "is_active": true}
-> {"nama_produk": "Sambal Roa Pesisir Lombok", "deskripsi": "Sambal botol ikan roa asap.", "harga": 35000, "is_active": true}
-> {"nama_produk": "Kerupuk Kulit Ikan Tenggiri", "deskripsi": "Kerupuk renyah kulit ikan laut segar.", "harga": 30000, "is_active": true}
-> {"nama_produk": "Abon Ikan Tuna Pedas Manis", "deskripsi": "Lauk awetan ikan tuna pilihan 250gr.", "harga": 45000, "is_active": true}
-> {"nama_produk": "Ikan Asin Tenggiri Belah", "deskripsi": "Ikan asin kualitas ekspor kemasan vakum.", "harga": 50000, "is_active": true}
-> {"nama_produk": "Teri Crispy Balado Daun Jeruk", "deskripsi": "Camilan teri kering balado daun jeruk.", "harga": 25000, "is_active": true}
-> {"nama_produk": "Kopi Bubuk Rumput Laut", "deskripsi": "Kopi Robusta dipadu ekstrak rumput laut.", "harga": 30000, "is_active": true}
-> {"nama_produk": "Cumi Asin Kering Premium", "deskripsi": "Cumi asin kualitas super 200gr.", "harga": 60000, "is_active": true}
-> {"nama_produk": "Keripik Teripang Emas", "deskripsi": "Camilan bergizi tinggi dari teripang laut.", "harga": 75000, "is_active": true}
-> {"nama_produk": "[Bundling] Hampers Bahari", "deskripsi": "Dodol, Sambal, Abon, Kerupuk gratis totebag.", "harga": 200000, "is_active": true}
-> ```
-> 
-> ### 5. Vendor Fotografi & Dokumentasi
-> ```json
-> {"nama_produk": "Fotografer Darat/Pantai", "deskripsi": "Sesi foto pesisir kamera Mirrorless/DSLR. Sewa per jam.", "harga": 300000, "is_active": true}
-> {"nama_produk": "Pendampingan Foto Bawah Air", "deskripsi": "Fotografer bersertifikat menyelam. Sewa per jam.", "harga": 500000, "is_active": true}
-> {"nama_produk": "Dokumentasi Udara (Drone)", "deskripsi": "Rekaman video estetik dari atas pulau oleh Pilot DJI profesional. Sewa per jam.", "harga": 600000, "is_active": true}
-> ```
-> </details>
->
-> <details>
-> <summary><b>⚙️ Buka Data Lengkap JSON Payload Seluruh Endpoint (Auth, Transaksi, Admin, dsb)</b></summary>
-> 
-> ### 1. Register Wisatawan (`POST /api/auth/register`)
-> ```json
-> {
->   "nama_lengkap": "Budi Wisatawan",
->   "email": "budi.wisatawan@divexplore.com",
->   "password": "PasswordRahasia123!"
-> }
-> ```
-> 
-> ### 2. Mendaftar Menjadi Vendor (`POST /api/vendors`)
-> *Catatan: User harus login terlebih dahulu dengan Token JWT.*
-> ```json
-> {
->   "nama_toko": "Warung Seafood Pak Sukardi",
->   "nama_penanggung_jawab": "Bapak Sukardi",
->   "no_telepon_bisnis": "089876543210",
->   "kategori": "Kuliner",
->   "alamat_lengkap": "Pantai Senggigi, Lombok Barat",
->   "link_google_maps": "https://maps.google.com/contoh"
-> }
-> ```
-> 
-> ### 3. Login (`POST /api/auth/login`)
-> ```json
-> {
->   "email": "budi.wisatawan@divexplore.com",
->   "password": "PasswordRahasia123!"
-> }
-> ```
-> 
-> ### 4. Checkout Order / Reservasi (`POST /api/orders/checkout`)
-> ```json
-> {
->   "items": [
->     {
->       "product_id": "UUID-PRODUK-DISINI",
->       "qty": 2
->     }
->   ],
->   "kode_promo": "SUMMER3D"
-> }
-> ```
-> 
-> ### 5. Memberi Ulasan (`POST /api/reviews`)
-> ```json
-> {
->   "product_id": "UUID-PRODUK-DISINI",
->   "rating": 5,
->   "komentar": "Pelayanannya sangat bagus, alat snorkelingnya bersih dan perahunya tepat waktu!"
-> }
-> ```
->
-> ### 6. Admin Verifikasi Vendor KYC (`PUT /api/admin/vendors/:id/kyc`)
-> ```json
-> {
->   "status_kyc": "approved",
->   "catatan_admin": "Dokumen NIB dan KTP sesuai."
-> }
-> ```
->
-> ### 7. Buat Promo / Voucher (`POST /api/promos`)
-> ```json
-> {
->   "kode_promo": "SUMMER3D",
->   "diskon_persen": 15,
->   "max_potongan": 50000,
->   "valid_until": "2026-06-30T23:59:59Z"
-> }
-> ```
->
-> ### 8. Setup Bundling Add-ons (`POST /api/vendors/me/products/:id/cross-selling`)
-> ```json
-> {
->   "addon_id": "UUID-PRODUK-ADDON-DISINI"
-> }
-> ```
->
-> ### 9. Vendor Tarik Dana / Withdrawal (`POST /api/vendors/me/withdrawals`)
-> ```json
-> {
->   "jumlah": 500000,
->   "nama_bank": "BCA",
->   "nomor_rekening": "1234567890",
->   "nama_pemilik_rekening": "Bapak Sukardi"
-> }
-> ```
->
-> ### 10. Pengajuan Refund (`POST /api/orders/:id/refund`)
-> ```json
-> {
->   "alasan_refund": "Cuaca buruk, pihak pelabuhan melarang kapal berlayar."
-> }
-> ```
->
-> ### 11. Buat 3D Scene / Ruang Virtual (`POST /api/scenes`)
-> ```json
-> {
->   "nama_scene": "Pulau Gili Trawangan 360",
->   "panorama_url": "https://cloudinary.com/contoh.jpg",
->   "is_active": true
-> }
-> ```
->
-> ### 12. Pasang 3D Hotspot di Model (`POST /api/scenes/:id/hotspots`)
-> ```json
-> {
->   "product_id": "UUID-PRODUK-DISINI",
->   "target_scene_id": "",
->   "type": "product",
->   "icon_type": "info",
->   "coordinates_json": "{\"x\": 1.5, \"y\": 2.0, \"z\": -1.0}",
->   "description": "Klik untuk menyewa perlengkapan Snorkel!"
-> }
-> ```
-> </details>
 
 ### 🚦 Standard HTTP Status Codes
 Seluruh *endpoint* mematuhi standar RESTful dengan format balasan (Response) JSON terstruktur:
@@ -460,54 +274,29 @@ Seluruh *endpoint* mematuhi standar RESTful dengan format balasan (Response) JSO
 
 ### ⚙️ Postman Environment & Automation Scripts
 
-Untuk mempermudah testing dan menghindari *copy-paste* token manual, silakan buat **Environment** di Postman dengan variabel berikut:
+Untuk mempermudah testing dan menghindari *copy-paste* token manual, silakan buat **Environment** di Postman dengan variabel berikut (Atau biarkan script Test Postman yang mengisinya secara otomatis):
 
 | Variable | Initial Value | Keterangan |
 |---|---|---|
 | `base_url` | `http://localhost:5000` | URL utama API |
-| `admin_token` | *(kosong)* | Terisi otomatis saat admin login |
-| `vendor_token` | *(kosong)* | Terisi otomatis saat vendor login/register |
-| `wisatawan_token` | *(kosong)* | Terisi otomatis saat wisatawan login |
+| `admin_token` | *(kosong)* | Terisi otomatis saat Admin login |
+| `vendor_token` | *(kosong)* | Token aktif yang mewakili Vendor yang terakhir login |
+| `vendor_v1_token` | *(kosong)* | Token khusus Vendor V1 (Aktivitas) |
+| `vendor_v2_token` | *(kosong)* | Token khusus Vendor V2 (Peralatan) |
+| `vendor_v3_token` | *(kosong)* | Token khusus Vendor V3 (Homestay) |
+| `vendor_v4_token` | *(kosong)* | Token khusus Vendor V4 (Kuliner) |
+| `vendor_v5_token` | *(kosong)* | Token khusus Vendor V5 (Fotografi) |
+| `wisatawan_token` | *(kosong)* | Terisi otomatis saat Wisatawan login |
 | `vendor_id` | *(kosong)* | Terisi otomatis saat vendor inisialisasi profil |
 
 💡 **Tips Script Otomatisasi (Tests Tab)**
-Tambahkan script berikut di tab **Tests** pada request yang sesuai di Postman agar token tersimpan otomatis ke environment:
-
-**1. Login Manual (`POST /api/auth/login`)**  
-Gunakan script ini karena sudah cukup pintar mendeteksi apakah yang login itu Admin atau Vendor:
+Dalam Postman Collection yang disediakan (`Divexplore_3D_Collection.json`), sudah terpasang script otomatis di tab **Tests** pada request Auth. Contohnya pada saat Login Vendor:
 ```javascript
 const res = pm.response.json();
 if (res.status === "success") {
-    const role = res.data.user.role;
-    pm.environment.set(`${role}_token`, res.data.token);
-    console.log(`Token ${role} berhasil disimpan!`);
-}
-```
-
-**2. Register Vendor (`POST /api/auth/register`)**
-```javascript
-const res = pm.response.json();
-if (res.status === "success") {
-    pm.environment.set("vendor_token", res.data.token);
-    console.log("Token vendor berhasil disimpan!");
-}
-```
-
-**3. Google Login (`POST /api/auth/google`)**
-```javascript
-const res = pm.response.json();
-if (res.status === "success") {
-    pm.environment.set("wisatawan_token", res.data.token);
-    console.log("Token wisatawan berhasil disimpan!");
-}
-```
-
-**4. Initialize Vendor Profile (`POST /api/vendors`)**
-```javascript
-const res = pm.response.json();
-if (res.status === "success") {
-    pm.environment.set("vendor_id", res.data.vendor.id);
-    console.log("Vendor ID berhasil disimpan:", res.data.vendor.id);
+    pm.environment.set("vendor_v1_token", res.data.token);
+    pm.environment.set("vendor_token", res.data.token); // Set menjadi vendor yang aktif secara global
+    console.log("Token vendor_v1_token berhasil disimpan!");
 }
 ```
 
@@ -517,11 +306,11 @@ Agar tidak perlu memasukkan token satu per satu di setiap request, atur **Author
 2. Pilih tab **Authorization**.
 3. Type: pilih **Bearer Token**.
 4. Token: ketik `{{vendor_token}}` (Atau `{{admin_token}}` / `{{wisatawan_token}}` sesuai foldernya).
-5. Pada semua *request* di dalam folder tersebut, biarkan Authorization-nya berstatus **Inherit auth from parent**.
+5. Pada semua *request* di dalam folder tersebut, pastikan Authorization-nya berstatus **Inherit auth from parent**.
 
 ---
 
-Berikut adalah detail endpoint lengkap sesuai urutan folder pengujian di Postman:
+Berikut adalah detail endpoint lengkap sesuai urutan folder pengujian di Postman (Berdasarkan `Divexplore_3D_Collection.json`):
 
 ### **📂 00 - Health Check**
 | Nama Request | Method | Endpoint | Deskripsi | Auth / Role |
@@ -532,19 +321,20 @@ Berikut adalah detail endpoint lengkap sesuai urutan folder pengujian di Postman
 ### **📂 01 - Auth**
 | Nama Request | Method | Endpoint | Deskripsi | Auth / Role |
 |---|---|---|---|---|
-| Register Vendor | `POST` | `/api/auth/register` | Registrasi manual vendor baru | — |
+| [V1-V5] Register Vendor | `POST` | `/api/auth/register` | 5 Request Registrasi manual untuk 5 tipe vendor | — |
 | Google Login (Wisatawan) | `POST` | `/api/auth/google` | Login via Google (Wisatawan) | — |
-| Login Manual | `POST` | `/api/auth/login` | Login manual (Admin/Vendor) | — |
+| Login Manual Admin | `POST` | `/api/auth/login` | Login manual Admin | — |
+| [V1-V5] Login Manual Vendor | `POST` | `/api/auth/login` | 5 Request Login manual untuk 5 tipe vendor | — |
 | Get My Profile | `GET` | `/api/auth/me` | Lihat profil user yang sedang aktif | ✅ All |
 | Update Profile | `PUT` | `/api/auth/me` | Update profil (Telepon, Alamat, Foto) | ✅ All |
 | Get Loyalty Points | `GET` | `/api/auth/me/points` | Lihat saldo loyalty points | ✅ Wisatawan |
-| Submit GDPR Consent | `POST` | `/api/auth/consent` | Pencatatan persetujuan privasi | ✅ All |
+| Submit GDPR Consent | `POST` | `/api/auth/consent` | Pencatatan persetujuan privasi privasi | ✅ All |
 | Soft Delete Account | `DELETE` | `/api/auth/account` | Hapus akun (Soft Delete - GDPR) | ✅ All |
 
 ### **📂 02 - Vendor**
 | Nama Request | Method | Endpoint | Deskripsi | Auth / Role |
 |---|---|---|---|---|
-| Initialize Vendor Profile | `POST` | `/api/vendors` | Inisialisasi profil bisnis vendor | ✅ Vendor |
+| [V1-V5] Init Profil Vendor | `POST` | `/api/vendors` | 5 Request Inisialisasi profil bisnis untuk 5 vendor | ✅ Vendor |
 | Get My Vendor Profile | `GET` | `/api/vendors/me` | Lihat profil bisnis sendiri | ✅ Vendor |
 | Update Vendor Profile | `PUT` | `/api/vendors/me` | Update data bisnis/toko | ✅ Vendor |
 | Get Public Vendor Profile | `GET` | `/api/vendors/:id` | Lihat profil publik vendor | — |
@@ -579,7 +369,7 @@ Berikut adalah detail endpoint lengkap sesuai urutan folder pengujian di Postman
 |---|---|---|---|---|
 | Get Public Products | `GET` | `/api/products` | Katalog produk publik | — |
 | Get Product Detail | `GET` | `/api/products/:id` | Detail produk + ulasan + metadata 3D | — |
-| Create Product | `POST` | `/api/products` | Vendor menambah produk baru | ✅ Vendor |
+| [V1-V5] Buat Produk | `POST` | `/api/products` | Berbagai request pembuatan katalog produk untuk tiap vendor | ✅ Vendor |
 | Update Product | `PUT` | `/api/products/:id` | Vendor update data produk | ✅ Vendor |
 | Delete Product | `DELETE` | `/api/products/:id` | Vendor menghapus produk | ✅ Vendor |
 | Add Bundling Rule | `POST` | `/api/products/:id/bundling` | Menambah aturan bundling produk | ✅ Vendor |
@@ -637,11 +427,11 @@ Berikut adalah detail endpoint lengkap sesuai urutan folder pengujian di Postman
 ### **📂 12 - Media Uploads (Cloudinary)**
 | Nama Request | Method | Endpoint | Deskripsi | Auth / Role |
 |---|---|---|---|---|
-| Upload Foto Profil (Max 5MB) | `POST` | `/api/upload/profile` | Upload foto profil User/Vendor | ✅ All |
-| Upload Foto Produk (Max 5MB) | `POST` | `/api/upload/product` | Upload logo & foto produk (Products) | ✅ Vendor |
-| Upload Dokumen KYC (Max 10MB) | `POST` | `/api/upload/document` | Upload dokumen verifikasi KTP/NIB | ✅ Vendor |
-| Upload Panorama 360 (Max 10MB) | `POST` | `/api/upload/panorama` | Upload background 360° untuk Scene | ✅ Admin |
-| Upload 3D Asset (Max 30MB) | `POST` | `/api/upload/3d-model` | Upload file mentah 3D (.glb/.gltf) | ✅ Admin |
+| Upload Foto Profil | `POST` | `/api/upload/profile` | Upload foto profil User/Vendor (Max 5MB) | ✅ All |
+| Upload Foto Produk | `POST` | `/api/upload/product` | Upload logo & foto produk (Max 5MB) | ✅ Vendor |
+| Upload Dokumen KYC | `POST` | `/api/upload/document` | Upload dokumen verifikasi (Max 10MB) | ✅ Vendor |
+| Upload Panorama 360| `POST` | `/api/upload/panorama` | Upload background 360° Scene (Max 10MB) | ✅ Admin |
+| Upload 3D Asset | `POST` | `/api/upload/3d-model` | Upload file mentah .glb/.gltf (Max 30MB) | ✅ Admin |
 
 ---
 
@@ -659,7 +449,6 @@ Berikut adalah detail endpoint lengkap sesuai urutan folder pengujian di Postman
     ↓
   4. Checkout (POST /api/orders)
       → Inventory LOCK 15 menit
-      → Promo Code dihitung
       → Add-on harga dijumlah
       → Audit Log dicatat
     ↓
