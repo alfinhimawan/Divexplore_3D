@@ -40,7 +40,7 @@ const generateInvoiceBuffer = (order) => {
          
       doc.fontSize(12)
          .font("Helvetica")
-         .text("E-VOUCHER & INVOICE RESERVASI", 40, 70, { characterSpacing: 2 });
+         .text("INVOICE RESERVASI WISATA", 40, 70, { characterSpacing: 2 });
 
       // Generate QR Code for Order ID
       try {
@@ -159,7 +159,7 @@ const generateInvoiceBuffer = (order) => {
          .text("SYARAT & KETENTUAN PENGGUNAAN:", 40, footerY + 15);
          
       doc.font("Helvetica").fontSize(8)
-         .text("1. E-Voucher / Invoice ini adalah bukti reservasi sah yang dikeluarkan oleh Divexplore 3D.", 40, footerY + 30)
+         .text("1. Invoice PDF ini adalah bukti reservasi sah yang dikeluarkan oleh Divexplore 3D.", 40, footerY + 30)
          .text("2. Paket Wisata Bahari dan add-on UMKM yang dipesan tunduk pada kebijakan masing-masing operator.", 40, footerY + 45)
          .text("3. Jaga kerahasiaan Kode Pemesanan (Order ID) dan QR Code Anda dari pihak yang tidak berkepentingan.", 40, footerY + 60)
          .text("4. Pembatalan atau *refund* hanya dapat dilakukan sesuai dengan prosedur pengembalian dana Divexplore 3D.", 40, footerY + 75);

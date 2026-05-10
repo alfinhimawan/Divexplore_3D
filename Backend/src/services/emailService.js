@@ -83,7 +83,7 @@ const sendInvoiceEmail = async (userEmail, order, pdfBuffer) => {
         <p style="margin: 5px 0; color: #4b5563;">Status: <span style="background-color: #10b981; color: white; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; letter-spacing: 0.5px;">LUNAS</span></p>
       </div>
       
-      <p style="color: #4b5563; font-size: 15px; line-height: 1.6;">Sebagai referensi sah (E-Voucher / Invoice), kami telah melampirkan dokumen resmi dari Divexplore 3D pada email ini. Tunjukkan atau simpan dokumen ini jika diperlukan.</p>
+      <p style="color: #4b5563; font-size: 15px; line-height: 1.6;">Sebagai referensi sah (Invoice Pembayaran), kami telah melampirkan dokumen resmi dari Divexplore 3D pada email ini. Tunjukkan atau simpan dokumen ini jika diperlukan.</p>
       
       <div style="text-align: center; margin: 30px 0;">
         <a href="https://divexplore-3d.com/user/orders" style="background-color: #f59e0b; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);">Lihat Pesanan Anda Sekarang</a>
@@ -93,11 +93,11 @@ const sendInvoiceEmail = async (userEmail, order, pdfBuffer) => {
     const info = await transporter.sendMail({
       from: `"Divexplore-3D" <${process.env.SMTP_USER}>`,
       to: userEmail,
-      subject: `✅ E-Voucher & Invoice Lunas: Order #${order.id.substring(0,8).toUpperCase()}`,
-      html: baseHtmlTemplate("E-Voucher & Invoice Reservasi", htmlContent),
+      subject: `✅ Invoice Lunas: Order #${order.id.substring(0,8).toUpperCase()}`,
+      html: baseHtmlTemplate("Invoice Reservasi", htmlContent),
       attachments: [
         {
-          filename: `E-Voucher_Divexplore_${order.id.substring(0,8)}.pdf`,
+          filename: `Invoice_Divexplore_${order.id.substring(0,8)}.pdf`,
           content: pdfBuffer,
           contentType: "application/pdf",
         },
