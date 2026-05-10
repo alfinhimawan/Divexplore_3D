@@ -28,8 +28,9 @@
 |---|---|
 | **Runtime** | Node.js v24 |
 | **Framework** | Express.js v5 |
-| **Database** | PostgreSQL |
-| **Cloud Storage** | Cloudinary (Image, PDF, 3D Assets) |
+| **Database** | PostgreSQL via Supabase (BaaS) |
+| **Cloud Storage** | Cloudinary CDN (Image, Invoice PDF, 3D Assets) |
+| **Cloud Server** | Jagoan Hosting (Cloud VPS) |
 | **ORM** | Sequelize v6 + Sequelize CLI |
 | **Authentication** | JWT (`jsonwebtoken`) + Google OAuth 2.0 (`google-auth-library`) |
 | **Input Validation** | Joi |
@@ -46,18 +47,19 @@
 
 ```mermaid
 graph TD
-    Client[Frontend / Wisatawan / Vendor] -->|REST API| API[Node.js Express Backend]
+    Client[Frontend / Wisatawan / Vendor] -->|REST API| API[Node.js Express Backend (Jagoan Hosting)]
     
-    subgraph "Internal Infrastructure"
-        API <-->|Read / Write| DB[(PostgreSQL Database)]
-        Cron[Node-Cron Scheduler] -->|Release Inventory| DB
+    subgraph "Backend Infrastructure (Jagoan Hosting VPS)"
+        API
+        Cron[Node-Cron Scheduler]
     end
     
     subgraph "External Cloud Services"
-        API <-->|Stream / Fetch| Cloudinary[Cloudinary Cloud Storage]
+        API <-->|Read / Write| DB[(Supabase PostgreSQL BaaS)]
+        Cron -->|Release Inventory / Retargeting| DB
+        API <-->|Upload / Stream| Cloudinary[Cloudinary CDN Storage]
         API <-->|Charge / Webhook| Midtrans[Midtrans Payment Gateway]
-        API -->|Invoice & Admin Alerts| Mailer[SMTP Email Service]
-        Cron -->|Marketing / Retargeting| Mailer
+        API -->|Send Invoice / Alerts| Mailer[SMTP Email Service]
     end
 ```
 
@@ -109,6 +111,51 @@ Server berjalan di: **http://localhost:5000**
 
 ---
 
+## 🚀 Git Workflow & Panduan Deployment (Jagoan Hosting & Supabase)
+
+Untuk menjaga kolaborasi tim tetap aman dan menghindari konflik kode, proyek ini menggunakan standar **Git Flow**.
+
+### 1. Alur Kerja Git (Git Workflow) untuk Developer
+Saat Anda ingin mengerjakan fitur baru (misal: memodifikasi *payment*), ikuti urutan berikut:
+1. **Pull dari Develop:** Pindah ke *branch* utama *development* dan tarik kode terbaru dari anggota tim lain (termasuk tim Frontend jika ada di *monorepo*).
+   `git checkout develop` -> `git pull origin develop`
+2. **Buat Branch Fitur Anda:** Buat cabang terisolasi untuk pekerjaan Anda.
+   `git checkout -b feat/nama-pekerjaan-anda`
+3. **Kerjakan & Commit:** Ubah kode, lalu simpan.
+   `git add .` -> `git commit -m "feat: menambahkan logic A"`
+4. **Push ke GitHub:** Unggah *branch* fitur Anda ke GitHub.
+   `git push origin feat/nama-pekerjaan-anda`
+5. **Merge ke Develop:** Lakukan *Pull Request* (PR) di GitHub dari `feat` milik Anda menuju `develop`.
+6. **Merge ke Main (Production):** Setelah semua fitur stabil di *development*, ketua tim akan melakukan *merge* dari `develop` ke `main` untuk rilis.
+
+### 2. Panduan Migrasi Database ke Supabase
+Migrasi *database* (tabel dan relasi) beserta isian *Seeder* ke Supabase **TIDAK PERLU** dilakukan dari terminal cPanel Jagoan Hosting. Anda murni melakukannya langsung dari **Lokal komputer Anda**.
+
+1. Ubah variabel koneksi di `.env` lokal Anda ke *URI* yang diberikan oleh Supabase:
+   ```env
+   DB_HOST=aws-0-ap-southeast-1.pooler.supabase.com
+   DB_PORT=5432
+   DB_NAME=postgres
+   DB_USERNAME=postgres.xxxxxxxxxx
+   DB_PASSWORD=password_supabase_anda
+   ```
+2. Jalankan perintah migrasi *Sequelize* dari terminal VSCode lokal Anda:
+   ```bash
+   npx sequelize-cli db:migrate
+   npx sequelize-cli db:seed:all
+   ```
+   *Selesai! Sequelize CLI di laptop Anda akan menembak langsung ke awan (Supabase) dan membangun seluruh 21 tabel proyek beserta data dummynya.*
+
+### 3. Update Server (Jagoan Hosting VPS / cPanel)
+Ketika kode sudah masuk ke *branch* `main` dan siap rilis ke publik:
+1. Masuk ke SSH / Terminal Jagoan Hosting Anda.
+2. Masuk ke direktori proyek backend: `cd /path/to/divexplore-backend`
+3. Tarik kode versi rilis terbaru: `git pull origin main`
+4. Install dependensi baru (jika ada *library* yang bertambah di `package.json`): `npm install --production`
+5. *Restart* server *Node.js* menggunakan PM2 agar perubahan langsung aktif: `pm2 restart divexplore-backend`
+
+---
+
 ## 🔑 Environment Variables
 
 Lihat file [`.env.example`](.env.example) untuk daftar lengkap. Berikut yang wajib diisi:
@@ -117,7 +164,7 @@ Lihat file [`.env.example`](.env.example) untuk daftar lengkap. Berikut yang waj
 |---|---|---|
 | `DB_USERNAME` | `postgres` | Username PostgreSQL |
 | `DB_PASSWORD` | `password` | Password PostgreSQL |
-| `DB_HOST` | `127.0.0.1` | Host database |
+| `DB_HOST` | `aws-0-ap-southeast-1.pooler.supabase.com` | Host Supabase / Lokal |
 | `DB_PORT` | `5432` | Port PostgreSQL |
 | `DB_NAME` | `divexplore_db` | Nama database |
 | `PORT` | `5000` | Port server |

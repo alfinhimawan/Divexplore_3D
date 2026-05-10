@@ -102,7 +102,16 @@ const googleLogin = async ({ id_token }) => {
     throw err;
   }
 
-  const { sub: google_id, email, name: nama_lengkap } = payload;
+  const { sub: google_id, email, name: nama_lengkap, email_verified } = payload;
+
+  // VERIFIKASI GMAIL: Pastikan email Google pengguna berstatus 'verified'
+  if (!email_verified) {
+    const err = new Error(
+      "Alamat Gmail Anda belum diverifikasi oleh Google. Silakan verifikasi Gmail Anda terlebih dahulu.",
+    );
+    err.statusCode = 403; // Forbidden
+    throw err;
+  }
 
   // Cari user berdasarkan google_id atau email
   let user = await User.findOne({
