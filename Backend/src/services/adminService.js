@@ -98,7 +98,32 @@ const updateKycStatus = async (vendorId, { status_kyc, catatan_admin }) => {
     const emailService = require("./emailService");
     const subject = `Update Status Verifikasi KYC - ${vendor.nama_toko}`;
     const textBody = `Halo ${vendor.user.nama_lengkap},\n\nStatus verifikasi (KYC) toko Anda (${vendor.nama_toko}) saat ini telah diperbarui menjadi: ${status_kyc.toUpperCase()}.\n\nCatatan Admin: ${catatan_admin || "-"}\n\nTerima kasih,\nTim Admin Divexplore 3D`;
-    emailService.sendGeneralEmail(vendor.user.email, subject, textBody);
+    
+    const statusColor = status_kyc === "approved" ? "#10b981" : (status_kyc === "rejected" ? "#ef4444" : "#f59e0b");
+    const statusIcon = status_kyc === "approved" ? "✅" : (status_kyc === "rejected" ? "❌" : "⏳");
+
+    const htmlBody = `
+      <div style="font-family: 'Inter', 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; border-radius: 12px;">
+        <div style="background-color: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;">
+          <h2 style="color: #1f2937; margin-top: 0;">Update Verifikasi KYC Mitra ${statusIcon}</h2>
+          <p style="color: #4b5563; font-size: 16px;">Halo, <strong>${vendor.user.nama_lengkap}</strong></p>
+          <p style="color: #4b5563; font-size: 15px;">Kami ingin menginformasikan bahwa status verifikasi toko Anda (<strong>${vendor.nama_toko}</strong>) telah diperbarui menjadi:</p>
+          
+          <div style="margin: 25px 0;">
+            <span style="background-color: ${statusColor}; color: white; padding: 8px 20px; border-radius: 20px; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;">${status_kyc}</span>
+          </div>
+
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; text-align: left; border-left: 4px solid #6b7280; margin: 20px 0;">
+            <p style="margin: 0 0 5px 0; color: #374151; font-weight: bold; font-size: 14px;">Catatan dari Tim Admin:</p>
+            <p style="margin: 0; color: #4b5563; font-style: italic;">"${catatan_admin || "Tidak ada catatan khusus."}"</p>
+          </div>
+
+          <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">Terima kasih telah menjadi bagian dari Divexplore 3D.<br>Mari majukan pariwisata bahari bersama-sama!</p>
+        </div>
+      </div>
+    `;
+
+    emailService.sendGeneralEmail(vendor.user.email, subject, textBody, htmlBody);
   }
 
   return vendor.reload(); // kembalikan data terbaru
@@ -109,7 +134,7 @@ const updateKycStatus = async (vendorId, { status_kyc, catatan_admin }) => {
  * Menggunakan data VirtualLedger untuk akurasi split payment.
  */
 const getGmvReport = async () => {
-  const { VirtualLedger } = require("../models");
+  const { VirtualLedger, sequelize } = require("../models");
   const stats = await VirtualLedger.findOne({
     attributes: [
       [sequelize.fn("SUM", sequelize.col("pendapatan_kotor")), "total_gmv"],

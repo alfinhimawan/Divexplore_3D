@@ -34,3 +34,6 @@ coverage/
 
 # File uploads (temporary local storage sebelum upload ke AWS S3)
 uploads/
+# Postman & Generators
+Divexplore_3D_Collection.json
+generate_postman.js

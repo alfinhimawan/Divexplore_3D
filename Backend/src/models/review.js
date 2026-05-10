@@ -10,6 +10,10 @@ module.exports = (sequelize, DataTypes) => {
         as: "vendor",
       });
       Review.belongsTo(models.Order, { foreignKey: "order_id", as: "order" });
+      Review.belongsTo(models.Product, {
+        foreignKey: "product_id",
+        as: "product",
+      });
     }
   }
 
@@ -32,6 +36,10 @@ module.exports = (sequelize, DataTypes) => {
       order_id: {
         type: DataTypes.UUID,
         allowNull: false,
+      },
+      product_id: {
+        type: DataTypes.UUID,
+        allowNull: true, // Ubah jadi true dulu untuk menghindari error existing data
       },
       rating: {
         type: DataTypes.INTEGER,

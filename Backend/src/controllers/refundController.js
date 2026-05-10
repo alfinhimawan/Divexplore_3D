@@ -27,7 +27,7 @@ const requestRefund = async (req, res, next) => {
     const refund = await refundService.requestRefund(
       req.user.id,
       req.params.id,
-      value,
+      value.alasan_refund,
     );
 
     res.status(201).json({

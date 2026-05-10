@@ -17,7 +17,6 @@ const getAllScenes = async () => {
               "id",
               "nama_produk",
               "harga",
-              "kategori",
               "thumbnail_url",
             ],
             include: [
