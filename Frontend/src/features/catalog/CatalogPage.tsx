@@ -302,10 +302,16 @@ export default function CatalogPage() {
                     <button
                       className={styles.addToCartBtn}
                       style={{ background: currentCat.color }}
-                      onClick={() => navigate('/product')}
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          navigate('/login');
+                        } else {
+                          navigate('/product');
+                        }
+                      }}
                     >
                       <ShoppingCart size={15} />
-                      Tambah ke Keranjang
+                      {isAuthenticated ? 'Tambah ke Keranjang' : '🔒 Masuk untuk Memesan'}
                     </button>
                   </div>
                 </div>
