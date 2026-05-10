@@ -1,84 +1,76 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthContext';
 import {
-  Box, MapPin, Calendar, Search, Filter, ShoppingBag, 
-  CheckCircle2, Clock, XCircle, ChevronRight, AlertCircle
+  Box, Calendar, Users, CreditCard,
+  ChevronLeft, ChevronRight, CheckCircle2
 } from 'lucide-react';
 import styles from './OrderHistoryPage.module.css';
 
-type Tab = 'semua' | 'pending' | 'completed' | 'rejected';
+type Tab = 'semua' | 'pending' | 'aktif' | 'selesai' | 'dibatalkan';
 
 interface Order {
   id: string;
-  status: 'pending' | 'completed' | 'rejected';
+  orderId: string;
+  status: 'pending' | 'aktif' | 'selesai' | 'dibatalkan';
   title: string;
-  category: string;
-  location: string;
+  vendor: string;
   date: string;
+  pax: number;
+  paymentMethod: string;
+  orderDate: string;
   total: number;
   image: string;
-  reason?: string;
+  hasReviewed?: boolean;
 }
 
 export default function OrderHistoryPage() {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('semua');
-  const [searchQuery, setSearchQuery] = useState('');
 
-  // Mock orders
-  const orders: Order[] = [
-    {
-      id: 'ORD-20250112-0042',
-      status: 'pending',
-      title: 'Snorkeling Gili Premium',
-      category: 'Aktivitas Bahari',
-      location: 'Gili Trawangan, Lombok',
-      date: '12 Jan 2025',
-      total: 900000,
-      image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&q=80'
-    },
-    {
-      id: 'ORD-20241220-0118',
-      status: 'completed',
-      title: 'Gili Sea Garden Resort',
-      category: 'Akomodasi',
-      location: 'Lombok',
-      date: '20 Des 2024',
-      total: 1350000,
-      image: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=200&q=80'
-    },
-    {
-      id: 'ORD-20241105-0092',
-      status: 'rejected',
-      title: 'Diving Bunaken Explore',
-      category: 'Aktivitas Bahari',
-      location: 'Bunaken, Sulawesi Utara',
-      date: '05 Nov 2024',
-      total: 2500000,
-      image: 'https://images.unsplash.com/photo-1582967788606-a171c1080cb0?w=200&q=80',
-      reason: 'Kuota penuh pada tanggal yang dipilih.'
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('divexplore_cart');
+    if (saved) {
+      const cartItems = JSON.parse(saved);
+      const convertedOrders: Order[] = cartItems.map((item: any, index: number) => {
+        const addonTotal = item.addons ? item.addons.reduce((s: number, a: any) => s + (a.price * item.quantity), 0) : 0;
+        const subtotal = (item.price * item.quantity) + addonTotal;
+        const taxes = subtotal * 0.11;
+        const total = subtotal + taxes;
+        
+        return {
+          id: String(index + 1),
+          orderId: `#ORD-DX3D-00${index + 1}`,
+          status: 'selesai',
+          title: item.name,
+          vendor: 'Divexplore Verified Vendor',
+          date: '14 Jun 2026',
+          pax: item.quantity,
+          paymentMethod: 'BCA Virtual Account',
+          orderDate: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          total: total,
+          image: item.image,
+          hasReviewed: false
+        };
+      });
+      setOrders(convertedOrders);
     }
-  ];
+  }, []);
 
   const filteredOrders = orders.filter(order => {
-    const matchTab = activeTab === 'semua' || order.status === activeTab;
-    const matchSearch = order.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                        order.id.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchTab && matchSearch;
+    return activeTab === 'semua' || order.status === activeTab;
   });
 
   const getStatusBadge = (status: string) => {
     switch(status) {
-      case 'pending':
-        return <div className={`${styles.badge} ${styles.badgePending}`}><Clock size={14}/> Menunggu Pembayaran</div>;
-      case 'completed':
-        return <div className={`${styles.badge} ${styles.badgeCompleted}`}><CheckCircle2 size={14}/> Selesai</div>;
-      case 'rejected':
-        return <div className={`${styles.badge} ${styles.badgeRejected}`}><XCircle size={14}/> Ditolak</div>;
-      default:
-        return null;
+      case 'pending': return <span className={`${styles.badge} ${styles.badgePending}`}>PENDING</span>;
+      case 'aktif': return <span className={`${styles.badge} ${styles.badgeActive}`}>ACTIVE</span>;
+      case 'selesai': return <span className={`${styles.badge} ${styles.badgeCompleted}`}>COMPLETED</span>;
+      case 'dibatalkan': return <span className={`${styles.badge} ${styles.badgeCanceled}`}>CANCELED</span>;
+      default: return null;
     }
   };
 
@@ -111,117 +103,102 @@ export default function OrderHistoryPage() {
       </header>
 
       <main className={styles.main}>
-        <div className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Riwayat Pesanan</h1>
-          <p className={styles.pageDesc}>Pantau status pesanan dan kelola tiket wisata bahari Anda.</p>
+        <div className={styles.breadcrumb}>
+          <span>Beranda</span> / <span>Profil</span> / <span className={styles.bcActive}>Riwayat Pesanan</span>
+        </div>
+        
+        <h1 className={styles.pageTitle}>Riwayat Pesanan</h1>
+
+        <div className={styles.tabsContainer}>
+          {(['semua', 'pending', 'aktif', 'selesai', 'dibatalkan'] as Tab[]).map(tab => (
+            <button 
+              key={tab} 
+              className={`${styles.tabBtn} ${activeTab === tab ? styles.tabActive : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
         </div>
 
-        <div className={styles.contentLayout}>
-          {/* Sidebar */}
-          <aside className={styles.sidebar}>
-            <div className={styles.userProfileCard}>
-              <img src={user?.avatar || 'https://i.pravatar.cc/150?img=11'} alt="Profile" className={styles.profileImg} />
-              <div className={styles.profileInfo}>
-                <h3 className={styles.profileName}>{user?.name || 'Wisatawan'}</h3>
-                <p className={styles.profileEmail}>{user?.email || 'user@divexplore.id'}</p>
-              </div>
+        <div className={styles.ordersList}>
+          {filteredOrders.length === 0 ? (
+            <div className={styles.emptyState}>
+              <p>Tidak ada pesanan ditemukan.</p>
             </div>
-            
-            <nav className={styles.sideNav}>
-              <a href="#" className={`${styles.sideNavLink} ${styles.active}`}><ShoppingBag size={18}/> Pesanan Saya</a>
-              <a href="#" className={styles.sideNavLink}><Box size={18}/> Wishlist</a>
-              <a href="#" className={styles.sideNavLink}><AlertCircle size={18}/> Ulasan Saya</a>
-            </nav>
-          </aside>
-
-          {/* Main Orders List */}
-          <div className={styles.ordersArea}>
-            <div className={styles.toolbar}>
-              <div className={styles.tabs}>
-                {(['semua', 'pending', 'completed', 'rejected'] as Tab[]).map(tab => (
-                  <button 
-                    key={tab} 
-                    className={`${styles.tabBtn} ${activeTab === tab ? styles.tabActive : ''}`}
-                    onClick={() => setActiveTab(tab)}
-                  >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                  </button>
-                ))}
-              </div>
-              <div className={styles.searchBox}>
-                <Search size={16} className={styles.searchIcon} />
-                <input 
-                  type="text" 
-                  placeholder="Cari ID pesanan atau nama produk..." 
-                  className={styles.searchInput}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className={styles.ordersList}>
-              {filteredOrders.length === 0 ? (
-                <div className={styles.emptyState}>
-                  <ShoppingBag size={48} className={styles.emptyIcon} />
-                  <p>Tidak ada pesanan ditemukan.</p>
-                </div>
-              ) : (
-                filteredOrders.map(order => (
-                  <div key={order.id} className={styles.orderCard}>
-                    <div className={styles.orderHeader}>
-                      <div className={styles.headerLeft}>
-                        <ShoppingBag size={16} className={styles.storeIcon} />
-                        <span className={styles.storeName}>{order.category}</span>
-                        <span className={styles.orderDate}>{order.date}</span>
-                        <span className={styles.orderId}>{order.id}</span>
-                      </div>
+          ) : (
+            filteredOrders.map(order => (
+              <div key={order.id} className={`${styles.orderCard} ${order.status === 'aktif' ? styles.orderCardActive : ''} ${order.status === 'dibatalkan' ? styles.orderCardCanceled : ''}`}>
+                <div className={styles.cardMain}>
+                  <img src={order.image} alt={order.title} className={styles.orderImg} />
+                  
+                  <div className={styles.orderTitleCol}>
+                    <div className={styles.orderIdRow}>
+                      <span className={styles.orderId}>{order.orderId}</span>
                       {getStatusBadge(order.status)}
                     </div>
-                    
-                    <div className={styles.orderBody}>
-                      <img src={order.image} alt={order.title} className={styles.orderImg} />
-                      <div className={styles.orderInfo}>
-                        <h3 className={styles.orderTitle}>{order.title}</h3>
-                        <p className={styles.orderLoc}><MapPin size={12}/> {order.location}</p>
-                        {order.status === 'rejected' && (
-                          <div className={styles.rejectReason}>
-                            <AlertCircle size={14} />
-                            Alasan Penolakan: {order.reason}
-                          </div>
-                        )}
-                      </div>
-                      <div className={styles.orderPrice}>
-                        <span className={styles.priceLabel}>Total Belanja</span>
-                        <span className={styles.priceValue}>Rp {order.total.toLocaleString('id-ID')}</span>
-                      </div>
-                    </div>
-                    
-                    <div className={styles.orderFooter}>
-                      {order.status === 'pending' && (
-                        <>
-                          <button className={styles.btnSecondary} onClick={() => navigate(`/payment-status?status=pending`)}>Lihat Instruksi</button>
-                          <button className={styles.btnPrimary}>Bayar Sekarang</button>
-                        </>
-                      )}
-                      {order.status === 'completed' && (
-                        <>
-                          <button className={styles.btnSecondary}>Beri Ulasan</button>
-                          <button className={styles.btnPrimary}>Beli Lagi</button>
-                        </>
-                      )}
-                      {order.status === 'rejected' && (
-                        <>
-                          <button className={styles.btnSecondary} onClick={() => navigate('/rejected-order')}>Lihat Detail</button>
-                          <button className={styles.btnPrimary} onClick={() => navigate('/catalog')}>Cari Vendor Lain</button>
-                        </>
-                      )}
-                    </div>
+                    <h3 className={styles.orderTitle}>{order.title}</h3>
+                    <p className={styles.orderVendor}>{order.vendor}</p>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
+
+                  <div className={styles.orderMetaCol}>
+                    <div className={styles.metaRow}><Calendar size={14} /> {order.date}</div>
+                    <div className={styles.metaRow}><Users size={14} /> {order.pax} Peserta</div>
+                  </div>
+
+                  <div className={styles.orderPaymentCol}>
+                    <div className={styles.metaRow}><CreditCard size={14} /> {order.paymentMethod}</div>
+                    <div className={styles.orderDateLabel}>Dipesan pada {order.orderDate}</div>
+                  </div>
+                </div>
+
+                <div className={styles.cardRight}>
+                  <div className={styles.priceContainer}>
+                    <span className={styles.priceValue}>Rp {order.total.toLocaleString('id-ID')}</span>
+                  </div>
+                  
+                  <div className={styles.actionButtons}>
+                    {order.status === 'selesai' && (
+                      <>
+                        {order.hasReviewed ? (
+                          <div className={styles.reviewedBadge}><CheckCircle2 size={14} /> Sudah Diulas</div>
+                        ) : (
+                          <button className={styles.btnPrimary} onClick={() => navigate('/review')}>Tulis Ulasan</button>
+                        )}
+                        <button className={styles.btnSecondary}>Unduh Invoice</button>
+                      </>
+                    )}
+                    {order.status === 'pending' && (
+                      <>
+                        <button className={styles.btnWarning}>Bayar Sekarang</button>
+                        <button className={styles.btnDangerGhost}>Batalkan</button>
+                      </>
+                    )}
+                    {order.status === 'aktif' && (
+                      <>
+                        <button className={styles.btnSecondary}>Detail Pesanan</button>
+                        <button className={styles.btnSecondaryGhost}>E-Ticket</button>
+                      </>
+                    )}
+                    {order.status === 'dibatalkan' && (
+                      <button className={styles.btnSecondaryGhost}>Pesan Lagi</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Pagination mock */}
+        <div className={styles.pagination}>
+          <button className={styles.pageBtn}><ChevronLeft size={16} /> Prev</button>
+          <button className={`${styles.pageBtn} ${styles.pageActive}`}>1</button>
+          <button className={styles.pageBtn}>2</button>
+          <button className={styles.pageBtn}>3</button>
+          <span className={styles.pageDots}>...</span>
+          <button className={styles.pageBtn}>11</button>
+          <button className={styles.pageBtn}>Next <ChevronRight size={16} /></button>
         </div>
       </main>
     </div>

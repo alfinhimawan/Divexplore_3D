@@ -73,29 +73,48 @@ export default function CheckoutPage() {
 
   const handleSubmit = () => {
     if (!validate()) return;
+    localStorage.setItem('divexplore_customer', JSON.stringify(form));
     navigate('/payment-status?status=pending');
   };
 
-  // Order data (mock)
-  const order = {
-    image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=80',
+  // Order data from localStorage
+  const [cartItems, setCartItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('divexplore_cart');
+    if (saved) {
+      setCartItems(JSON.parse(saved));
+    }
+  }, []);
+
+  const firstItem = cartItems[0] || {
     name: 'Gili Trawangan Snorkeling Experience',
-    category: 'Snorkeling',
+    type: 'Snorkeling',
     location: 'Gili Trawangan, Lombok',
-    date: 'Sabtu, 15 Feb 2025',
-    people: 2,
-    rating: 4.9,
+    price: 350000,
+    quantity: 2,
+    image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=80',
     addons: [
-      { label: '📷 Underwater Photo', price: 100000 },
-      { label: '🤿 Peralatan Snorkel', price: 75000 },
-    ],
-    basePrice: 900000,
-    serviceFee: 15000,
+      { name: 'Peralatan Snorkel', price: 75000 },
+    ]
   };
 
-  const addonTotal = order.addons.reduce((s, a) => s + a.price, 0);
+  const order = {
+    image: firstItem.image,
+    name: firstItem.name,
+    category: firstItem.type,
+    location: firstItem.location,
+    date: 'Sabtu, 14 Juni 2026',
+    people: firstItem.quantity,
+    rating: 4.9,
+    addons: firstItem.addons.map((a: any) => ({ label: a.name, price: a.price * firstItem.quantity })),
+    basePrice: firstItem.price * firstItem.quantity,
+  };
+
+  const addonTotal = order.addons.reduce((s: number, a: any) => s + a.price, 0);
   const subtotal = order.basePrice + addonTotal;
-  const total = subtotal + order.serviceFee;
+  const taxes = subtotal * 0.11;
+  const total = subtotal + taxes;
 
   return (
     <div className={styles.container}>
@@ -300,7 +319,13 @@ export default function CheckoutPage() {
                         className={`${styles.walletBtn} ${eWalletOption === w ? styles.walletActive : ''}`}
                         onClick={e => { e.stopPropagation(); setEWalletOption(w); }}
                       >
-                        {w === 'gopay' ? '🟢 GoPay' : w === 'ovo' ? '🟣 OVO' : '🔵 DANA'}
+                        {w === 'gopay' ? (
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/8/86/Gopay_logo.svg" alt="GoPay" style={{ height: '18px', objectFit: 'contain' }} />
+                        ) : w === 'ovo' ? (
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_ovo_purple.svg" alt="OVO" style={{ height: '18px', objectFit: 'contain' }} />
+                        ) : (
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg" alt="DANA" style={{ height: '18px', objectFit: 'contain' }} />
+                        )}
                       </button>
                     ))}
                   </div>
@@ -371,18 +396,18 @@ export default function CheckoutPage() {
             </div>
             <div className={styles.costRows}>
               <div className={styles.costRow}>
-                <span>Raja Ampat Dive (2×)</span>
+                <span>{order.name} ({order.people}×)</span>
                 <span>Rp {order.basePrice.toLocaleString('id-ID')}</span>
               </div>
-              {order.addons.map((a, i) => (
+              {order.addons.map((a: any, i: number) => (
                 <div key={i} className={styles.costRow}>
-                  <span>{a.label.replace(/^.*? /, '')}</span>
+                  <span>{a.label}</span>
                   <span>Rp {a.price.toLocaleString('id-ID')}</span>
                 </div>
               ))}
               <div className={styles.costRow}>
-                <span>Biaya Layanan</span>
-                <span>Rp {order.serviceFee.toLocaleString('id-ID')}</span>
+                <span>Pajak & Biaya (11%)</span>
+                <span>Rp {taxes.toLocaleString('id-ID')}</span>
               </div>
             </div>
             <div className={styles.totalRow}>

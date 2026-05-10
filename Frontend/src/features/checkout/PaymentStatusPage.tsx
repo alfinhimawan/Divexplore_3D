@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import emailjs from '@emailjs/browser';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthContext';
 import {
@@ -21,8 +22,8 @@ import styles from './PaymentStatusPage.module.css';
 
 type StatusType = 'pending' | 'success' | 'expired';
 
-// Countdown for pending VA payment (15 min)
-const VA_SECONDS = 15 * 60;
+// Countdown for pending VA payment (1 min demo)
+const VA_SECONDS = 60;
 
 export default function PaymentStatusPage() {
   const navigate = useNavigate();
@@ -36,10 +37,16 @@ export default function PaymentStatusPage() {
   // Preview switcher (dev helper shown as tabs)
   const [previewStatus, setPreviewStatus] = useState<StatusType>(status);
 
+
+
   // VA countdown (pending only)
   const [vaSeconds, setVaSeconds] = useState(VA_SECONDS);
   useEffect(() => {
-    if (previewStatus !== 'pending' || vaSeconds <= 0) return;
+    if (previewStatus !== 'pending') return;
+    if (vaSeconds <= 0) {
+      setPreviewStatus('expired');
+      return;
+    }
     const t = setInterval(() => setVaSeconds(s => s - 1), 1000);
     return () => clearInterval(t);
   }, [previewStatus, vaSeconds]);
@@ -50,16 +57,92 @@ export default function PaymentStatusPage() {
   const vaNumber = '8801 2345 6789 0042';
   const orderId = '#ORD-20250112-0042';
 
+  // Read cart data
+  const [cartItems, setCartItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('divexplore_cart');
+    if (saved) {
+      setCartItems(JSON.parse(saved));
+    }
+  }, []);
+
+  const firstItem = cartItems[0] || {
+    name: 'Gili Trawangan Snorkeling Experience',
+    type: 'Snorkeling',
+    location: 'Gili Trawangan, Lombok',
+    price: 350000,
+    quantity: 2,
+    image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&q=80',
+    addons: []
+  };
+
+  const addonTotal = firstItem.addons.reduce((s: number, a: any) => s + (a.price * firstItem.quantity), 0);
+  const subtotal = (firstItem.price * firstItem.quantity) + addonTotal;
+  const taxes = subtotal * 0.11;
+  const total = subtotal + taxes;
+
+  // Email Notification State
+  const [isEmailSent, setIsEmailSent] = useState(false);
+
+  useEffect(() => {
+    if (previewStatus === 'success' && !isEmailSent) {
+      const savedCustomer = localStorage.getItem('divexplore_customer');
+      const customer = savedCustomer ? JSON.parse(savedCustomer) : { email: user?.email, name: user?.name };
+      
+      const templateParams = {
+        to_email: customer.email,
+        to_name: customer.name,
+        order_id: orderId,
+        product_name: firstItem.name,
+        total_price: `Rp ${total.toLocaleString('id-ID')}`,
+        date: '14 Jun 2026'
+      };
+
+      // Send Actual Email via EmailJS
+      const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+      const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+      const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+      if (serviceId && templateId && publicKey) {
+        emailjs.send(
+          serviceId, 
+          templateId, 
+          templateParams,
+          publicKey
+        ).then(() => {
+          setIsEmailSent(true);
+          console.log("Email sent successfully to:", customer.email);
+        }).catch((err) => {
+          console.error("Failed to send email:", err);
+          // Fallback to simulation UI if email fails
+          setIsEmailSent(true); 
+        });
+      } else {
+        // Fallback simulasi jika .env belum diisi
+        setTimeout(() => {
+          setIsEmailSent(true);
+          console.log('Simulated Email sent to:', customer.email);
+        }, 1500);
+      }
+    }
+  }, [previewStatus, isEmailSent, firstItem, total, user, orderId]);
+
   const handleCopy = () => {
     navigator.clipboard.writeText(vaNumber.replace(/\s/g, ''));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const [isChecking, setIsChecking] = useState(false);
+
   const handleCheckStatus = () => {
-    // Simulate random outcome for demo
-    const outcomes: StatusType[] = ['success', 'expired'];
-    setPreviewStatus(outcomes[Math.floor(Math.random() * outcomes.length)]);
+    setIsChecking(true);
+    // Simulasi pengecekan ke payment gateway (misal 2 detik)
+    setTimeout(() => {
+      setIsChecking(false);
+      setPreviewStatus('success'); // selalu sukses untuk demo ini
+    }, 2000);
   };
 
   return (
@@ -117,19 +200,7 @@ export default function PaymentStatusPage() {
         </div>
       </div>
 
-      {/* Dev Preview Toggle (visible for all 3 states demo) */}
-      <div className={styles.previewToggle}>
-        <span className={styles.toggleLabel}>Preview Status:</span>
-        {(['pending', 'success', 'expired'] as StatusType[]).map(s => (
-          <button
-            key={s}
-            className={`${styles.toggleBtn} ${previewStatus === s ? styles.toggleActive : ''}`}
-            onClick={() => setPreviewStatus(s)}
-          >
-            {s === 'pending' ? '⏳ Pending' : s === 'success' ? '✅ Berhasil' : '❌ Expired'}
-          </button>
-        ))}
-      </div>
+      {/* Dev Preview Toggle Removed */}
 
       {/* Main Card Area */}
       <main className={styles.main}>
@@ -160,9 +231,13 @@ export default function PaymentStatusPage() {
               Bayar sebelum {vaMin}:{vaSec} hari ini
             </div>
 
-            <button className={styles.primaryBtn} onClick={handleCheckStatus}>
-              <RefreshCw size={16} />
-              Cek Status Pembayaran
+            <button 
+              className={styles.primaryBtn} 
+              onClick={handleCheckStatus}
+              disabled={isChecking}
+            >
+              <RefreshCw size={16} className={isChecking ? styles.spin : ''} />
+              {isChecking ? 'Mengecek Status...' : 'Cek Status Pembayaran'}
             </button>
             <button className={styles.ghostBtn} onClick={() => navigate('/')}>
               Batalkan Pesanan
@@ -192,18 +267,18 @@ export default function PaymentStatusPage() {
             <div className={styles.successOrderBox}>
               <div className={styles.successOrderItem}>
                 <img
-                  src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&q=80"
+                  src={firstItem.image}
                   alt="Order"
                   className={styles.successOrderImg}
                 />
                 <div>
-                  <p className={styles.successOrderName}>Gili Trawangan Snorkeling</p>
+                  <p className={styles.successOrderName}>{firstItem.name}</p>
                   <div className={styles.successOrderMeta}>
                     <MapPin size={12} />
-                    <span>12 Jan 2025 • 2 Orang</span>
+                    <span>14 Jun 2026 • {firstItem.quantity} Orang</span>
                   </div>
                 </div>
-                <div className={styles.successOrderPrice}>Rp 900.000</div>
+                <div className={styles.successOrderPrice}>Rp {total.toLocaleString('id-ID')}</div>
               </div>
               <div className={styles.successPayMethod}>
                 <span>Metode Pembayaran</span>
@@ -211,7 +286,14 @@ export default function PaymentStatusPage() {
               </div>
             </div>
 
-            <button className={styles.primaryBtnSuccess} onClick={() => navigate('/')}>
+            {isEmailSent && (
+              <div style={{ marginTop: '15px', padding: '10px 15px', backgroundColor: '#ecfdf5', color: '#065f46', borderRadius: '8px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #10b981' }}>
+                <CheckCircle2 size={16} />
+                Bukti pembayaran telah dikirim ke email Anda.
+              </div>
+            )}
+
+            <button className={styles.primaryBtnSuccess} onClick={() => navigate('/orders')}>
               <ShoppingBag size={16} />
               Lihat Pesanan
               <ChevronRight size={16} />
