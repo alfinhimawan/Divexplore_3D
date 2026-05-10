@@ -12,7 +12,7 @@ module.exports = {
       {
         id: uuidv4(),
         nama_lengkap: "Super Admin",
-        email: "admin@divexplore.id",
+        email: "admin@divexplore-3d.com",
         password_hash,
         auth_provider: "local",
         google_id: null,
@@ -23,7 +23,7 @@ module.exports = {
       {
         id: uuidv4(),
         nama_lengkap: "Admin Operasional",
-        email: "admin2@divexplore.id",
+        email: "admin2@divexplore-3d.com",
         password_hash,
         auth_provider: "local",
         google_id: null,
@@ -37,7 +37,7 @@ module.exports = {
   async down(queryInterface) {
     // Hapus kedua akun admin saat undo seed
     await queryInterface.bulkDelete("Users", {
-      email: ["admin@divexplore.id", "admin2@divexplore.id"],
+      email: ["admin@divexplore-3d.com", "admin2@divexplore-3d.com"],
     });
   },
 };
