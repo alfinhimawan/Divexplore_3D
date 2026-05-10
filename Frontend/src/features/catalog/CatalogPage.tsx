@@ -24,7 +24,6 @@ import styles from './CatalogPage.module.css';
 const CATALOG_DATA = {
   aktivitas: {
     label: 'Aktivitas Bahari',
-    emoji: '🌊',
     color: '#0ea5e9',
     colorBg: 'rgba(14,165,233,0.12)',
     items: [
@@ -40,7 +39,6 @@ const CATALOG_DATA = {
   },
   peralatan: {
     label: 'Peralatan & Perlengkapan',
-    emoji: '🤿',
     color: '#8b5cf6',
     colorBg: 'rgba(139,92,246,0.12)',
     items: [
@@ -53,7 +51,6 @@ const CATALOG_DATA = {
   },
   akomodasi: {
     label: 'Akomodasi Homestay Kaluk',
-    emoji: '🏡',
     color: '#f59e0b',
     colorBg: 'rgba(245,158,11,0.12)',
     items: [
@@ -65,7 +62,6 @@ const CATALOG_DATA = {
   },
   kuliner: {
     label: 'Kuliner & Oleh-Oleh',
-    emoji: '🍽️',
     color: '#ef4444',
     colorBg: 'rgba(239,68,68,0.12)',
     items: [
@@ -97,7 +93,6 @@ const CATALOG_DATA = {
   },
   fotografi: {
     label: 'Fotografi & Dokumentasi',
-    emoji: '📸',
     color: '#10b981',
     colorBg: 'rgba(16,185,129,0.12)',
     items: [
@@ -219,7 +214,6 @@ export default function CatalogPage() {
                   <span className={styles.catIcon} style={isActive ? { color: cat.color } : {}}>
                     {CATEGORY_ICONS[key]}
                   </span>
-                  <span className={styles.catEmoji}>{cat.emoji}</span>
                   <span className={styles.catLabel}>{cat.label}</span>
                   <span className={styles.catCount}>{cat.items.length}</span>
                 </button>
@@ -243,7 +237,9 @@ export default function CatalogPage() {
           <div className={styles.toolbar}>
             <div className={styles.toolbarLeft}>
               <h2 className={styles.categoryHeading}>
-                <span style={{ color: currentCat.color }}>{currentCat.emoji}</span>
+                <span style={{ color: currentCat.color, display: 'inline-flex', alignItems: 'center', marginRight: '8px' }}>
+                  {CATEGORY_ICONS[activeCategory]}
+                </span>
                 {currentCat.label}
               </h2>
               <span className={styles.resultCount}>{filtered.length} produk</span>
@@ -270,14 +266,24 @@ export default function CatalogPage() {
             <div className={styles.productGrid}>
               {filtered.map(item => (
                 <div key={item.id} className={styles.productCard}>
-                  <div className={styles.cardImageWrapper}>
+                  <div 
+                    className={styles.cardImageWrapper} 
+                    onClick={() => navigate('/product')}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <img src={item.image} alt={item.name} className={styles.cardImage} />
-                    <div className={styles.cardBadge} style={{ background: currentCat.color }}>
-                      {currentCat.emoji}
+                    <div className={styles.cardBadge} style={{ background: currentCat.color, color: '#fff' }}>
+                      {CATEGORY_ICONS[activeCategory]}
                     </div>
                   </div>
                   <div className={styles.cardBody}>
-                    <h3 className={styles.cardName}>{item.name}</h3>
+                    <h3 
+                      className={styles.cardName} 
+                      onClick={() => navigate('/product')}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {item.name}
+                    </h3>
                     <p className={styles.cardDesc}>{item.desc}</p>
                     {'kapasitas' in item && (
                       <div className={styles.cardMeta}>
@@ -306,7 +312,7 @@ export default function CatalogPage() {
                         if (!isAuthenticated) {
                           navigate('/login');
                         } else {
-                          navigate('/product');
+                          navigate('/cart');
                         }
                       }}
                     >
