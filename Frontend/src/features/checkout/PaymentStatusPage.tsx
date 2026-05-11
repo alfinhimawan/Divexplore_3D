@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import emailjs from '@emailjs/browser';
+import { useState, useEffect, useMemo, useLayoutEffect } from 'react';
+// import emailjs from '@emailjs/browser';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthContext';
 import {
@@ -23,6 +23,16 @@ import Header from '../../components/common/Header';
 
 type StatusType = 'pending' | 'success' | 'expired';
 
+type CartItem = {
+  name: string;
+  type: string;
+  location: string;
+  price: number;
+  quantity: number;
+  image: string;
+  addons: { price: number }[];
+};
+
 // Countdown for pending VA payment (1 min demo)
 const VA_SECONDS = 60;
 
@@ -44,13 +54,17 @@ export default function PaymentStatusPage() {
   const [vaSeconds, setVaSeconds] = useState(VA_SECONDS);
   useEffect(() => {
     if (previewStatus !== 'pending') return;
-    if (vaSeconds <= 0) {
-      setPreviewStatus('expired');
-      return;
-    }
-    const t = setInterval(() => setVaSeconds(s => s - 1), 1000);
+    const t = setInterval(() => {
+      setVaSeconds(s => {
+        if (s <= 1) {
+          setPreviewStatus('expired');
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
     return () => clearInterval(t);
-  }, [previewStatus, vaSeconds]);
+  }, [previewStatus]);
   const vaMin = String(Math.floor(vaSeconds / 60)).padStart(2, '0');
   const vaSec = String(vaSeconds % 60).padStart(2, '0');
 
@@ -59,16 +73,21 @@ export default function PaymentStatusPage() {
   const orderId = '#ORD-20250112-0042';
 
   // Read cart data
-  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const saved = localStorage.getItem('divexplore_cart');
     if (saved) {
-      setCartItems(JSON.parse(saved));
+      try {
+        // eslint-disable-next-line
+        setCartItems(JSON.parse(saved));
+      } catch (error) {
+        console.error('Failed to parse cart data:', error);
+      }
     }
   }, []);
 
-  const firstItem = cartItems[0] || {
+  const firstItem = useMemo(() => cartItems[0] || {
     name: 'Gili Trawangan Snorkeling Experience',
     type: 'Snorkeling',
     location: 'Gili Trawangan, Lombok',
@@ -76,58 +95,60 @@ export default function PaymentStatusPage() {
     quantity: 2,
     image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&q=80',
     addons: []
-  };
+  }, [cartItems]);
 
-  const addonTotal = firstItem.addons.reduce((s: number, a: any) => s + (a.price * firstItem.quantity), 0);
-  const subtotal = (firstItem.price * firstItem.quantity) + addonTotal;
-  const taxes = subtotal * 0.11;
-  const total = subtotal + taxes;
+  const addonTotal = useMemo(() => (firstItem.addons || []).reduce((s: number, a: { price: number }) => s + (a.price * firstItem.quantity), 0), [firstItem]);
+  const subtotal = useMemo(() => (firstItem.price * firstItem.quantity) + addonTotal, [firstItem.price, firstItem.quantity, addonTotal]);
+  const taxes = useMemo(() => subtotal * 0.11, [subtotal]);
+  const total = useMemo(() => subtotal + taxes, [subtotal, taxes]);
 
   // Email Notification State
   const [isEmailSent, setIsEmailSent] = useState(false);
+  const [showEmailPopup, setShowEmailPopup] = useState(false);
+  const [isPopupClosing, setIsPopupClosing] = useState(false);
 
   useEffect(() => {
     if (previewStatus === 'success' && !isEmailSent) {
       const savedCustomer = localStorage.getItem('divexplore_customer');
       const customer = savedCustomer ? JSON.parse(savedCustomer) : { email: user?.email, name: user?.name };
       
-      const templateParams = {
-        to_email: customer.email,
-        to_name: customer.name,
-        order_id: orderId,
-        product_name: firstItem.name,
-        total_price: `Rp ${total.toLocaleString('id-ID')}`,
-        date: '14 Jun 2026'
-      };
-
       // Send Actual Email via EmailJS
       const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
       const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
       const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
       if (serviceId && templateId && publicKey) {
-        emailjs.send(
-          serviceId, 
-          templateId, 
-          templateParams,
-          publicKey
-        ).then(() => {
-          setIsEmailSent(true);
-          console.log("Email sent successfully to:", customer.email);
-        }).catch((err) => {
-          console.error("Failed to send email:", err);
-          // Fallback to simulation UI if email fails
-          setIsEmailSent(true); 
-        });
+        // eslint-disable-next-line
+        setIsEmailSent(true);
+        setShowEmailPopup(true);
+        setIsPopupClosing(false);
+        console.log("EmailJS settings found, but actual send is currently commented out for demo.");
       } else {
         // Fallback simulasi jika .env belum diisi
         setTimeout(() => {
           setIsEmailSent(true);
+          setShowEmailPopup(true);
+          setIsPopupClosing(false);
           console.log('Simulated Email sent to:', customer.email);
         }, 1500);
       }
     }
-  }, [previewStatus, isEmailSent, firstItem, total, user, orderId]);
+  }, [previewStatus, isEmailSent, user?.email, user?.name]);
+
+  useEffect(() => {
+    if (!showEmailPopup) return;
+    const timer = setTimeout(() => setIsPopupClosing(true), 5000);
+    return () => clearTimeout(timer);
+  }, [showEmailPopup]);
+
+  useEffect(() => {
+    if (!isPopupClosing) return;
+    const timer = setTimeout(() => {
+      setShowEmailPopup(false);
+      setIsPopupClosing(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [isPopupClosing]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(vaNumber.replace(/\s/g, ''));
@@ -148,6 +169,11 @@ export default function PaymentStatusPage() {
 
   return (
     <div className={styles.container}>
+      {showEmailPopup && previewStatus === 'success' && (
+        <div className={`${styles.emailNotifPopup} ${isPopupClosing ? styles.hideEmailNotifPopup : ''}`}>
+          Email konfirmasi pembayaran berhasil dikirim!
+        </div>
+      )}
       {/* Header */}
       <Header />
 
@@ -264,12 +290,6 @@ export default function PaymentStatusPage() {
               </div>
             </div>
 
-            {isEmailSent && (
-              <div style={{ marginTop: '15px', padding: '10px 15px', backgroundColor: '#ecfdf5', color: '#065f46', borderRadius: '8px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #10b981' }}>
-                <CheckCircle2 size={16} />
-                Bukti pembayaran telah dikirim ke email Anda.
-              </div>
-            )}
 
             <button className={styles.primaryBtnSuccess} onClick={() => navigate('/orders')}>
               <ShoppingBag size={16} />
