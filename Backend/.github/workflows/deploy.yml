@@ -1,0 +1,36 @@
+name: Deploy Backend to Jagoan Hosting
+
+on:
+  push:
+    branches:
+      - main # Deployment hanya terpicu jika ada perubahan di branch 'main'
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Execute Deployment via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            echo "🚀 Memulai proses deployment..."
+            
+            # Masuk ke direktori proyek di dalam Jagoan Hosting
+            cd ${{ secrets.PROJECT_PATH }}
+            
+            # Tarik kode versi rilis terbaru dari GitHub
+            git pull origin main
+            
+            # Install dependensi baru (jika ada) tanpa mengganggu devDependencies
+            npm install --production
+            
+            # Restart server Node.js menggunakan PM2 agar perubahan langsung aktif
+            pm2 restart divexplore-backend
+            
+            echo "✅ Deployment sukses! Backend Divexplore 3D sudah up-to-date."
