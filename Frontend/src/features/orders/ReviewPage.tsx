@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../app/providers/AuthContext';
 import { Box, Calendar, Users, Star, CheckCircle2 } from 'lucide-react';
 import styles from './ReviewPage.module.css';
+import Header from '../../components/common/Header';
 
 export default function ReviewPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuth();
   
   const [overallRating, setOverallRating] = useState(4);
   const [hoverOverall, setHoverOverall] = useState(0);
@@ -59,30 +58,7 @@ export default function ReviewPage() {
       )}
 
       {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.logo} onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-          <Box className={styles.logoIcon} size={24} />
-          <span>DIVEXPLORE-3D</span>
-        </div>
-        <nav className={styles.navLinks}>
-          <span className={styles.navLink} onClick={() => navigate('/')}>Destinasi</span>
-          <span className={styles.navLink} onClick={() => navigate('/catalog')}>Vendor</span>
-          <span className={styles.navLink}>Tentang</span>
-        </nav>
-        <div className={styles.userSection}>
-          {isAuthenticated && user ? (
-            <>
-              <div className={styles.userInfo}>
-                <img src={user.avatar} alt="User" className={styles.avatar} />
-                <span>{user.name}</span>
-              </div>
-              <button className={styles.logoutBtn} onClick={logout}>Keluar</button>
-            </>
-          ) : (
-            <button className={styles.logoutBtn} onClick={() => navigate('/login')}>Masuk</button>
-          )}
-        </div>
-      </header>
+      <Header />
 
       <main className={styles.main}>
         <div className={styles.breadcrumb}>
