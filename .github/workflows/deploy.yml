@@ -30,7 +30,8 @@ jobs:
             # Install dependensi baru (jika ada) tanpa mengganggu devDependencies
             npm install --production
             
-            # Restart server Node.js menggunakan PM2 agar perubahan langsung aktif
-            pm2 restart divexplore-backend
+            # Restart server Node.js versi cPanel (Phusion Passenger)
+            mkdir -p tmp
+            touch tmp/restart.txt
             
             echo "✅ Deployment sukses! Backend Divexplore 3D sudah up-to-date."
