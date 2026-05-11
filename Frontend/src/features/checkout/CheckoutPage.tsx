@@ -19,12 +19,13 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import styles from './CheckoutPage.module.css';
+import Header from '../../components/common/Header';
 
 const TOTAL_SECONDS = 15 * 60; // 15 minutes
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   // Redirect if not logged in
   useEffect(() => {
@@ -134,30 +135,7 @@ export default function CheckoutPage() {
       </div>
 
       {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.logo} onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-          <Box className={styles.logoIcon} size={24} />
-          <span>DIVEXPLORE-3D</span>
-        </div>
-        <nav className={styles.navLinks}>
-          <span className={styles.navLink} onClick={() => navigate('/')}>Destinasi</span>
-          <span className={styles.navLink} onClick={() => navigate('/catalog')}>Vendor</span>
-          <span className={styles.navLink}>Tentang</span>
-        </nav>
-        <div className={styles.userSection}>
-          {isAuthenticated && user ? (
-            <>
-              <div className={styles.userInfo}>
-                <img src={user.avatar} alt="User" className={styles.avatar} />
-                <span>{user.name}</span>
-              </div>
-              <button className={styles.logoutBtn} onClick={logout}>Keluar</button>
-            </>
-          ) : (
-            <button className={styles.logoutBtn} onClick={() => navigate('/login')}>Masuk</button>
-          )}
-        </div>
-      </header>
+      <Header />
 
       {/* Steps */}
       <div className={styles.stepsBar}>
@@ -214,7 +192,7 @@ export default function CheckoutPage() {
               <div className={styles.addonsSection}>
                 <p className={styles.addonsLabel}>Tambahan:</p>
                 <div className={styles.addonTags}>
-                  {order.addons.map((a, i) => (
+                  {order.addons.map((a: any, i: number) => (
                     <span key={i} className={styles.addonTag}>{a.label} +Rp {a.price.toLocaleString('id-ID')}</span>
                   ))}
                 </div>

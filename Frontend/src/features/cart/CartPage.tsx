@@ -12,6 +12,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import styles from './CartPage.module.css';
+import Header from '../../components/common/Header';
 
 interface CartItem {
   id: string;
@@ -26,7 +27,7 @@ interface CartItem {
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
   
   // Read from localStorage or use default
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
@@ -96,30 +97,7 @@ export default function CartPage() {
   return (
     <div className={styles.container}>
       {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.logo} onClick={() => navigate('/')} style={{cursor: 'pointer'}}>
-          <Box className={styles.logoIcon} size={24} />
-          <span>DIVEXPLORE-3D</span>
-        </div>
-        <nav className={styles.navLinks}>
-          <span className={styles.navLink} onClick={() => navigate('/')}>Destinasi</span>
-          <span className={styles.navLink}>Vendor</span>
-          <span className={styles.navLink}>Tentang</span>
-        </nav>
-        <div className={styles.userSection}>
-          {isAuthenticated && user ? (
-            <>
-              <div className={styles.userInfo}>
-                <img src={user.avatar} alt="User" className={styles.avatar} />
-                <span>{user.name}</span>
-              </div>
-              <button className={styles.logoutBtn} onClick={logout}>Keluar</button>
-            </>
-          ) : (
-            <button className={styles.logoutBtn} onClick={() => navigate('/login')}>Masuk</button>
-          )}
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main className={styles.mainContent}>
@@ -132,11 +110,13 @@ export default function CartPage() {
         </div>
 
         <div className={styles.cartLayout}>
+          <div className={styles.cartItemsHeader}>
+            <span>{cartItems.length} Item di keranjang</span>
+          </div>
+          <div className={styles.summaryHeaderPlaceholder}></div>
+
           {/* Cart Items List */}
           <div className={styles.cartItemsSection}>
-            <div className={styles.cartItemsHeader}>
-              <span>{cartItems.length} Item di keranjang</span>
-            </div>
             
             {cartItems.length === 0 ? (
               <div className={styles.emptyCart}>

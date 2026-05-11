@@ -4,7 +4,6 @@ import { OrbitControls, Html, Float, Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
 import { 
   Box, 
-  ShoppingCart, 
   ShieldCheck, 
   Clock, 
   Plus, 
@@ -16,8 +15,8 @@ import {
   Navigation
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../app/providers/AuthContext';
 import styles from './Hotspot3DPage.module.css';
+import Header from '../../components/common/Header';
 
 // Mock Data
 const MOCK_HOTSPOTS = [
@@ -38,8 +37,8 @@ const MOCK_HOTSPOTS = [
   {
     id: 3,
     position: [-1, -1.5, 1],
-    title: 'Gili Trawangan Dive Pack',
-    price: 'Rp 1.200.000',
+    title: 'Snorkeling Gili Premium',
+    price: 'Rp 350.000',
     icon: <Anchor className="w-5 h-5 text-orange-500" />
   }
 ];
@@ -131,7 +130,6 @@ function OceanScene({ selectedId, onSelect }: { selectedId: number | undefined, 
 
 export default function Hotspot3DPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuth();
   const [selectedHotspot, setSelectedHotspot] = useState(MOCK_HOTSPOTS[2]); // Default selection
   const [isBundled, setIsBundled] = useState(false);
 
@@ -139,41 +137,10 @@ export default function Hotspot3DPage() {
     navigate('/product');
   };
 
-  const handleCartClick = () => {
-    if (isAuthenticated) {
-      navigate('/cart');
-    } else {
-      navigate('/login');
-    }
-  };
-
   return (
     <div className={styles.container}>
-      {/* Top Header */}
-      <header className={styles.header}>
-        <div className={styles.logo}>
-          <Box className={styles.logoIcon} size={24} />
-          <span>DIVEXPLORE-3D</span>
-        </div>
-        <nav className={styles.navLinks}>
-          <span className={styles.navLink} style={{color: 'white', fontWeight: 600}}>Destinasi</span>
-          <span className={styles.navLink} onClick={() => navigate('/catalog')}>Katalog</span>
-          <span className={styles.navLink}>Tentang</span>
-        </nav>
-        <div className={styles.userSection}>
-          {isAuthenticated && user ? (
-            <>
-              <div className={styles.userInfo}>
-                <img src={user.avatar} alt="User" className={styles.avatar} />
-                <span>{user.name}</span>
-              </div>
-              <button className={styles.logoutBtn} onClick={logout}>Keluar</button>
-            </>
-          ) : (
-            <button className={styles.btnOutline} style={{padding: '8px 16px', fontSize: '13px'}} onClick={() => navigate('/login')}>Masuk</button>
-          )}
-        </div>
-      </header>
+      {/* Header */}
+      <Header />
 
       {/* Breadcrumb */}
       <div className={styles.breadcrumb}>
@@ -181,7 +148,7 @@ export default function Hotspot3DPage() {
         <span>&gt;</span>
         <span>Destinasi</span>
         <span>&gt;</span>
-        <span>Raja Ampat</span>
+        <span>Lombok</span>
         <span>&gt;</span>
         <span className="active">Scene 3D</span>
       </div>
@@ -220,12 +187,12 @@ export default function Hotspot3DPage() {
               className={styles.productImage}
             />
             
-            <div className={styles.tag}>DIVING</div>
+            <div className={styles.tag}>SNORKELING</div>
             
-            <h3 className={styles.productName}>{selectedHotspot?.title.toUpperCase() || 'GILI TRAWANGAN SNORKELING'}</h3>
+            <h3 className={styles.productName}>{selectedHotspot?.title.toUpperCase() || 'SNORKELING GILI PREMIUM'}</h3>
             
             <p className={styles.productDesc}>
-              Paket menyelam lengkap di perairan Raja Ampat, termasuk instruktur bersertifikat dan perlengkapan selam.
+              Nikmati petualangan bawah laut yang tak terlupakan dengan paket snorkeling premium di Gili. Air jernih dan terumbu karang indah menanti Anda.
             </p>
             
             <div className={styles.priceRow}>
@@ -259,11 +226,7 @@ export default function Hotspot3DPage() {
             </div>
             
             <div className={styles.actions}>
-              <button className={styles.btnOutline} onClick={handleDetailClick}>Lihat Detail</button>
-              <button className={styles.btnPrimary} onClick={handleCartClick}>
-                <ShoppingCart size={18} />
-                Tambah ke Keranjang
-              </button>
+              <button className={styles.btnPrimary} onClick={handleDetailClick}>Lihat Detail</button>
             </div>
           </div>
           

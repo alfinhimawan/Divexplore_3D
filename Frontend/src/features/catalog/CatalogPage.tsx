@@ -19,6 +19,7 @@ import {
   Tag
 } from 'lucide-react';
 import styles from './CatalogPage.module.css';
+import Header from '../../components/common/Header';
 
 // ── DATA CATALOG ──────────────────────────────────────────────
 const CATALOG_DATA = {
@@ -27,14 +28,14 @@ const CATALOG_DATA = {
     color: '#0ea5e9',
     colorBg: 'rgba(14,165,233,0.12)',
     items: [
-      { id: 'ak1', name: 'Island Hopping (Sharing)', desc: 'Keliling 3 Gili – Glass Bottom Boat', hargaJual: 150000, unit: '/pax', image: 'https://images.unsplash.com/photo-1513316564811-9b08db5e49f9?w=400&q=80' },
+      { id: 'ak1', name: 'Island Hopping (Sharing)', desc: 'Keliling 3 Gili – Glass Bottom Boat', hargaJual: 150000, unit: '/pax', image: '/images/island_hopping_1778505755023.png' },
       { id: 'ak2', name: 'Island Hopping (Private)', desc: 'Keliling 3 Gili – Kapal Pribadi', hargaJual: 1200000, unit: '/kapal', image: 'https://images.unsplash.com/photo-1504214208698-ea1916a2195a?w=400&q=80' },
       { id: 'ak3', name: 'Diving (DSD 1 Log)', desc: 'Discovery Scuba Dive untuk pemula', hargaJual: 900000, unit: '/pax', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=80' },
       { id: 'ak4', name: 'Diving (Fun Dive 2 Log)', desc: 'Penyelaman berlisensi PADI/SSI', hargaJual: 1500000, unit: '/pax', image: 'https://images.unsplash.com/photo-1582967788606-a171c1080cb0?w=400&q=80' },
       { id: 'ak5', name: 'Jetski', desc: 'Motorized sport (15 menit)', hargaJual: 250000, unit: '/pax', image: 'https://images.unsplash.com/photo-1530053969600-caed2596d242?w=400&q=80' },
-      { id: 'ak6', name: 'Banana Boat', desc: 'Kapasitas 5 orang (15 menit)', hargaJual: 75000, unit: '/pax', image: 'https://images.unsplash.com/photo-1560932684-5e552e2894e9?w=400&q=80' },
-      { id: 'ak7', name: 'Stand-up Paddle', desc: 'Non-motorized watersport', hargaJual: 100000, unit: '/jam', image: 'https://images.unsplash.com/photo-1520333789090-1afc82db536a?w=400&q=80' },
-      { id: 'ak8', name: 'Kayak Transparan', desc: 'Eksplorasi pesisir dangkal', hargaJual: 150000, unit: '/jam', image: 'https://images.unsplash.com/photo-1544552866-d3ed42536fc6?w=400&q=80' },
+      { id: 'ak6', name: 'Banana Boat', desc: 'Kapasitas 5 orang (15 menit)', hargaJual: 75000, unit: '/pax', image: 'https://images.unsplash.com/photo-1518467166778-b88f373ffec7?w=400&q=80' },
+      { id: 'ak7', name: 'Stand-up Paddle', desc: 'Non-motorized watersport', hargaJual: 100000, unit: '/jam', image: 'https://images.unsplash.com/photo-1544256718-3bcf237f3974?w=400&q=80' },
+      { id: 'ak8', name: 'Kayak Transparan', desc: 'Eksplorasi pesisir dangkal', hargaJual: 150000, unit: '/jam', image: '/images/kayak_transparan_1778505772045.png' },
     ]
   },
   peralatan: {
@@ -67,7 +68,7 @@ const CATALOG_DATA = {
     items: [
       // Seafood Pak Sukardi
       { id: 'ku1', name: 'Paket Seafood Platter', desc: 'Seafood Pak Sukardi • Aneka hidangan laut segar', hargaJual: 250000, unit: '/porsi', image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=80' },
-      { id: 'ku2', name: 'Kepiting Saus Padang', desc: 'Seafood Pak Sukardi • Kepiting segar bumbu Padang', hargaJual: 150000, unit: '/porsi', image: 'https://images.unsplash.com/photo-1614086138894-e6d4bfd6dc36?w=400&q=80' },
+      { id: 'ku2', name: 'Kepiting Saus Padang', desc: 'Seafood Pak Sukardi • Kepiting segar bumbu Padang', hargaJual: 150000, unit: '/porsi', image: '/images/kepiting_saus_padang_1778505687377.png' },
       { id: 'ku3', name: 'Cumi Bakar Madu Pedas', desc: 'Seafood Pak Sukardi • Cumi segar bakar madu', hargaJual: 75000, unit: '/porsi', image: 'https://images.unsplash.com/photo-1625944230945-1b7dd3b949ab?w=400&q=80' },
       { id: 'ku4', name: 'Udang Dakar Jimbaran', desc: 'Seafood Pak Sukardi • Udang segar ala Jimbaran', hargaJual: 85000, unit: '/porsi', image: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400&q=80' },
       { id: 'ku5', name: 'Plecing Kangkung Seafood', desc: 'Seafood Pak Sukardi • Sayur segar bumbu Lombok', hargaJual: 25000, unit: '/porsi', image: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=400&q=80' },
@@ -78,16 +79,16 @@ const CATALOG_DATA = {
       { id: 'ku9', name: 'Sate Pusut Ikan Marin', desc: 'Warung Ibu Morwah • Sate ikan khas Lombok', hargaJual: 40000, unit: '/porsi', image: 'https://images.unsplash.com/photo-1529042410759-befb1204b468?w=400&q=80' },
       { id: 'ku10', name: 'Ikan Baronang Rica-Rica', desc: 'Warung Ibu Morwah • Pedas gurih khas Manado', hargaJual: 80000, unit: '/porsi', image: 'https://images.unsplash.com/photo-1607013251379-e6eecfffe234?w=400&q=80' },
       { id: 'ku11', name: 'Sop Ikan Kua Asam', desc: 'Warung Ibu Morwah • Segar dan hangat', hargaJual: 60000, unit: '/mangkuk', image: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400&q=80' },
-      { id: 'ku12', name: 'Es Kelapa Muda Jeruk Nipis', desc: 'Warung Ibu Morwah • Minuman kelapa muda segar', hargaJual: 20000, unit: '/gelas', image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=400&q=80' },
+      { id: 'ku12', name: 'Es Kelapa Muda Jeruk Nipis', desc: 'Warung Ibu Morwah • Minuman kelapa muda segar', hargaJual: 20000, unit: '/gelas', image: '/images/es_kelapa_muda_1778505704145.png' },
       // Oleh-oleh DIVEXPLORE
       { id: 'ku13', name: 'Hampers Daun (Bundling)', desc: 'Oleh DIVEXPLORE • Paket souvenir eksklusif', hargaJual: 200000, unit: '/set', image: 'https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?w=400&q=80' },
       { id: 'ku14', name: 'Keripik Tempong Limo', desc: 'Oleh DIVEXPLORE • Keripik pedas khas Lombok', hargaJual: 75000, unit: '/250g', image: 'https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=400&q=80' },
       { id: 'ku15', name: 'Cumi Asin Kering', desc: 'Oleh DIVEXPLORE • Cumi asin premium', hargaJual: 60000, unit: '/100g', image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?w=400&q=80' },
-      { id: 'ku16', name: 'Ikan Asin Tongkol Dauk', desc: 'Oleh DIVEXPLORE • Ikan asin kering pilihan', hargaJual: 60000, unit: '/150g', image: 'https://images.unsplash.com/photo-1559847844-5315695dadae?w=400&q=80' },
+      { id: 'ku16', name: 'Ikan Asin Tongkol Dauk', desc: 'Oleh DIVEXPLORE • Ikan asin kering pilihan', hargaJual: 60000, unit: '/150g', image: '/images/ikan_asin_1778505720009.png' },
       { id: 'ku17', name: 'Abon Ikan Tuna', desc: 'Oleh DIVEXPLORE • Abon tuna lezat', hargaJual: 45000, unit: '/100g', image: 'https://images.unsplash.com/photo-1546549032-9571cd6b27df?w=400&q=80' },
       { id: 'ku18', name: 'Dodol Rumput Laut', desc: 'Oleh DIVEXPLORE • Dodol manis khas pesisir', hargaJual: 40000, unit: '/250g', image: 'https://images.unsplash.com/photo-1607478900766-efe13248b125?w=400&q=80' },
       { id: 'ku19', name: 'Sambal Roa Pesisir', desc: 'Oleh DIVEXPLORE • Sambal ikan roa khas', hargaJual: 35000, unit: '/botol', image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&q=80' },
-      { id: 'ku20', name: 'Kerupuk Kulit Ikan / Kopi', desc: 'Oleh DIVEXPLORE • Kerupuk renyah khas', hargaJual: 30000, unit: '/100g', image: 'https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=400&q=80' },
+      { id: 'ku20', name: 'Kerupuk Kulit Ikan / Kopi', desc: 'Oleh DIVEXPLORE • Kerupuk renyah khas', hargaJual: 30000, unit: '/100g', image: '/images/kerupuk_kulit_1778505735892.png' },
       { id: 'ku21', name: 'Tori Crispy Daindo', desc: 'Oleh DIVEXPLORE • Camilan krispy favorit', hargaJual: 25000, unit: '/pcs', image: 'https://images.unsplash.com/photo-1604909052743-94e838986d24?w=400&q=80' },
     ]
   },
@@ -97,7 +98,7 @@ const CATALOG_DATA = {
     colorBg: 'rgba(16,185,129,0.12)',
     items: [
       { id: 'fo1', name: 'Fotografer Darat / Pantai', desc: 'Sesi foto profesional di pantai & darat', hargaJual: 300000, unit: '/jam', image: 'https://images.unsplash.com/photo-1452780212940-6f5c0d14d848?w=400&q=80' },
-      { id: 'fo2', name: 'Pendampingan Foto Bawah Air', desc: 'Fotografer profesional dalam air berlisensi', hargaJual: 500000, unit: '/jam', image: 'https://images.unsplash.com/photo-1544552866-d3ed42536fc6?w=400&q=80' },
+      { id: 'fo2', name: 'Pendampingan Foto Bawah Air', desc: 'Fotografer profesional dalam air berlisensi', hargaJual: 500000, unit: '/jam', image: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=400&q=80' },
       { id: 'fo3', name: 'Dokumentasi Udara (Drone)', desc: 'Video & foto aerial resolusi 4K', hargaJual: 600000, unit: '/jam', image: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=400&q=80' },
     ]
   }
@@ -119,7 +120,7 @@ function formatRupiah(num: number) {
 
 export default function CatalogPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [activeCategory, setActiveCategory] = useState<CategoryKey>('aktivitas');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -132,30 +133,7 @@ export default function CatalogPage() {
   return (
     <div className={styles.container}>
       {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.logo} onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-          <Box className={styles.logoIcon} size={24} />
-          <span>DIVEXPLORE-3D</span>
-        </div>
-        <nav className={styles.navLinks}>
-          <span className={styles.navLink} onClick={() => navigate('/')}>Destinasi</span>
-          <span className={styles.navLink} style={{ color: 'white', fontWeight: 600, borderBottom: '2px solid #0ea5e9', paddingBottom: '2px' }}>Katalog</span>
-          <span className={styles.navLink}>Tentang</span>
-        </nav>
-        <div className={styles.userSection}>
-          {isAuthenticated && user ? (
-            <>
-              <div className={styles.userInfo}>
-                <img src={user.avatar} alt="User" className={styles.avatar} />
-                <span>{user.name}</span>
-              </div>
-              <button className={styles.logoutBtn} onClick={logout}>Keluar</button>
-            </>
-          ) : (
-            <button className={styles.logoutBtn} onClick={() => navigate('/login')}>Masuk</button>
-          )}
-        </div>
-      </header>
+      <Header />
 
       {/* Breadcrumb */}
       <div className={styles.breadcrumb}>

@@ -18,10 +18,11 @@ import {
   Plus
 } from 'lucide-react';
 import styles from './ProductDetailPage.module.css';
+import Header from '../../components/common/Header';
 
 export default function ProductDetailPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [quantity, setQuantity] = useState(2);
   const [addons, setAddons] = useState({
     makanSiang: true,
@@ -29,6 +30,14 @@ export default function ProductDetailPage() {
     antarJemput: false
   });
   const [activeTab, setActiveTab] = useState('deskripsi');
+
+  const PRODUCT_IMAGES = [
+    "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1600&q=80",
+    "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?w=1600&q=80",
+    "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=1600&q=80",
+    "https://images.unsplash.com/photo-1559494007-9f5847c49d94?w=1600&q=80"
+  ];
+  const [activeImage, setActiveImage] = useState(PRODUCT_IMAGES[0]);
 
   // Pricing logic
   const basePrice = 350000;
@@ -74,30 +83,7 @@ export default function ProductDetailPage() {
   return (
     <div className={styles.container}>
       {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.logo} onClick={() => navigate('/')} style={{cursor: 'pointer'}}>
-          <Box className={styles.logoIcon} size={24} />
-          <span>DIVEXPLORE-3D</span>
-        </div>
-        <nav className={styles.navLinks}>
-          <span className={styles.navLink} onClick={() => navigate('/')}>Destinasi</span>
-          <span className={styles.navLink} onClick={() => navigate('/catalog')} style={{color: 'white', fontWeight: 600}}>Katalog</span>
-          <span className={styles.navLink}>Tentang</span>
-        </nav>
-        <div className={styles.userSection}>
-          {isAuthenticated && user ? (
-            <>
-              <div className={styles.userInfo}>
-                <img src={user.avatar} alt="User" className={styles.avatar} />
-                <span>{user.name}</span>
-              </div>
-              <button className={styles.logoutBtn} onClick={logout}>Keluar</button>
-            </>
-          ) : (
-            <button className={styles.logoutBtn} onClick={() => navigate('/login')}>Masuk</button>
-          )}
-        </div>
-      </header>
+      <Header />
 
       {/* Breadcrumb */}
       <div className={styles.breadcrumb}>
@@ -117,7 +103,7 @@ export default function ProductDetailPage() {
           <div className={styles.gallery}>
             <div className={styles.mainImageContainer}>
               <img 
-                src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80" 
+                src={activeImage} 
                 alt="Snorkeling Gili Premium" 
                 className={styles.mainImage}
               />
@@ -132,10 +118,15 @@ export default function ProductDetailPage() {
             </div>
             
             <div className={styles.thumbnails}>
-              <img src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&q=80" className={`${styles.thumbnail} ${styles.active}`} alt="Thumb 1" />
-              <img src="https://images.unsplash.com/photo-1582967788606-a171c1080cb0?w=200&q=80" className={styles.thumbnail} alt="Thumb 2" />
-              <img src="https://images.unsplash.com/photo-1544552866-d3ed42536fc6?w=200&q=80" className={styles.thumbnail} alt="Thumb 3" />
-              <img src="https://images.unsplash.com/photo-1559494007-9f5847c49d94?w=200&q=80" className={styles.thumbnail} alt="Thumb 4" />
+              {PRODUCT_IMAGES.map((img, index) => (
+                <img 
+                  key={index}
+                  src={img} 
+                  className={`${styles.thumbnail} ${activeImage === img ? styles.active : ''}`} 
+                  alt={`Thumb ${index + 1}`} 
+                  onClick={() => setActiveImage(img)}
+                />
+              ))}
             </div>
           </div>
 

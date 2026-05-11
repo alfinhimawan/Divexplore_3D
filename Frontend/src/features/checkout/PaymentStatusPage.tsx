@@ -19,6 +19,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import styles from './PaymentStatusPage.module.css';
+import Header from '../../components/common/Header';
 
 type StatusType = 'pending' | 'success' | 'expired';
 
@@ -28,7 +29,7 @@ const VA_SECONDS = 60;
 export default function PaymentStatusPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { user } = useAuth();
   const rawStatus = searchParams.get('status') ?? 'pending';
   const status: StatusType = ['pending', 'success', 'expired'].includes(rawStatus)
     ? (rawStatus as StatusType)
@@ -148,30 +149,7 @@ export default function PaymentStatusPage() {
   return (
     <div className={styles.container}>
       {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.logo} onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-          <Box className={styles.logoIcon} size={24} />
-          <span>DIVEXPLORE-3D</span>
-        </div>
-        <nav className={styles.navLinks}>
-          <span className={styles.navLink} onClick={() => navigate('/')}>Destinasi</span>
-          <span className={styles.navLink} onClick={() => navigate('/catalog')}>Vendor</span>
-          <span className={styles.navLink}>Tentang</span>
-        </nav>
-        <div className={styles.userSection}>
-          {isAuthenticated && user ? (
-            <>
-              <div className={styles.userInfo}>
-                <img src={user.avatar} alt="User" className={styles.avatar} />
-                <span>{user.name}</span>
-              </div>
-              <button className={styles.logoutBtn} onClick={logout}>Keluar</button>
-            </>
-          ) : (
-            <button className={styles.logoutBtn} onClick={() => navigate('/login')}>Masuk</button>
-          )}
-        </div>
-      </header>
+      <Header />
 
       {/* Steps */}
       <div className={styles.stepsBar}>
