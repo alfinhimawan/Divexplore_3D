@@ -243,11 +243,13 @@ const handleMidtransWebhook = async (payload) => {
           });
           const pdfBuffer = await pdfService.generateInvoiceBuffer(orderFull || order);
           await emailService.sendInvoiceEmail(pembeli.email, orderFull || order, pdfBuffer);
-          console.log(`[Email] Invoice terkirim ke ${pembeli.email}`);
+          logger.info(`[Email] Invoice berhasil terkirim ke ${pembeli.email}`);
+        } else {
+          logger.warn(`[Email] Pembeli tidak ditemukan atau tidak punya email untuk order ${order.id}`);
         }
       } catch (emailErr) {
         // Error email tidak boleh membatalkan transaksi yang sudah berhasil
-        console.error("[Email] Gagal mengirim invoice:", emailErr.message);
+        logger.error(`[Email] Gagal mengirim invoice: ${emailErr.message}`);
       }
     }
 
