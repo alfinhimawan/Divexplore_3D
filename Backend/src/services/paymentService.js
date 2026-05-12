@@ -14,6 +14,7 @@ const {
 
 const crypto = require("crypto");
 const { getKomisiPersen } = require("../config/komisi");
+const logger = require("../utils/logger");
 
 
 /**
@@ -22,8 +23,8 @@ const { getKomisiPersen } = require("../config/komisi");
  */
 const handleMidtransWebhook = async (payload) => {
   // LOGGING DETAIL (Sangat penting untuk debug di Jagoan Hosting)
-  console.log("=== WEBHOOK MIDTRANS MASUK ===");
-  console.log("Payload:", JSON.stringify(payload, null, 2));
+  logger.info("=== WEBHOOK MIDTRANS MASUK ===");
+  logger.info(`Payload: ${JSON.stringify(payload)}`);
 
   const {
     order_id,
@@ -37,7 +38,7 @@ const handleMidtransWebhook = async (payload) => {
 
   // PENTING: Validasi Signature Key (Security Compliance)
   if (!signature_key) {
-    console.log("Webhook Test Received (No Signature)");
+    logger.info("Webhook Test Received (No Signature) — skipping");
     return { message: "Test success" };
   }
 
@@ -62,17 +63,13 @@ const handleMidtransWebhook = async (payload) => {
     .update(`${order_id}${status_code}${roundedAmount}${serverKey}`)
     .digest("hex");
 
-  console.log("DEBUG SIGNATURE:");
-  console.log("- Order ID:", order_id);
-  console.log("- Status Code:", status_code);
-  console.log("- Raw Amount:", rawAmount);
-  console.log("- Rounded Amount:", roundedAmount);
-  console.log("- Expected (Raw):", hashRaw);
-  console.log("- Expected (Rounded):", hashRounded);
-  console.log("- Received Signature:", signature_key);
+  logger.info(`[Webhook] DEBUG SIGNATURE — order_id: ${order_id}, status_code: ${status_code}, rawAmount: ${rawAmount}, roundedAmount: ${roundedAmount}`);
+  logger.info(`[Webhook] hashRaw: ${hashRaw}`);
+  logger.info(`[Webhook] hashRounded: ${hashRounded}`);
+  logger.info(`[Webhook] received: ${signature_key}`);
 
   if (hashRaw !== signature_key && hashRounded !== signature_key) {
-    console.error("Signature Mismatch! Keduanya tidak cocok.");
+    logger.error("[Webhook] Signature Mismatch! Keduanya tidak cocok.");
     throw new Error("Invalid signature key.");
   }
 
@@ -209,7 +206,7 @@ const handleMidtransWebhook = async (payload) => {
 
     // 4. Commit transaksi - semua perubahan DB sudah aman
     await transaction.commit();
-    console.log("[Webhook] Transaksi DB berhasil di-commit!");
+    logger.info("[Webhook] Transaksi DB berhasil di-commit!");
 
     // 5. Kirim Email Invoice SETELAH commit (agar transaksi tidak tertahan)
     // Ini penting di Jagoan Hosting agar proses email tidak memblokir/crash transaksi
