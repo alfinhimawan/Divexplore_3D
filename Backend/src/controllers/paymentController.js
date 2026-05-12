@@ -10,13 +10,15 @@ const midtransNotification = async (req, res, next) => {
     await paymentService.handleMidtransWebhook(payload);
 
     // PENTING: Selalu respon 200 OK ke server Midtrans
-    // agar Midtrans tidak mengulang-ulang pengiriman notifikasi
-    res.status(200).json({ status: "success", message: "OK" });
+    res.status(200).json({ status: "success", message: "Webhook received" });
   } catch (err) {
-    // Tetap respon 200 OK ke Midtrans tapi catat error di log server kita
-    // (Pengecualian: Jika Anda ingin Midtrans mencoba lagi nanti, bisa balas 500)
-    console.error("Webhook Error:", err);
-    res.status(500).json({ status: "error", message: err.message });
+    // Tetap respon 200 OK ke Midtrans agar mereka tidak menganggap URL mati, 
+    // tapi kita catat errornya di log server.
+    console.error("Webhook Processing Error:", err.message);
+    res.status(200).json({ 
+      status: "error_logged", 
+      message: "Error handled, logged on server" 
+    });
   }
 };
 

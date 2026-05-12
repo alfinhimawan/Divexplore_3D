@@ -1,20 +1,10 @@
 "use strict";
 const { Vendor, VendorDocument, User } = require("../models");
 const { Op } = require("sequelize");
+const { KOMISI_PER_KATEGORI, getKomisiPersen } = require("../config/komisi");
 
-/**
- * Tabel komisi platform per kategori vendor.
- * Sumber: Tim E-Commerce Divexplore.
- * Formula: C% = Mavg - (Whpp + Wrisk + Wvol) + Wfitur
- * Wfitur selalu +2% sebagai kompensasi fitur 3D & sistem bundling.
- */
-const KOMISI_PER_KATEGORI = {
-  peralatan: 7, // 12.5% - (3.5+0.0+4.0)% + 2% = 7%
-  aktivitas_tur: 10, // 17.5% - (5.0+4.5+0.0)% + 2% = 10%
-  homestay: 15, // 25.0% - (7.0+0.0+5.0)% + 2% = 15%
-  kuliner: 10, // 25.0% - (12.0+0.0+5.0)% + 2% = 10%
-  fotografi: 12, // 17.5% - (4.5+3.0+0.0)% + 2% = 12%
-};
+// Komisi per kategori dikelola di src/config/komisi.js (Single Source of Truth)
+// Import di atas untuk digunakan di fungsi laporan/kalkulasi admin
 
 // List semua vendor beserta status KYC
 const getAllVendors = async (query = {}) => {

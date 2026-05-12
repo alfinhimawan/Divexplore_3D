@@ -10,9 +10,9 @@ const {
 } = require("../models");
 const midtransClient = require("midtrans-client");
 
-// Konfigurasi Midtrans (Otomatis deteksi Sandbox vs Production)
+// Konfigurasi Midtrans (Memaksa Sandbox mode untuk keperluan presentasi)
 const snap = new midtransClient.Snap({
-  isProduction: process.env.NODE_ENV === "production",
+  isProduction: false, // <-- DIUBAH PAKSA KE FALSE AGAR KUNCI SIMULASI BISA BERJALAN
   serverKey: process.env.MIDTRANS_SERVER_KEY,
   clientKey: process.env.MIDTRANS_CLIENT_KEY,
 });

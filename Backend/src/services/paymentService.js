@@ -2,21 +2,29 @@
 const {
   sequelize,
   Order,
+  OrderItem,
+  Product,
+  Vendor,
   ProductInventory,
   PaymentLog,
   VirtualLedger,
   LoyaltyPoint,
-  Vendor,
   User,
 } = require("../models");
 
 const crypto = require("crypto");
+const { getKomisiPersen } = require("../config/komisi");
+
 
 /**
  * Handle Webhook dari Midtrans
  * Menerima payload (notifikasi) JSON dari Midtrans.
  */
 const handleMidtransWebhook = async (payload) => {
+  // LOGGING DETAIL (Sangat penting untuk debug di Jagoan Hosting)
+  console.log("=== WEBHOOK MIDTRANS MASUK ===");
+  console.log("Payload:", JSON.stringify(payload, null, 2));
+
   const {
     order_id,
     transaction_status,
@@ -27,25 +35,58 @@ const handleMidtransWebhook = async (payload) => {
     signature_key,
   } = payload;
 
-  // PENTING: Validasi Signature Key (PCI-DSS & Security Compliance)
-  // SHA512(order_id + status_code + gross_amount + ServerKey)
+  // PENTING: Validasi Signature Key (Security Compliance)
+  if (!signature_key) {
+    console.log("Webhook Test Received (No Signature)");
+    return { message: "Test success" };
+  }
+
   const serverKey = process.env.MIDTRANS_SERVER_KEY;
-  const hash = crypto
+  
+  // Midtrans sering mengirim gross_amount dengan .00 (string). 
+  // Kita harus memastikan formatnya sama dengan saat pembuatan transaksi.
+  // Cara paling aman: Pakai string gross_amount apa adanya dari payload jika sudah sesuai,
+  // atau bulatkan jika memang kita mengirimkan angka bulat.
+  const rawAmount = gross_amount; 
+  const roundedAmount = Math.round(parseFloat(gross_amount)).toString();
+
+  // Coba validasi dengan format asli dari Midtrans
+  const hashRaw = crypto
     .createHash("sha512")
-    .update(`${order_id}${status_code}${gross_amount}${serverKey}`)
+    .update(`${order_id}${status_code}${rawAmount}${serverKey}`)
+    .digest("hex");
+    
+  // Coba juga dengan format bulat (fallback)
+  const hashRounded = crypto
+    .createHash("sha512")
+    .update(`${order_id}${status_code}${roundedAmount}${serverKey}`)
     .digest("hex");
 
-  if (hash !== signature_key) {
-    throw new Error("Invalid signature key. Keamanan terancam!");
+  console.log("DEBUG SIGNATURE:");
+  console.log("- Order ID:", order_id);
+  console.log("- Status Code:", status_code);
+  console.log("- Raw Amount:", rawAmount);
+  console.log("- Rounded Amount:", roundedAmount);
+  console.log("- Expected (Raw):", hashRaw);
+  console.log("- Expected (Rounded):", hashRounded);
+  console.log("- Received Signature:", signature_key);
+
+  if (hashRaw !== signature_key && hashRounded !== signature_key) {
+    console.error("Signature Mismatch! Keduanya tidak cocok.");
+    throw new Error("Invalid signature key.");
   }
 
   // Bungkus dalam transaksi database untuk keamanan data
   const transaction = await sequelize.transaction();
 
   try {
-    // 1. Cari pesanan di database kita
+    // 1. Cari pesanan di database kita, sertakan produk untuk tahu kategori vendor
     const order = await Order.findByPk(order_id, {
-      include: [{ association: "items", required: true }],
+      include: [{ 
+        association: "items",
+        required: true,
+        include: [{ association: "product", attributes: ["nama_produk"] }]
+      }],
       transaction,
       lock: transaction.LOCK.UPDATE,
     });
@@ -94,16 +135,18 @@ const handleMidtransWebhook = async (payload) => {
           await inventory.save({ transaction });
         }
 
-        // WP-3.2.3: Hitung Komisi Virtual Ledger per Vendor
+        // WP-3.2.3: Hitung Komisi Virtual Ledger per Vendor berdasarkan KATEGORI
         const vendor = await Vendor.findByPk(item.vendor_id, { transaction });
         if (vendor) {
-          const komisiPersen = parseFloat(vendor.persentase_komisi || 0);
+          // Ambil komisi berdasarkan kategori vendor dari config terpusat
+          const kategori = vendor.kategori || '';
+          const komisiPersen = getKomisiPersen(kategori);
           const pendapatanKotor = parseFloat(item.subtotal);
-          const biayaMidtrans = 4000; // Asumsi flat fee midtrans per trx/vendor
+          const biayaMidtrans = 4000; // flat fee Midtrans per vendor per trx
           const potonganKomisi = (komisiPersen / 100) * pendapatanKotor;
-          const pendapatanBersih =
-            pendapatanKotor - biayaMidtrans - potonganKomisi;
+          const pendapatanBersih = pendapatanKotor - biayaMidtrans - potonganKomisi;
 
+          console.log(`[Ledger] Vendor: ${vendor.nama_toko}, Kategori: ${kategori}, Komisi: ${komisiPersen}%, Bersih: ${pendapatanBersih}`);
           await VirtualLedger.create(
             {
               vendor_id: item.vendor_id,
@@ -139,23 +182,7 @@ const handleMidtransWebhook = async (payload) => {
           { transaction },
         );
       }
-
-      // WP-3.1.4: Kirim Email Notifikasi beserta Invoice
-      try {
-        // Harus panggil module emailService & pdfService secara terpisah agar tidak circular dep
-        const pembeli = await User.findByPk(order.user_id, { transaction });
-
-        if (pembeli && pembeli.email) {
-          const pdfService = require("./pdfService");
-          const emailService = require("./emailService");
-
-          const pdfBuffer = await pdfService.generateInvoiceBuffer(order);
-          // Eksekusi asinkronus tanpa await agar webhook midtrans cepat selesai (merespon 200 OK)
-          emailService.sendInvoiceEmail(pembeli.email, order, pdfBuffer);
-        }
-      } catch (err) {
-        console.error("Gagal mengirim email notifikasi saat lunas:", err);
-      }
+      // Email invoice dikirim SETELAH commit transaksi (lihat bawah)
     } else if (
       transaction_status === "cancel" ||
       transaction_status === "expire" ||
@@ -180,8 +207,35 @@ const handleMidtransWebhook = async (payload) => {
       }
     }
 
-    // 4. Commit transaksi
+    // 4. Commit transaksi - semua perubahan DB sudah aman
     await transaction.commit();
+    console.log("[Webhook] Transaksi DB berhasil di-commit!");
+
+    // 5. Kirim Email Invoice SETELAH commit (agar transaksi tidak tertahan)
+    // Ini penting di Jagoan Hosting agar proses email tidak memblokir/crash transaksi
+    if (
+      transaction_status === "settlement" ||
+      transaction_status === "capture"
+    ) {
+      try {
+        const pembeli = await User.findByPk(order.user_id);
+        if (pembeli && pembeli.email) {
+          const pdfService = require("./pdfService");
+          const emailService = require("./emailService");
+          // Muat ulang order tanpa transaksi untuk data lengkap
+          const orderFull = await Order.findByPk(order.id, {
+            include: [{ association: "items" }]
+          });
+          const pdfBuffer = await pdfService.generateInvoiceBuffer(orderFull || order);
+          await emailService.sendInvoiceEmail(pembeli.email, orderFull || order, pdfBuffer);
+          console.log(`[Email] Invoice terkirim ke ${pembeli.email}`);
+        }
+      } catch (emailErr) {
+        // Error email tidak boleh membatalkan transaksi yang sudah berhasil
+        console.error("[Email] Gagal mengirim invoice:", emailErr.message);
+      }
+    }
+
     return order;
   } catch (error) {
     await transaction.rollback();
