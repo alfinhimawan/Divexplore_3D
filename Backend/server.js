@@ -19,6 +19,10 @@ if (!process.env.JWT_SECRET) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Aktifkan trust proxy agar Express bisa membaca IP asli dari X-Forwarded-For
+// Wajib di Jagoan Hosting (Phusion Passenger + Nginx sebagai reverse proxy)
+app.set("trust proxy", 1);
+
 // Daftar origin yang diizinkan mengakses API
 const ALLOWED_ORIGINS = [
   "http://localhost:3000",    // React/Next.js dev
