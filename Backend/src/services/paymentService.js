@@ -77,13 +77,11 @@ const handleMidtransWebhook = async (payload) => {
   const transaction = await sequelize.transaction();
 
   try {
-    // 1. Cari pesanan di database kita, sertakan produk untuk tahu kategori vendor
+    // 1. Cari pesanan di database kita
+    // PENTING: Tidak boleh include nested association saat pakai lock: LOCK.UPDATE
+    // karena PostgreSQL melarang FOR UPDATE pada outer join
     const order = await Order.findByPk(order_id, {
-      include: [{ 
-        association: "items",
-        required: true,
-        include: [{ association: "product", attributes: ["nama_produk"] }]
-      }],
+      include: [{ association: "items", required: true }],
       transaction,
       lock: transaction.LOCK.UPDATE,
     });
