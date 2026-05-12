@@ -16,6 +16,25 @@ const crypto = require("crypto");
 const { getKomisiPersen } = require("../config/komisi");
 const logger = require("../utils/logger");
 
+/**
+ * Menghitung biaya Midtrans berdasarkan metode pembayaran.
+ * Referensi: https://midtrans.com/id/pricing
+ * @param {string} paymentType - Tipe pembayaran dari webhook Midtrans
+ * @param {number} grossAmount - Total pembayaran
+ * @returns {number} Biaya dalam Rupiah (dibulatkan)
+ */
+const hitungBiayaMidtrans = (paymentType = "", grossAmount = 0) => {
+  const type = paymentType.toLowerCase();
+  if (type === "qris" || type === "gopay" || type === "shopeepay" || type === "dana" || type === "ovo") {
+    return Math.round(grossAmount * 0.007); // 0.7% MDR e-wallet & QRIS
+  }
+  if (type === "credit_card") {
+    return Math.round(grossAmount * 0.02) + 2000; // 2% + Rp2.000
+  }
+  // Bank Transfer / VA (BCA, Mandiri, BNI, BRI, Permata, dll)
+  return 4440;
+};
+
 
 /**
  * Handle Webhook dari Midtrans
@@ -137,11 +156,12 @@ const handleMidtransWebhook = async (payload) => {
           const kategori = vendor.kategori || '';
           const komisiPersen = getKomisiPersen(kategori);
           const pendapatanKotor = parseFloat(item.subtotal);
-          const biayaMidtrans = 4000; // flat fee Midtrans per vendor per trx
+          // Hitung biaya Midtrans secara dinamis berdasarkan metode pembayaran
+          const biayaMidtrans = hitungBiayaMidtrans(payment_type, parseFloat(gross_amount));
           const potonganKomisi = (komisiPersen / 100) * pendapatanKotor;
           const pendapatanBersih = pendapatanKotor - biayaMidtrans - potonganKomisi;
 
-          console.log(`[Ledger] Vendor: ${vendor.nama_toko}, Kategori: ${kategori}, Komisi: ${komisiPersen}%, Bersih: ${pendapatanBersih}`);
+          logger.info(`[Ledger] Vendor: ${vendor.nama_toko}, Kategori: ${kategori}, Komisi: ${komisiPersen}%, Fee Midtrans: ${biayaMidtrans}, Bersih: ${pendapatanBersih}`);
           await VirtualLedger.create(
             {
               vendor_id: item.vendor_id,
