@@ -49,6 +49,10 @@ const getAllProducts = async (query = {}) => {
           },
         ],
       },
+      {
+        model: Product3dHotspot,
+        as: "hotspots",
+      },
     ],
     order: [["createdAt", "DESC"]],
   });
