@@ -23,12 +23,12 @@ const authenticate = (req, res, next) => {
     }
 
     try {
-      // Cek database apakah user masih aktif
+      // Cek database apakah user masih ada (Penting jika DB di-reset)
       const userRecord = await User.findByPk(decoded.id, {
-        attributes: ["id", "role", "is_active"]
+        attributes: ["id", "role"] // Hapus is_active karena tidak ada di DB
       });
 
-      if (!userRecord || !userRecord.is_active) {
+      if (!userRecord) {
         return res.status(401).json({
           status: "error",
           message: "Sesi Anda telah berakhir. Silakan login kembali.",
