@@ -84,7 +84,11 @@ const createOrder = async (userId, items, promoCode = null) => {
         qty: item.qty,
         harga_satuan: hargaUtama,
         subtotal: subtotalUtama,
-        metadata: null,
+        metadata: {
+          booking_date: item.booking_date || null,
+          check_in: item.check_in || null,
+          check_out: item.check_out || null
+        },
       });
 
       // 2. PROSES ADD-ONS SEBAGAI ITEM TERPISAH (Agar Saldo Terbagi ke Vendor Aslinya)
@@ -107,11 +111,16 @@ const createOrder = async (userId, items, promoCode = null) => {
             // Masukkan add-on sebagai baris terpisah dengan VENDOR ID aslinya
             orderItemsData.push({
               product_id: addon.id,
-              vendor_id: addon.vendor_id, // <--- Ini kunci pembagian uang!
+              vendor_id: addon.vendor_id, 
               qty: item.qty,
               harga_satuan: hargaAddon,
               subtotal: subtotalAddon,
-              metadata: `Add-on dari: ${product.nama_produk}`,
+              metadata: {
+                parent_product: product.nama_produk,
+                booking_date: item.booking_date || null,
+                check_in: item.check_in || null,
+                check_out: item.check_out || null
+              },
             });
 
             // 3. KURANGI STOK PRODUK ADD-ON
