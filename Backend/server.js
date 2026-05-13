@@ -25,11 +25,14 @@ app.set("trust proxy", 1);
 
 // Daftar origin yang diizinkan mengakses API
 const ALLOWED_ORIGINS = [
-  "http://localhost:3000",    // React/Next.js dev
-  "http://localhost:5173",    // Vite dev
-  "http://localhost:5000",    // Self (testing)
-  "http://localhost:5500",    // Live Server VSCode
-  "http://127.0.0.1:5500",    // Live Server VSCode (alias)
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:5000",
+  "https://divexplore-3d.com",
+  "https://www.divexplore-3d.com",
+  "http://localhost:5500",
+  "http://127.0.0.1:5500",
 ];
 
 // Security & Performance Middleware
