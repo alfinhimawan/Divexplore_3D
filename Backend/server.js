@@ -38,11 +38,17 @@ const ALLOWED_ORIGINS = [
 // Security & Performance Middleware
 app.use(
   cors({
-    origin: ALLOWED_ORIGINS,
+    origin: true,
     credentials: true,
   }),
 );
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: false,
+  }),
+);
 app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
