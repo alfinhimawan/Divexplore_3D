@@ -73,16 +73,20 @@ const createOrder = async (userId, items, promoCode = null) => {
       inventory.locked_qty += item.qty;
       await inventory.save({ transaction });
 
-      // HITUNG HARGA PRODUK + ADD-ONS (Bundling UMKM)
+      // HITUNG HARGA PRODUK + ADD-ONS (Cross-Selling / Bundling UMKM)
       let hargaFinalItem = parseFloat(product.harga);
       if (item.addon_ids && item.addon_ids.length > 0) {
-        const { ProductAddon } = require("../models");
-        const selectedAddons = await ProductAddon.findAll({
-          where: { id: item.addon_ids, product_id: product.id },
+        const { CrossSellingRule } = require("../models");
+        // addon_ids berisi ID dari tabel CrossSellingRules
+        const selectedRules = await CrossSellingRule.findAll({
+          where: { id: item.addon_ids, primary_product_id: product.id },
+          include: [{ association: "addonProduct" }],
           transaction,
         });
-        selectedAddons.forEach((addon) => {
-          hargaFinalItem += parseFloat(addon.harga);
+        selectedRules.forEach((rule) => {
+          if (rule.addonProduct) {
+            hargaFinalItem += parseFloat(rule.addonProduct.harga);
+          }
         });
       }
 
