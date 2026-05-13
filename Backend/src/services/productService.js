@@ -109,6 +109,9 @@ const getProductById = async (productId) => {
         ]
       }
     ],
+    order: [
+      [{ model: Review, as: "reviews" }, "createdAt", "DESC"]
+    ],
   });
 
   if (!product) {

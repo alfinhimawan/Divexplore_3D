@@ -219,6 +219,11 @@ const getWisatawanOrders = async (userId) => {
         limit: 1,
         order: [["createdAt", "DESC"]],
       },
+      {
+        model: require("../models").Review,
+        as: "reviews",
+        attributes: ["id"]
+      }
     ],
     order: [["createdAt", "DESC"]],
   });
