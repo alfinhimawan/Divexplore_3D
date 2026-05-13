@@ -38,6 +38,17 @@ const getAllProducts = async (query = {}) => {
           where: { kategori: { [Op.iLike]: `%${kategori}%` } },
         }),
       },
+      {
+        model: CrossSellingRule,
+        as: "crossSellingAsMain",
+        include: [
+          {
+            model: Product,
+            as: "addonProduct",
+            attributes: ["id", "nama_produk", "harga"],
+          },
+        ],
+      },
     ],
     order: [["createdAt", "DESC"]],
   });
