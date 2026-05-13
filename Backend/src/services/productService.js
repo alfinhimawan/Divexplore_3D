@@ -5,6 +5,8 @@ const {
   Product3dHotspot,
   Vendor,
   CrossSellingRule,
+  Review,
+  User
 } = require("../models");
 const { Op } = require("sequelize");
 
@@ -95,6 +97,17 @@ const getProductById = async (productId) => {
           },
         ],
       },
+      {
+        model: Review,
+        as: "reviews",
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "nama_lengkap", "profile_picture_url"]
+          }
+        ]
+      }
     ],
   });
 
