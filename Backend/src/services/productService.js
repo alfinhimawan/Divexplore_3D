@@ -104,7 +104,7 @@ const getProductById = async (productId) => {
           {
             model: User,
             as: "user",
-            attributes: ["id", "nama_lengkap", "profile_picture_url"]
+            attributes: ["id", "nama_lengkap", "foto_profil_url"]
           }
         ]
       }
