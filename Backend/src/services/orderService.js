@@ -73,34 +73,65 @@ const createOrder = async (userId, items, promoCode = null) => {
       inventory.locked_qty += item.qty;
       await inventory.save({ transaction });
 
-      // HITUNG HARGA PRODUK + ADD-ONS (Cross-Selling / Bundling UMKM)
-      let hargaFinalItem = parseFloat(product.harga);
-      if (item.addon_ids && item.addon_ids.length > 0) {
-        const { CrossSellingRule } = require("../models");
-        // addon_ids berisi ID dari tabel CrossSellingRules
-        const selectedRules = await CrossSellingRule.findAll({
-          where: { id: item.addon_ids, primary_product_id: product.id },
-          include: [{ association: "addonProduct" }],
-          transaction,
-        });
-        selectedRules.forEach((rule) => {
-          if (rule.addonProduct) {
-            hargaFinalItem += parseFloat(rule.addonProduct.harga);
-          }
-        });
-      }
-
-      const subtotal = hargaFinalItem * item.qty;
-      totalNominal += subtotal;
+      // 1. TAMBAHKAN PRODUK UTAMA KE DAFTAR ITEM PESANAN
+      const hargaUtama = parseFloat(product.harga);
+      const subtotalUtama = hargaUtama * item.qty;
+      totalNominal += subtotalUtama;
 
       orderItemsData.push({
         product_id: product.id,
         vendor_id: product.vendor_id,
         qty: item.qty,
-        harga_satuan: hargaFinalItem,
-        subtotal: subtotal,
-        metadata: item.addon_ids ? JSON.stringify(item.addon_ids) : null,
+        harga_satuan: hargaUtama,
+        subtotal: subtotalUtama,
+        metadata: null,
       });
+
+      // 2. PROSES ADD-ONS SEBAGAI ITEM TERPISAH (Agar Saldo Terbagi ke Vendor Aslinya)
+      if (item.addon_ids && item.addon_ids.length > 0) {
+        const { CrossSellingRule, ProductInventory: InventoryModel } = require("../models");
+        
+        const selectedRules = await CrossSellingRule.findAll({
+          where: { id: item.addon_ids, primary_product_id: product.id },
+          include: [{ association: "addonProduct" }],
+          transaction,
+        });
+
+        for (const rule of selectedRules) {
+          if (rule.addonProduct) {
+            const addon = rule.addonProduct;
+            const hargaAddon = parseFloat(addon.harga);
+            const subtotalAddon = hargaAddon * item.qty;
+            totalNominal += subtotalAddon;
+
+            // Masukkan add-on sebagai baris terpisah dengan VENDOR ID aslinya
+            orderItemsData.push({
+              product_id: addon.id,
+              vendor_id: addon.vendor_id, // <--- Ini kunci pembagian uang!
+              qty: item.qty,
+              harga_satuan: hargaAddon,
+              subtotal: subtotalAddon,
+              metadata: `Add-on dari: ${product.nama_produk}`,
+            });
+
+            // 3. KURANGI STOK PRODUK ADD-ON
+            const addonInventory = await InventoryModel.findOne({
+              where: { product_id: addon.id },
+              transaction,
+              lock: transaction.LOCK.UPDATE,
+            });
+
+            if (addonInventory) {
+              if (addonInventory.available_qty < item.qty) {
+                throw new Error(`Stok tambahan "${addon.nama_produk}" tidak mencukupi.`);
+              }
+              addonInventory.available_qty -= item.qty;
+              addonInventory.locked_qty += item.qty;
+              await addonInventory.save({ transaction });
+            }
+          }
+        }
+      }
     }
 
     // 4.5 Kalkulasi Diskon Promo (WP-7.1.1)
