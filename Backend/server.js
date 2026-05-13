@@ -36,20 +36,13 @@ const ALLOWED_ORIGINS = [
 ];
 
 // Security & Performance Middleware
-app.use(helmet());
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Izinkan request tanpa origin (Postman, server-to-server)
-      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS: Origin '${origin}' tidak diizinkan`));
-      }
-    },
-    credentials: true, // Izinkan cookie/Authorization header
+    origin: ALLOWED_ORIGINS,
+    credentials: true,
   }),
 );
+app.use(helmet());
 app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
