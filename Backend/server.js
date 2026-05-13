@@ -89,6 +89,7 @@ app.use("/api/webhooks", require("./src/routes/paymentRoutes"));
 app.use("/api/scenes", require("./src/routes/sceneRoutes"));
 app.use("/api/promos", require("./src/routes/promoRoutes"));
 app.use("/api/upload", require("./src/routes/uploadRoutes"));
+app.use("/api/reviews", require("./src/routes/reviewRoutes"));
 
 // 404 Not Found Handler
 app.use((req, res, next) => {
