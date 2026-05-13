@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const reviewController = require("../controllers/reviewController");
-const authenticate = require("../middlewares/authenticate");
+const { authenticate } = require("../middlewares/authenticate");
 
 // Memberikan review (harus login)
 router.post("/:orderId", authenticate, reviewController.createReview);
