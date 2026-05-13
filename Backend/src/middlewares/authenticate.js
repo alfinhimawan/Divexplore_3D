@@ -14,7 +14,7 @@ const authenticate = (req, res, next) => {
   }
 
   // 2. Verifikasi token
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+  jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
     if (err) {
       return res.status(401).json({
         status: "error",
@@ -22,9 +22,29 @@ const authenticate = (req, res, next) => {
       });
     }
 
-    // 3. Token valid → simpan data user ke req.user agar bisa dipakai controller
-    req.user = decoded; // { id, role, iat, exp }
-    next();
+    try {
+      // 3. CEK KE DATABASE: Apakah user ini masih ada? (Penting jika DB di-reset)
+      const { User } = require("../models");
+      const userRecord = await User.findByPk(decoded.id, {
+        attributes: ["id", "role", "is_active"] // Cukup ambil field minimal
+      });
+
+      if (!userRecord || !userRecord.is_active) {
+        return res.status(401).json({
+          status: "error",
+          message: "Sesi Anda telah berakhir. Silakan login kembali.",
+        });
+      }
+
+      // 4. Token & User valid → simpan data user ke req.user
+      req.user = decoded; 
+      next();
+    } catch (dbErr) {
+      return res.status(500).json({
+        status: "error",
+        message: "Terjadi kesalahan sistem saat verifikasi akun.",
+      });
+    }
   });
 };
 
