@@ -10,6 +10,7 @@ const createOrderSchema = Joi.object({
       Joi.object({
         product_id: Joi.string().uuid().required(),
         qty: Joi.number().integer().min(1).required(),
+        addon_ids: Joi.array().items(Joi.string().uuid()).optional(),
       }),
     )
     .min(1)
