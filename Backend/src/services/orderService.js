@@ -212,6 +212,13 @@ const getWisatawanOrders = async (userId) => {
           },
         ],
       },
+      {
+        model: require("../models").PaymentLog,
+        as: "paymentLogs",
+        attributes: ["payment_type"],
+        limit: 1,
+        order: [["createdAt", "DESC"]],
+      },
     ],
     order: [["createdAt", "DESC"]],
   });
