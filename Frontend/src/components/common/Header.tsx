@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthContext';
 import { Box } from 'lucide-react';
 import styles from './Header.module.css';
+import Swal from 'sweetalert2';
 
 export default function Header() {
   const navigate = useNavigate();
@@ -9,9 +10,33 @@ export default function Header() {
   const { isAuthenticated, user, logout } = useAuth();
 
   const isActive = (path: string) => {
-    // Exact match for home, partial for others
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
+  };
+
+  const handleLogout = async () => {
+    const result = await Swal.fire({
+      title: 'Yakin ingin keluar?',
+      text: 'Anda akan keluar dari akun Divexplore-3D.',
+      icon: 'question',
+      iconColor: '#0ea5e9',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Keluar',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      background: '#0f172a',
+      color: '#f1f5f9',
+      reverseButtons: true,
+      customClass: {
+        popup: 'swal-popup-dark',
+      },
+    });
+
+    if (result.isConfirmed) {
+      logout();
+      navigate('/');
+    }
   };
 
   return (
@@ -21,23 +46,26 @@ export default function Header() {
         <span>DIVEXPLORE-3D</span>
       </div>
       <nav className={styles.navLinks}>
-        <span 
-          className={`${styles.navLink} ${isActive('/') ? styles.activeLink : ''}`} 
+        <span
+          className={`${styles.navLink} ${isActive('/') ? styles.activeLink : ''}`}
           onClick={() => navigate('/')}
         >
           Destinasi
         </span>
-        <span 
-          className={`${styles.navLink} ${isActive('/catalog') || isActive('/product') ? styles.activeLink : ''}`} 
+        <span
+          className={`${styles.navLink} ${isActive('/catalog') || isActive('/product') ? styles.activeLink : ''}`}
           onClick={() => navigate('/catalog')}
         >
           Katalog
         </span>
-        <span 
-          className={styles.navLink}
-        >
-          Tentang
-        </span>
+        {isAuthenticated && (
+          <span
+            className={`${styles.navLink} ${isActive('/orders') ? styles.activeLink : ''}`}
+            onClick={() => navigate('/orders')}
+          >
+            Pesanan Saya
+          </span>
+        )}
       </nav>
       <div className={styles.userSection}>
         {isAuthenticated && user ? (
@@ -46,7 +74,7 @@ export default function Header() {
               <img src={user.avatar || 'https://i.pravatar.cc/150'} alt="User" className={styles.avatar} />
               <span>{user.name}</span>
             </div>
-            <button className={styles.logoutBtn} onClick={() => { logout(); navigate('/'); }}>Keluar</button>
+            <button className={styles.logoutBtn} onClick={handleLogout}>Keluar</button>
           </>
         ) : (
           <button className={styles.logoutBtn} onClick={() => navigate('/login')}>Masuk</button>

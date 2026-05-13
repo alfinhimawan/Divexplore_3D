@@ -3,7 +3,6 @@ import { useState, useEffect, useMemo, useLayoutEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthContext';
 import {
-  Box,
   Clock,
   CheckCircle2,
   XCircle,
@@ -16,10 +15,12 @@ import {
   Star,
   MapPin,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  FileText
 } from 'lucide-react';
 import styles from './PaymentStatusPage.module.css';
 import Header from '../../components/common/Header';
+import Footer from '../../components/common/Footer';
 
 type StatusType = 'pending' | 'success' | 'expired';
 
@@ -318,8 +319,8 @@ export default function PaymentStatusPage() {
 
             <div className={styles.expiredIllustration}>
               <div className={styles.expiredDoc}>
-                <div className={styles.docIcon}>📄</div>
-                <span>Transaksi Kedaluwarsa</span>
+                <div className={styles.docIcon}><FileText size={32} color="#94a3b8" /></div>
+                <span><FileText size={16} style={{marginRight: "8px"}} /> Transaksi Kedaluwarsa</span>
               </div>
             </div>
 
@@ -334,34 +335,7 @@ export default function PaymentStatusPage() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className={styles.footer}>
-        <div className={styles.footerInner}>
-          <div className={styles.footerBrand}>
-            <div className={styles.logo}>
-              <Box size={20} className={styles.logoIcon} />
-              <span>DIVEXPLORE-3D</span>
-            </div>
-            <p>Platform Wisata Bahari 3D #1 Indonesia</p>
-          </div>
-          <div className={styles.footerLinks}>
-            <div>
-              <h4>DESTINASI</h4>
-              <a href="#">Raja Ampat</a>
-              <a href="#">Bunaken</a>
-            </div>
-            <div>
-              <h4>TENTANG</h4>
-              <a href="#">Manifesto</a>
-              <a href="#">Tim Kami</a>
-            </div>
-          </div>
-        </div>
-        <div className={styles.footerBottom}>
-          <span>© 2025 DIVEXPLORE-3D. All rights reserved.</span>
-          <div className={styles.socialIcons}><span>IG</span><span>TW</span></div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

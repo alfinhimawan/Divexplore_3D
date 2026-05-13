@@ -1,10 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../../utils/api';
 import { useAuth } from '../../app/providers/AuthContext';
+
+// Tambahkan definisi tipe TypeScript untuk Midtrans Snap
+declare global {
+  interface Window {
+    snap: any;
+  }
+}
 import {
-  Box,
-  ShoppingCart,
-  CreditCard,
+  ShoppingCart, Mail, CreditCard,
   Smartphone,
   Building2,
   MapPin,
@@ -20,6 +26,7 @@ import {
 } from 'lucide-react';
 import styles from './CheckoutPage.module.css';
 import Header from '../../components/common/Header';
+import Footer from '../../components/common/Footer';
 
 const TOTAL_SECONDS = 15 * 60; // 15 minutes
 
@@ -72,10 +79,65 @@ export default function CheckoutPage() {
     return Object.keys(newErr).length === 0;
   };
 
-  const handleSubmit = () => {
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleSubmit = async () => {
     if (!validate()) return;
+    
+    // Pastikan ada produk di keranjang
+    if (!cartItems.length) {
+      alert("Keranjang Anda kosong!");
+      return;
+    }
+
+    const firstItem = cartItems[0];
     localStorage.setItem('divexplore_customer', JSON.stringify(form));
-    navigate('/payment-status?status=pending');
+
+    try {
+      setIsProcessing(true);
+
+      // Siapkan payload sesuai spesifikasi Backend POST /api/orders
+      // Backend (orderController.js) hanya menerima: items (product_id, qty) dan kode_promo
+      const payload = {
+        items: [
+          {
+            product_id: firstItem.product_id, // ID asli dari database Supabase
+            qty: firstItem.quantity
+          }
+        ]
+      };
+
+      // 1. Tembak API Backend untuk membuat pesanan
+      const response = await api.post('/api/orders', payload);
+      
+      const snapToken = response.data?.snap_token;
+      if (!snapToken) throw new Error("Gagal mendapatkan token pembayaran dari Midtrans.");
+
+      // 2. Munculkan Pop-up Snap Midtrans
+      window.snap.pay(snapToken, {
+        onSuccess: function(_result: any) {
+          // Midtrans berhasil dibayar (hanya untuk testing sandbox, 
+          // aslinya backend yang memproses webhook)
+          navigate('/payment-status?status=success');
+        },
+        onPending: function(_result: any) {
+          // Menunggu pembayaran (misal transfer VA/Qris blm dibayar)
+          navigate('/payment-status?status=pending');
+        },
+        onError: function(_result: any) {
+          alert("Pembayaran gagal!");
+        },
+        onClose: function() {
+          // User menutup pop-up sebelum menyelesaikan pembayaran
+          navigate('/payment-status?status=pending');
+        }
+      });
+
+    } catch (error: any) {
+      alert("Gagal memproses pesanan: " + error.message);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Order data from localStorage
@@ -114,8 +176,8 @@ export default function CheckoutPage() {
 
   const addonTotal = order.addons.reduce((s: number, a: any) => s + a.price, 0);
   const subtotal = order.basePrice + addonTotal;
-  const taxes = subtotal * 0.11;
-  const total = subtotal + taxes;
+  // Total = Harga produk saja. Komisi & biaya Midtrans ditanggung platform (internal)
+  const total = subtotal;
 
   return (
     <div className={styles.container}>
@@ -244,7 +306,7 @@ export default function CheckoutPage() {
             <div className={styles.formGroup}>
               <label className={styles.label}>Email Konfirmasi <span className={styles.req}>*</span></label>
               <div className={styles.inputIcon}>
-                <span className={styles.inputIco} style={{ fontSize: '14px' }}>✉</span>
+                <span className={styles.inputIco} style={{ fontSize: '14px' }}><Mail size={14} /></span>
                 <input
                   name="email"
                   type="email"
@@ -383,10 +445,6 @@ export default function CheckoutPage() {
                   <span>Rp {a.price.toLocaleString('id-ID')}</span>
                 </div>
               ))}
-              <div className={styles.costRow}>
-                <span>Pajak & Biaya (11%)</span>
-                <span>Rp {taxes.toLocaleString('id-ID')}</span>
-              </div>
             </div>
             <div className={styles.totalRow}>
               <span>TOTAL</span>
@@ -406,9 +464,20 @@ export default function CheckoutPage() {
             </label>
             {errors.agreed && <p className={styles.errMsg}>{errors.agreed}</p>}
 
-            <button className={styles.confirmBtn} onClick={handleSubmit}>
+            <button 
+              className={styles.confirmBtn} 
+              onClick={handleSubmit}
+              disabled={isProcessing}
+            >
               <Lock size={16} />
-              Konfirmasi & Bayar
+              {isProcessing ? 'Memproses Midtrans...' : 'Konfirmasi & Bayar'}
+            </button>
+            <button 
+              className={styles.cancelBtn} 
+              onClick={() => navigate('/catalog')}
+              disabled={isProcessing}
+            >
+              Batal & Kembali ke Katalog
             </button>
             <p className={styles.mitraNote}>Anda akan diarahkan ke halaman pembayaran aman Midtrans</p>
 
@@ -420,38 +489,7 @@ export default function CheckoutPage() {
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className={styles.footer}>
-        <div className={styles.footerInner}>
-          <div className={styles.footerBrand}>
-            <div className={styles.logo}>
-              <Box size={20} className={styles.logoIcon} />
-              <span>DIVEXPLORE-3D</span>
-            </div>
-            <p>Platform Wisata Bahari 3D #1 Indonesia</p>
-          </div>
-          <div className={styles.footerLinks}>
-            <div>
-              <h4>DESTINASI</h4>
-              <a href="#">Raja Ampat</a>
-              <a href="#">Bunaken</a>
-            </div>
-            <div>
-              <h4>TENTANG</h4>
-              <a href="#">Manifesto</a>
-              <a href="#">Tim Kami</a>
-            </div>
-          </div>
-        </div>
-        <div className={styles.footerBottom}>
-          <span>© 2025 DIVEXPLORE-3D. All rights reserved.</span>
-          <div className={styles.socialIcons}>
-            <span>IG</span>
-            <span>TW</span>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

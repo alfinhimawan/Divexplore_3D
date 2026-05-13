@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
+import { api } from '../../utils/api';
 import { OrbitControls, Html, Float, Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
 import { 
@@ -10,38 +11,13 @@ import {
   Minus, 
   RotateCcw, 
   RefreshCw,
-  Fish,
-  Anchor,
   Navigation
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Hotspot3DPage.module.css';
 import Header from '../../components/common/Header';
 
-// Mock Data
-const MOCK_HOTSPOTS = [
-  {
-    id: 1,
-    position: [-2, 1, 0],
-    title: 'Tur Nelayan Lombok',
-    price: 'Rp 275.000',
-    icon: <Navigation className="w-5 h-5 text-sky-500" />
-  },
-  {
-    id: 2,
-    position: [2, 0.5, -1],
-    title: 'Snorkeling Bunaken',
-    price: 'Rp 350.000',
-    icon: <Fish className="w-5 h-5 text-teal-500" />
-  },
-  {
-    id: 3,
-    position: [-1, -1.5, 1],
-    title: 'Snorkeling Gili Premium',
-    price: 'Rp 350.000',
-    icon: <Anchor className="w-5 h-5 text-orange-500" />
-  }
-];
+
 
 // Reusable Hotspot Component
 function HotspotMarker({ data, onClick, isSelected }: { data: any, onClick: (data: any) => void, isSelected: boolean }) {
@@ -90,7 +66,7 @@ function HotspotMarker({ data, onClick, isSelected }: { data: any, onClick: (dat
 }
 
 // The 3D Scene Wrapper
-function OceanScene({ selectedId, onSelect }: { selectedId: number | undefined, onSelect: (data: any) => void }) {
+function OceanScene({ hotspots, selectedId, onSelect }: { hotspots: any[], selectedId: any, onSelect: (data: any) => void }) {
   return (
     <>
       <ambientLight intensity={0.5} />
@@ -108,7 +84,7 @@ function OceanScene({ selectedId, onSelect }: { selectedId: number | undefined, 
       </Float>
 
       {/* Hotspots */}
-      {MOCK_HOTSPOTS.map((spot) => (
+      {hotspots.map((spot: any) => (
         <HotspotMarker 
           key={spot.id} 
           data={spot} 
@@ -130,11 +106,52 @@ function OceanScene({ selectedId, onSelect }: { selectedId: number | undefined, 
 
 export default function Hotspot3DPage() {
   const navigate = useNavigate();
-  const [selectedHotspot, setSelectedHotspot] = useState(MOCK_HOTSPOTS[2]); // Default selection
+  const [hotspots, setHotspots] = useState<any[]>([]);
+  const [selectedHotspot, setSelectedHotspot] = useState<any>(null); 
   const [isBundled, setIsBundled] = useState(false);
 
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await api.get('/api/products');
+        const products = res.data?.products || [];
+        
+        const spots = products.map((p: any, i: number) => {
+          let pos = [Math.sin(i) * 2.5, Math.cos(i) * 1.5, Math.sin(i * 2) * 2];
+          if (p.hotspots && p.hotspots.length > 0) {
+            try {
+               const coords = JSON.parse(p.hotspots[0].coordinates_json);
+               pos = [coords.x || pos[0], coords.y || pos[1], coords.z || pos[2]];
+            } catch(e){}
+          }
+          
+          return {
+            id: p.id,
+            position: pos,
+            title: p.nama_produk,
+            price: `Rp ${Number(p.harga).toLocaleString('id-ID')}`,
+            desc: p.deskripsi || p.vendor?.nama_toko || 'Produk wisata terbaik dari vendor lokal.',
+            image: p.thumbnail_url || 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+            icon: <Navigation className="w-5 h-5 text-sky-500" />,
+            addons: p.crossSellingAsMain || [],
+            location: p.lokasi || 'Lombok',
+            category: p.vendor?.kategori || 'AKTIVITAS BAHARI'
+          };
+        });
+        
+        setHotspots(spots);
+        if (spots.length > 0) setSelectedHotspot(spots[0]);
+      } catch (err) {
+        console.error("Gagal load data produk 3D:", err);
+      }
+    };
+    fetchProducts();
+  }, []);
+
   const handleDetailClick = () => {
-    navigate('/product');
+    if (selectedHotspot?.id) {
+      navigate('/product/' + selectedHotspot.id);
+    }
   };
 
   return (
@@ -158,7 +175,7 @@ export default function Hotspot3DPage() {
         {/* 3D Canvas Column */}
         <div className={styles.canvasContainer}>
           <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
-            <OceanScene selectedId={selectedHotspot?.id} onSelect={setSelectedHotspot} />
+            <OceanScene hotspots={hotspots} selectedId={selectedHotspot?.id} onSelect={setSelectedHotspot} />
           </Canvas>
           
           {/* Controls Overlay */}
@@ -180,50 +197,59 @@ export default function Hotspot3DPage() {
           <h2 className={styles.panelTitle}>Detail Produk</h2>
           
           <div className={styles.productCard}>
-            {/* Using placeholder image for diving */}
             <img 
-              src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-              alt="Diving" 
+              src={selectedHotspot?.image} 
+              alt={selectedHotspot?.title} 
               className={styles.productImage}
             />
             
-            <div className={styles.tag}>SNORKELING</div>
+            <div className={styles.tag}>{selectedHotspot?.category?.toUpperCase()}</div>
             
-            <h3 className={styles.productName}>{selectedHotspot?.title.toUpperCase() || 'SNORKELING GILI PREMIUM'}</h3>
+            <h3 className={styles.productName}>{selectedHotspot?.title.toUpperCase()}</h3>
             
             <p className={styles.productDesc}>
-              Nikmati petualangan bawah laut yang tak terlupakan dengan paket snorkeling premium di Gili. Air jernih dan terumbu karang indah menanti Anda.
+              {selectedHotspot?.desc}
             </p>
             
             <div className={styles.priceRow}>
               <div className={styles.price}>
-                {selectedHotspot?.price || 'Rp 1.200.000'}<span>/orang</span>
+                {selectedHotspot?.price}<span>/orang</span>
               </div>
               <div className={styles.availability}>
                 <ShieldCheck size={16} />
-                8 slot tersedia
+                Tersedia
               </div>
             </div>
             
-            <div className={styles.bundleBox}>
-              <div className={styles.bundleInfo}>
-                <div className={styles.bundleIcon}>
-                  <Box size={24} />
+            {selectedHotspot?.addons && selectedHotspot.addons.length > 0 ? (
+              <div className={styles.bundleBox}>
+                <div className={styles.bundleInfo}>
+                  <div className={styles.bundleIcon}>
+                    <Box size={24} />
+                  </div>
+                  <div className={styles.bundleText}>
+                    <span className={styles.bundleTitle}>{selectedHotspot.addons[0].addonProduct.nama_produk}</span>
+                    <span className={styles.bundlePrice}>+ Rp {Number(selectedHotspot.addons[0].addonProduct.harga).toLocaleString('id-ID')}</span>
+                  </div>
                 </div>
-                <div className={styles.bundleText}>
-                  <span className={styles.bundleTitle}>Bundling + Hotel Bintang 3</span>
-                  <span className={styles.bundlePrice}>+ Tambah Rp 500.000</span>
+                <label className={styles.switch}>
+                  <input 
+                    type="checkbox" 
+                    checked={isBundled} 
+                    onChange={() => setIsBundled(!isBundled)} 
+                  />
+                  <span className={styles.slider}></span>
+                </label>
+              </div>
+            ) : (
+              <div className={styles.bundleBox} style={{ opacity: 0.5 }}>
+                <div className={styles.bundleInfo}>
+                  <div className={styles.bundleText}>
+                    <span className={styles.bundleTitle}>Tidak ada tambahan opsional</span>
+                  </div>
                 </div>
               </div>
-              <label className={styles.switch}>
-                <input 
-                  type="checkbox" 
-                  checked={isBundled} 
-                  onChange={() => setIsBundled(!isBundled)} 
-                />
-                <span className={styles.slider}></span>
-              </label>
-            </div>
+            )}
             
             <div className={styles.actions}>
               <button className={styles.btnPrimary} onClick={handleDetailClick}>Lihat Detail</button>

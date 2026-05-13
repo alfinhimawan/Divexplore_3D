@@ -2,181 +2,384 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar, Users, CreditCard,
-  ChevronLeft, ChevronRight, CheckCircle2
+  ChevronLeft, ChevronRight, CheckCircle2,
+  Package, RefreshCw, Clock, XCircle,
+  ShoppingBag, ArrowRight, MapPin, Star
 } from 'lucide-react';
 import styles from './OrderHistoryPage.module.css';
 import Header from '../../components/common/Header';
+import Footer from '../../components/common/Footer';
+import { api } from '../../utils/api';
+import ReviewModal from './ReviewModal';
 
-type Tab = 'semua' | 'pending' | 'aktif' | 'selesai' | 'dibatalkan';
+type Tab = 'semua' | 'pending' | 'paid' | 'canceled';
+
+interface OrderItem {
+  id: string;
+  product_id: string;
+  qty: number;
+  harga_satuan: number;
+  subtotal: number;
+  product?: { nama_produk: string; thumbnail_url?: string; lokasi?: string };
+  vendor?: { nama_toko: string };
+}
 
 interface Order {
   id: string;
-  orderId: string;
-  status: 'pending' | 'aktif' | 'selesai' | 'dibatalkan';
-  title: string;
-  vendor: string;
-  date: string;
-  pax: number;
-  paymentMethod: string;
-  orderDate: string;
-  total: number;
-  image: string;
-  hasReviewed?: boolean;
+  status: 'pending' | 'paid' | 'canceled';
+  total_pembayaran: number;
+  createdAt: string;
+  items: OrderItem[];
+  paymentLogs?: { payment_type: string }[];
+  reviews?: any[];
 }
+
+const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; color: string; bg: string; border: string }> = {
+  pending: { label: 'Menunggu Bayar', icon: Clock, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.25)' },
+  paid:    { label: 'Lunas',          icon: CheckCircle2, color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.25)' },
+  canceled:{ label: 'Dibatalkan',     icon: XCircle, color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.25)' },
+};
 
 export default function OrderHistoryPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('semua');
-
   const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Review Modal State
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [selectedOrderForReview, setSelectedOrderForReview] = useState<{id: string, productId: string, productName: string} | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('divexplore_cart');
-    if (saved) {
-      const cartItems = JSON.parse(saved);
-      const convertedOrders: Order[] = cartItems.map((item: any, index: number) => {
-        const addonTotal = item.addons ? item.addons.reduce((s: number, a: any) => s + (a.price * item.quantity), 0) : 0;
-        const subtotal = (item.price * item.quantity) + addonTotal;
-        const taxes = subtotal * 0.11;
-        const total = subtotal + taxes;
-        
-        return {
-          id: String(index + 1),
-          orderId: `#ORD-DX3D-00${index + 1}`,
-          status: 'selesai',
-          title: item.name,
-          vendor: 'Divexplore Verified Vendor',
-          date: '14 Jun 2026',
-          pax: item.quantity,
-          paymentMethod: 'BCA Virtual Account',
-          orderDate: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-          total: total,
-          image: item.image,
-          hasReviewed: false
-        };
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await api.get('/api/orders/me');
+        const ordersData = res.data?.orders || [];
+        setOrders(ordersData);
+      } catch (err: any) {
+        if (err?.response?.status === 401) {
+          navigate('/login');
+        } else {
+          setError('Gagal memuat riwayat pesanan. Coba lagi.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, [navigate]);
+
+  const filteredOrders = orders.filter(order =>
+    activeTab === 'semua' || order.status === activeTab
+  );
+
+  const getProductImage = (order: Order): string =>
+    order.items?.[0]?.product?.thumbnail_url ||
+    'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=80';
+
+  const getProductName = (order: Order): string => {
+    if (!order.items?.length) return 'Paket Wisata';
+    const names = order.items.map(i => i.product?.nama_produk || 'Produk').join(', ');
+    return names.length > 60 ? names.slice(0, 57) + '...' : names;
+  };
+
+  const getVendorName = (order: Order): string =>
+    order.items?.[0]?.vendor?.nama_toko || 'Divexplore Vendor';
+
+  const getLocation = (order: Order): string =>
+    order.items?.[0]?.product?.lokasi || 'Indonesia';
+
+  const getTotalPax = (order: Order): number =>
+    order.items?.reduce((sum, item) => sum + (item.qty || 1), 0) || 1;
+
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString('id-ID', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    });
+
+  const formatTime = (dateStr: string) =>
+    new Date(dateStr).toLocaleTimeString('id-ID', {
+      hour: '2-digit', minute: '2-digit'
+    });
+
+  const getPaymentMethod = (order: Order): string => {
+    const raw = order.paymentLogs?.[0]?.payment_type;
+    if (!raw) return 'Online Payment';
+    const map: Record<string, string> = {
+      bank_transfer:  'Transfer Bank',
+      bca_va:         'BCA Virtual Account',
+      bni_va:         'BNI Virtual Account',
+      bri_va:         'BRI Virtual Account',
+      mandiri_bill:   'Mandiri Virtual Account',
+      permata_va:     'Permata Virtual Account',
+      gopay:          'GoPay',
+      shopeepay:      'ShopeePay',
+      qris:           'QRIS',
+      credit_card:    'Kartu Kredit',
+      cstore:         'Minimarket',
+    };
+    return map[raw] ?? raw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  };
+  const handleReview = (order: Order) => {
+    const item = order.items?.[0];
+    if (item) {
+      setSelectedOrderForReview({
+        id: order.id,
+        productId: item.product_id,
+        productName: item.product?.nama_produk || 'Produk'
       });
-      setOrders(convertedOrders);
+      setIsReviewOpen(true);
     }
-  }, []);
+  };
+  const TABS: { key: Tab; label: string }[] = [
+    { key: 'semua',    label: 'Semua Pesanan' },
+    { key: 'pending',  label: 'Menunggu Bayar' },
+    { key: 'paid',     label: 'Lunas' },
+    { key: 'canceled', label: 'Dibatalkan' },
+  ];
 
-  const filteredOrders = orders.filter(order => {
-    return activeTab === 'semua' || order.status === activeTab;
-  });
-
-  const getStatusBadge = (status: string) => {
-    switch(status) {
-      case 'pending': return <span className={`${styles.badge} ${styles.badgePending}`}>PENDING</span>;
-      case 'aktif': return <span className={`${styles.badge} ${styles.badgeActive}`}>ACTIVE</span>;
-      case 'selesai': return <span className={`${styles.badge} ${styles.badgeCompleted}`}>COMPLETED</span>;
-      case 'dibatalkan': return <span className={`${styles.badge} ${styles.badgeCanceled}`}>CANCELED</span>;
-      default: return null;
-    }
+  const stats = {
+    total:    orders.length,
+    paid:     orders.filter(o => o.status === 'paid').length,
+    pending:  orders.filter(o => o.status === 'pending').length,
+    canceled: orders.filter(o => o.status === 'canceled').length,
   };
 
   return (
     <div className={styles.container}>
-      {/* Header */}
       <Header />
 
       <main className={styles.main}>
-        <div className={styles.breadcrumb}>
-          <span>Beranda</span> / <span>Profil</span> / <span className={styles.bcActive}>Riwayat Pesanan</span>
+        {/* ── Hero Header ── */}
+        <div className={styles.heroSection}>
+          <div className={styles.heroLeft}>
+            <div className={styles.breadcrumb}>
+              <span onClick={() => navigate('/')} className={styles.bcLink}>Beranda</span>
+              <ChevronRight size={14} className={styles.bcSep} />
+              <span className={styles.bcActive}>Riwayat Pesanan</span>
+            </div>
+            <h1 className={styles.pageTitle}>Riwayat Pesanan</h1>
+            <p className={styles.pageDesc}>Kelola dan pantau semua perjalanan wisata Anda</p>
+          </div>
+          <button className={styles.newOrderBtn} onClick={() => navigate('/catalog')}>
+            <ShoppingBag size={16} />
+            Pesan Baru
+          </button>
         </div>
-        
-        <h1 className={styles.pageTitle}>Riwayat Pesanan</h1>
 
+        {/* ── Stats Cards ── */}
+        <div className={styles.statsRow}>
+          <div className={styles.statCard}>
+            <div className={styles.statIcon} style={{ background: 'rgba(14,165,233,0.15)' }}>
+              <Package size={20} color="#0ea5e9" />
+            </div>
+            <div>
+              <div className={styles.statValue}>{stats.total}</div>
+              <div className={styles.statLabel}>Total Pesanan</div>
+            </div>
+          </div>
+          <div className={styles.statCard}>
+            <div className={styles.statIcon} style={{ background: 'rgba(16,185,129,0.15)' }}>
+              <CheckCircle2 size={20} color="#10b981" />
+            </div>
+            <div>
+              <div className={styles.statValue} style={{ color: '#10b981' }}>{stats.paid}</div>
+              <div className={styles.statLabel}>Lunas</div>
+            </div>
+          </div>
+          <div className={styles.statCard}>
+            <div className={styles.statIcon} style={{ background: 'rgba(245,158,11,0.15)' }}>
+              <Clock size={20} color="#f59e0b" />
+            </div>
+            <div>
+              <div className={styles.statValue} style={{ color: '#f59e0b' }}>{stats.pending}</div>
+              <div className={styles.statLabel}>Menunggu Bayar</div>
+            </div>
+          </div>
+          <div className={styles.statCard}>
+            <div className={styles.statIcon} style={{ background: 'rgba(239,68,68,0.15)' }}>
+              <XCircle size={20} color="#ef4444" />
+            </div>
+            <div>
+              <div className={styles.statValue} style={{ color: '#ef4444' }}>{stats.canceled}</div>
+              <div className={styles.statLabel}>Dibatalkan</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Tabs ── */}
         <div className={styles.tabsContainer}>
-          {(['semua', 'pending', 'aktif', 'selesai', 'dibatalkan'] as Tab[]).map(tab => (
-            <button 
-              key={tab} 
-              className={`${styles.tabBtn} ${activeTab === tab ? styles.tabActive : ''}`}
-              onClick={() => setActiveTab(tab)}
+          {TABS.map(tab => (
+            <button
+              key={tab.key}
+              className={`${styles.tabBtn} ${activeTab === tab.key ? styles.tabActive : ''}`}
+              onClick={() => setActiveTab(tab.key)}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab.label}
+              {tab.key !== 'semua' && (
+                <span className={`${styles.tabBadge} ${activeTab === tab.key ? styles.tabBadgeActive : ''}`}>
+                  {orders.filter(o => o.status === tab.key).length}
+                </span>
+              )}
             </button>
           ))}
         </div>
 
+        {/* ── Orders List ── */}
         <div className={styles.ordersList}>
-          {filteredOrders.length === 0 ? (
+          {loading ? (
             <div className={styles.emptyState}>
-              <p>Tidak ada pesanan ditemukan.</p>
+              <div className={styles.spinnerWrap}>
+                <RefreshCw size={28} className={styles.spinIcon} />
+              </div>
+              <p className={styles.emptyTitle}>Memuat pesanan...</p>
+              <p className={styles.emptyDesc}>Mohon tunggu sebentar</p>
+            </div>
+          ) : error ? (
+            <div className={styles.emptyState}>
+              <div className={styles.spinnerWrap} style={{ background: 'rgba(239,68,68,0.1)' }}>
+                <XCircle size={28} color="#ef4444" />
+              </div>
+              <p className={styles.emptyTitle} style={{ color: '#ef4444' }}>Terjadi Kesalahan</p>
+              <p className={styles.emptyDesc}>{error}</p>
+              <button className={styles.btnPrimary} onClick={() => window.location.reload()}>
+                <RefreshCw size={14} /> Coba Lagi
+              </button>
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className={styles.emptyState}>
+              <div className={styles.spinnerWrap}>
+                <Package size={28} color="#0ea5e9" />
+              </div>
+              <p className={styles.emptyTitle}>Belum Ada Pesanan</p>
+              <p className={styles.emptyDesc}>
+                {activeTab === 'semua'
+                  ? 'Anda belum memiliki riwayat pesanan. Yuk mulai berwisata!'
+                  : `Tidak ada pesanan dengan status "${TABS.find(t => t.key === activeTab)?.label}".`}
+              </p>
+              <button className={styles.btnPrimary} onClick={() => navigate('/catalog')}>
+                <ShoppingBag size={14} /> Jelajahi Destinasi
+              </button>
             </div>
           ) : (
-            filteredOrders.map(order => (
-              <div key={order.id} className={`${styles.orderCard} ${order.status === 'aktif' ? styles.orderCardActive : ''} ${order.status === 'dibatalkan' ? styles.orderCardCanceled : ''}`}>
-                <div className={styles.cardMain}>
-                  <img src={order.image} alt={order.title} className={styles.orderImg} />
-                  
-                  <div className={styles.orderTitleCol}>
-                    <div className={styles.orderIdRow}>
-                      <span className={styles.orderId}>{order.orderId}</span>
-                      {getStatusBadge(order.status)}
+            filteredOrders.map(order => {
+              const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG['pending'];
+              const StatusIcon = cfg.icon;
+              return (
+                <div key={order.id} className={`${styles.orderCard} ${order.status === 'paid' ? styles.orderCardPaid : ''} ${order.status === 'canceled' ? styles.orderCardCanceled : ''}`}>
+                  {/* Left accent bar */}
+                  <div className={styles.cardAccent} style={{ background: cfg.color }} />
+
+                  {/* Thumbnail */}
+                  <div className={styles.imgWrap}>
+                    <img
+                      src={getProductImage(order)}
+                      alt={getProductName(order)}
+                      className={styles.orderImg}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=80';
+                      }}
+                    />
+                    <span className={styles.imgOverlay} style={{ color: cfg.color, background: cfg.bg, borderColor: cfg.border }}>
+                      <StatusIcon size={10} />
+                      {cfg.label}
+                    </span>
+                  </div>
+
+                  {/* Main Info */}
+                  <div className={styles.cardBody}>
+                    <div className={styles.orderMeta}>
+                      <span className={styles.orderId}>#{order.id.slice(0, 8).toUpperCase()}</span>
+                      <span className={styles.orderTime}>
+                        <Clock size={11} /> {formatTime(order.createdAt)}
+                      </span>
                     </div>
-                    <h3 className={styles.orderTitle}>{order.title}</h3>
-                    <p className={styles.orderVendor}>{order.vendor}</p>
+
+                    <h3 className={styles.orderTitle}>{getProductName(order)}</h3>
+                    <p className={styles.orderVendor}>{getVendorName(order)}</p>
+
+                    <div className={styles.orderTags}>
+                      <span className={styles.tag}><MapPin size={11} /> {getLocation(order)}</span>
+                      <span className={styles.tag}><Users size={11} /> {getTotalPax(order)} Peserta</span>
+                      <span className={styles.tag}><Calendar size={11} /> {formatDate(order.createdAt)}</span>
+                      <span className={styles.tag}><CreditCard size={11} /> {getPaymentMethod(order)}</span>
+                    </div>
                   </div>
 
-                  <div className={styles.orderMetaCol}>
-                    <div className={styles.metaRow}><Calendar size={14} /> {order.date}</div>
-                    <div className={styles.metaRow}><Users size={14} /> {order.pax} Peserta</div>
-                  </div>
+                  {/* Right: Price + Actions */}
+                  <div className={styles.cardRight}>
+                    <div className={styles.priceBlock}>
+                      <span className={styles.priceLabel}>Total Pembayaran</span>
+                      <span className={styles.priceValue}>
+                        Rp {Number(order.total_pembayaran).toLocaleString('id-ID')}
+                      </span>
+                    </div>
 
-                  <div className={styles.orderPaymentCol}>
-                    <div className={styles.metaRow}><CreditCard size={14} /> {order.paymentMethod}</div>
-                    <div className={styles.orderDateLabel}>Dipesan pada {order.orderDate}</div>
+                    <div className={styles.actionButtons}>
+                      {order.status === 'paid' && (
+                        <>
+                          <div className={styles.paidBadge}>
+                            <CheckCircle2 size={13} /> Pembayaran Diterima
+                          </div>
+                          {(!order.reviews || order.reviews.length === 0) ? (
+                            <button
+                              className={styles.btnReview}
+                              onClick={() => handleReview(order)}
+                            >
+                              <Star size={13} /> Beri Ulasan
+                            </button>
+                          ) : (
+                            <div className={styles.reviewedBadge}>
+                              <CheckCircle2 size={13} /> Ulasan Terkirim
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {order.status === 'pending' && (
+                        <button className={styles.btnPayNow} onClick={() => navigate('/catalog')}>
+                          <ShoppingBag size={13} /> Pesan Baru
+                        </button>
+                      )}
+                      {order.status === 'canceled' && (
+                        <button className={styles.btnReorder} onClick={() => navigate('/catalog')}>
+                          Pesan Lagi <ArrowRight size={13} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                <div className={styles.cardRight}>
-                  <div className={styles.priceContainer}>
-                    <span className={styles.priceValue}>Rp {order.total.toLocaleString('id-ID')}</span>
-                  </div>
-                  
-                  <div className={styles.actionButtons}>
-                    {order.status === 'selesai' && (
-                      <>
-                        {order.hasReviewed ? (
-                          <div className={styles.reviewedBadge}><CheckCircle2 size={14} /> Sudah Diulas</div>
-                        ) : (
-                          <button className={styles.btnPrimary} onClick={() => navigate('/review')}>Tulis Ulasan</button>
-                        )}
-                        <button className={styles.btnSecondary}>Unduh Invoice</button>
-                      </>
-                    )}
-                    {order.status === 'pending' && (
-                      <>
-                        <button className={styles.btnWarning}>Bayar Sekarang</button>
-                        <button className={styles.btnDangerGhost}>Batalkan</button>
-                      </>
-                    )}
-                    {order.status === 'aktif' && (
-                      <>
-                        <button className={styles.btnSecondary}>Detail Pesanan</button>
-                        <button className={styles.btnSecondaryGhost}>E-Ticket</button>
-                      </>
-                    )}
-                    {order.status === 'dibatalkan' && (
-                      <button className={styles.btnSecondaryGhost}>Pesan Lagi</button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
-        {/* Pagination mock */}
-        <div className={styles.pagination}>
-          <button className={styles.pageBtn}><ChevronLeft size={16} /> Prev</button>
-          <button className={`${styles.pageBtn} ${styles.pageActive}`}>1</button>
-          <button className={styles.pageBtn}>2</button>
-          <button className={styles.pageBtn}>3</button>
-          <span className={styles.pageDots}>...</span>
-          <button className={styles.pageBtn}>11</button>
-          <button className={styles.pageBtn}>Next <ChevronRight size={16} /></button>
-        </div>
+        {/* ── Pagination ── */}
+        {filteredOrders.length > 10 && (
+          <div className={styles.pagination}>
+            <button className={styles.pageBtn}><ChevronLeft size={15} /> Prev</button>
+            <button className={`${styles.pageBtn} ${styles.pageActive}`}>1</button>
+            <button className={styles.pageBtn}>Next <ChevronRight size={15} /></button>
+          </div>
+        )}
       </main>
+
+      <Footer />
+
+      {selectedOrderForReview && (
+        <ReviewModal 
+          isOpen={isReviewOpen}
+          onClose={() => setIsReviewOpen(false)}
+          orderId={selectedOrderForReview.id}
+          productId={selectedOrderForReview.productId}
+          productName={selectedOrderForReview.productName}
+          onSuccess={() => {
+            // Optional: refresh orders to show review state
+          }}
+        />
+      )}
     </div>
   );
 }

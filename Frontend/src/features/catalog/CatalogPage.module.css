@@ -484,6 +484,30 @@
   margin-top: 2px;
 }
 
+.cardStock {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #f59e0b;
+  margin-top: 4px;
+}
+
+.cardAddons {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-top: 6px;
+  width: fit-content;
+  font-weight: 500;
+}
+
 .cardFooter {
   display: flex;
   align-items: flex-end;
@@ -535,6 +559,25 @@
 .addToCartBtn:hover {
   opacity: 1;
   transform: scale(1.02);
+}
+
+.detailBtn {
+  margin-top: 8px;
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.detailBtn:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 /* ── Empty State ─────────────────────────────────────── */

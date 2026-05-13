@@ -1,5 +1,6 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { api } from '../../utils/api';
 
 interface User {
   name: string;
@@ -11,7 +12,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   login: (email: string, pass: string) => Promise<boolean>;
-  loginWithGoogle: () => Promise<boolean>;
+  loginWithGoogle: (credential: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -21,37 +22,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
 
+  // Cek token saat pertama kali web dibuka
+  useEffect(() => {
+    const token = localStorage.getItem('divexplore_token');
+    const customer = localStorage.getItem('divexplore_customer');
+    if (token) {
+      setIsAuthenticated(true);
+      if (customer) {
+        setUser(JSON.parse(customer));
+      }
+    }
+  }, []);
+
   const login = async (email: string, pass: string) => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Simple validation simulation
-    if (email && pass) {
+    try {
+      // Tembak API Login Backend yang asli
+      const response = await api.post('/api/auth/login', { email, password: pass });
+      
+      const token = response.data.token;
+      const userData = response.data.user;
+
+      // Simpan Karcis (Token) ke brankas browser
+      localStorage.setItem('divexplore_token', token);
+      
       setIsAuthenticated(true);
       setUser({
-        name: 'Wisatawan Satu',
-        email: email,
+        name: userData.nama_lengkap,
+        email: userData.email,
         avatar: 'https://i.pravatar.cc/150?img=11'
       });
       return true;
+    } catch (error: any) {
+      console.error("Login gagal:", error.message);
+      return false;
     }
-    return false;
   };
 
-  const loginWithGoogle = async () => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    setIsAuthenticated(true);
-    setUser({
-      name: 'Wisatawan Google',
-      email: 'wisatawan@google.com',
-      avatar: 'https://i.pravatar.cc/150?img=11'
-    });
-    return true;
+  const loginWithGoogle = async (credential: string) => {
+    try {
+      const response = await api.post('/api/auth/google', { id_token: credential });
+      
+      const token = response.data.token;
+      const userData = response.data.user;
+
+      localStorage.setItem('divexplore_token', token);
+      
+      setIsAuthenticated(true);
+      setUser({
+        name: userData.nama_lengkap,
+        email: userData.email,
+        avatar: userData.foto_profil_url || 'https://i.pravatar.cc/150?img=11'
+      });
+      return true;
+    } catch (error: any) {
+      console.error("Google Login gagal:", error.message);
+      return false;
+    }
   };
 
   const logout = () => {
+    localStorage.removeItem('divexplore_token');
     setIsAuthenticated(false);
     setUser(null);
   };

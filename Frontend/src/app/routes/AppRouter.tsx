@@ -16,7 +16,7 @@ export default function AppRouter() {
       <Routes>
         <Route path="/" element={<Hotspot3DPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/product" element={<ProductDetailPage />} />
+        <Route path="/product/:id" element={<ProductDetailPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/catalog" element={<CatalogPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />

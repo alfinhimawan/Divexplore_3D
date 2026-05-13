@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthContext';
+import { api } from '../../utils/api';
 import { 
   Box, 
   Clock, 
@@ -8,27 +9,29 @@ import {
   Award, 
   MapPin, 
   Star, 
-  Calendar, 
   ShoppingCart, 
   Zap, 
   ShieldCheck, 
   CheckCircle2, 
   FileText,
+  Package,
   Minus,
-  Plus
-} from 'lucide-react';
+  Plus, Lock, ArrowRight } from 'lucide-react';
 import styles from './ProductDetailPage.module.css';
 import Header from '../../components/common/Header';
+import Footer from '../../components/common/Footer';
 
 export default function ProductDetailPage() {
+  const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const [quantity, setQuantity] = useState(2);
-  const [addons, setAddons] = useState({
-    makanSiang: true,
-    sewaAlat: true,
-    antarJemput: false
-  });
+  
+  const [product, setProduct] = useState<any>(null);
+  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const [quantity, setQuantity] = useState(1);
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('deskripsi');
 
   const PRODUCT_IMAGES = [
@@ -37,36 +40,150 @@ export default function ProductDetailPage() {
     "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=1600&q=80",
     "https://images.unsplash.com/photo-1559494007-9f5847c49d94?w=1600&q=80"
   ];
+  
   const [activeImage, setActiveImage] = useState(PRODUCT_IMAGES[0]);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        if (id) {
+          const res = await api.get(`/api/products/${id}`);
+          const p = res.data?.product;
+          setProduct(p);
+          if (p?.thumbnail_url) {
+            setActiveImage(p.thumbnail_url);
+          }
+        }
+        
+        // Ambil produk terkait (dummy filter dari semua produk)
+        const relRes = await api.get('/api/products');
+        const allProds = relRes.data?.products || [];
+        setRelatedProducts(allProds.filter((p: any) => p.id !== id).slice(0, 5));
+        
+      } catch (err) {
+        console.error("Gagal load detail:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [id]);
+
   // Pricing logic
-  const basePrice = 350000;
-  const makanSiangPrice = 75000;
-  const sewaAlatPrice = 100000;
-  const antarJemputPrice = 50000;
+  const basePrice = product ? Number(product.harga) : 0;
+
+  // Review logic
+  const reviewCount = product?.reviews?.length || 0;
+  const averageRating = reviewCount > 0 
+    ? (product.reviews.reduce((acc: number, rev: any) => acc + (rev.rating || 5), 0) / reviewCount)
+    : 0;
 
   const calculateTotal = () => {
     let perPerson = basePrice;
-    if (addons.makanSiang) perPerson += makanSiangPrice;
-    if (addons.sewaAlat) perPerson += sewaAlatPrice;
-    if (addons.antarJemput) perPerson += antarJemputPrice;
+    if (product?.crossSellingAsMain) {
+      product.crossSellingAsMain.forEach((addonObj: any) => {
+        if (selectedAddons.includes(addonObj.addonProduct.id)) {
+          perPerson += Number(addonObj.addonProduct.harga);
+        }
+      });
+    }
     return perPerson * quantity;
   };
 
+  const getSelectedAddonsData = () => {
+    const res: any[] = [];
+    if (product?.crossSellingAsMain) {
+      product.crossSellingAsMain.forEach((addonObj: any) => {
+        if (selectedAddons.includes(addonObj.addonProduct.id)) {
+          res.push({
+            name: addonObj.addonProduct.nama_produk,
+            price: Number(addonObj.addonProduct.harga)
+          });
+        }
+      });
+    }
+    return res;
+  };
+
+  const getDynamicFeatures = () => {
+    if (!product) {
+      return {
+        durasi: '-',
+        kapasitas: '-',
+        level: '-',
+        included: []
+      };
+    }
+    const category = product?.vendor?.kategori?.toLowerCase() || '';
+    
+    if (category === 'homestay') {
+      return {
+        durasi: '1 Malam',
+        kapasitas: product?.kapasitas ? `${product.kapasitas} Orang` : '2 Orang/Kamar',
+        level: 'Semua Umur',
+        included: [
+          'Kamar bersih dan nyaman (AC/Kipas)',
+          'Sarapan gratis untuk 2 orang',
+          'Akses Wi-Fi gratis di seluruh area',
+          'Layanan kebersihan harian'
+        ]
+      };
+    } else if (category === 'kuliner') {
+      return {
+        durasi: 'Bebas',
+        kapasitas: product?.kapasitas ? `${product.kapasitas} Porsi` : '1 Porsi',
+        level: 'Semua Kalangan',
+        included: [
+          'Bahan makanan segar tangkapan lokal',
+          'Bumbu rempah otentik khas daerah',
+          'Pilihan area makan indoor/outdoor',
+          'Termasuk pajak dan layanan'
+        ]
+      };
+    } else if (category === 'fotografi') {
+      return {
+        durasi: '1-2 Jam',
+        kapasitas: 'Hingga 5 Orang',
+        level: 'Fleksibel',
+        included: [
+          'Sesi foto outdoor (Pantai/Darat)',
+          'Semua file foto mentah',
+          'Edit 10 foto pilihan terbaik',
+          'Properti foto standar'
+        ]
+      };
+    } else {
+      // Default / Aktivitas Tur / Peralatan
+      return {
+        durasi: '4-6 Jam',
+        kapasitas: product?.kapasitas ? `${product.kapasitas} Orang` : 'Grup/Pribadi',
+        level: 'Pemula - Lanjut',
+        included: [
+          'Pelayanan terbaik dari vendor lokal terverifikasi',
+          'Peralatan keselamatan sesuai standar',
+          'Pemandu lokal berpengalaman',
+          'Asuransi perjalanan dasar selama aktivitas'
+        ]
+      };
+    }
+  };
+
+  const dynamicData = getDynamicFeatures();
+
   const saveToCart = () => {
+    if (!product) return;
     const cartItem = {
-      id: '1',
-      name: 'Snorkeling Gili Premium',
-      type: 'SNORKELING',
-      location: 'Lombok',
-      price: 350000,
+      id: product.id,
+      product_id: product.id, // For backend API compatibility
+      name: product.nama_produk,
+      type: product.vendor?.kategori || 'AKTIVITAS',
+      location: product.lokasi || 'Indonesia',
+      price: basePrice,
       quantity: quantity,
-      image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-      addons: [
-        ...(addons.makanSiang ? [{ name: 'Makan Siang', price: 75000 }] : []),
-        ...(addons.sewaAlat ? [{ name: 'Sewa Alat Selam', price: 100000 }] : []),
-        ...(addons.antarJemput ? [{ name: 'Antar-Jemput', price: 50000 }] : [])
-      ]
+      image: product.thumbnail_url || PRODUCT_IMAGES[0],
+      addons: getSelectedAddonsData()
     };
     localStorage.setItem('divexplore_cart', JSON.stringify([cartItem]));
   };
@@ -76,9 +193,34 @@ export default function ProductDetailPage() {
       navigate('/login');
     } else {
       saveToCart();
-      navigate('/cart');
+      navigate('/checkout');
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className={styles.container}>
+        <Header />
+        <main className={styles.mainContent} style={{ justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+          <p>Memuat detail produk...</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className={styles.container}>
+        <Header />
+        <main className={styles.mainContent} style={{ justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+          <p>Produk tidak ditemukan.</p>
+          <button className={styles.btnPrimary} onClick={() => navigate('/catalog')}>Kembali ke Katalog</button>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -87,13 +229,13 @@ export default function ProductDetailPage() {
 
       {/* Breadcrumb */}
       <div className={styles.breadcrumb}>
-        <span>Beranda</span>
+        <span onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>Beranda</span>
         <span>&gt;</span>
-        <span>Katalog</span>
+        <span onClick={() => navigate('/catalog')} style={{ cursor: 'pointer' }}>Katalog</span>
         <span>&gt;</span>
-        <span>Snorkeling</span>
+        <span>{product.vendor?.kategori || 'Kategori'}</span>
         <span>&gt;</span>
-        <span className={styles.active}>Bunaken</span>
+        <span className={styles.active}>{product.nama_produk}</span>
       </div>
 
       {/* Main Content */}
@@ -104,21 +246,23 @@ export default function ProductDetailPage() {
             <div className={styles.mainImageContainer}>
               <img 
                 src={activeImage} 
-                alt="Snorkeling Gili Premium" 
+                alt={product.nama_produk} 
                 className={styles.mainImage}
               />
               <div className={styles.tagsOverlay}>
-                <span className={styles.tagBlue}>SNORKELING</span>
-                <span className={styles.tagOrange}>PREMIUM</span>
+                <span className={styles.tagBlue}>{product.vendor?.kategori?.toUpperCase() || 'PRODUK'}</span>
+                <span className={styles.tagOrange}>TERVERIFIKASI</span>
               </div>
-              <button className={styles.view360Btn}>
-                <Box size={16} />
-                Lihat 360°
-              </button>
+              {product.hotspots && product.hotspots.length > 0 && (
+                <button className={styles.view360Btn} onClick={() => navigate('/')}>
+                  <Box size={16} />
+                  Lihat 360°
+                </button>
+              )}
             </div>
             
             <div className={styles.thumbnails}>
-              {PRODUCT_IMAGES.map((img, index) => (
+              {[product.thumbnail_url, ...PRODUCT_IMAGES].slice(0, 4).filter(Boolean).map((img, index) => (
                 <img 
                   key={index}
                   src={img} 
@@ -130,26 +274,42 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
+          {/* Stock Status Badge */}
+          {product.inventories && (
+            <div className={`${styles.stockBadge} ${
+              product.inventories.reduce((acc: number, inv: any) => acc + inv.available_qty, 0) > 10 
+                ? styles.stockAvailable 
+                : product.inventories.reduce((acc: number, inv: any) => acc + inv.available_qty, 0) > 0 
+                ? styles.stockLimited 
+                : styles.stockOut
+            }`}>
+              <Package size={14} />
+              {product.inventories.reduce((acc: number, inv: any) => acc + inv.available_qty, 0) > 0 
+                ? `Tersisa ${product.inventories.reduce((acc: number, inv: any) => acc + inv.available_qty, 0)} slot tersedia`
+                : 'Maaf, Stok Habis'}
+            </div>
+          )}
+
           <div className={styles.infoCards}>
             <div className={styles.infoCard}>
               <Clock className={styles.infoIcon} size={24} />
-              <span className={styles.infoValue}>3-4 Jam</span>
+              <span className={styles.infoValue}>{dynamicData.durasi}</span>
               <span className={styles.infoLabel}>Durasi</span>
             </div>
             <div className={styles.infoCard}>
               <Users className={styles.infoIcon} size={24} />
-              <span className={styles.infoValue}>Max 12 Orang</span>
+              <span className={styles.infoValue}>{dynamicData.kapasitas}</span>
               <span className={styles.infoLabel}>Kapasitas</span>
             </div>
             <div className={styles.infoCard}>
               <Award className={styles.infoIcon} size={24} />
-              <span className={styles.infoValue}>Pemula OK</span>
+              <span className={styles.infoValue}>{dynamicData.level}</span>
               <span className={styles.infoLabel}>Level</span>
             </div>
             <div className={styles.infoCard}>
               <MapPin className={styles.infoIcon} size={24} />
-              <span className={styles.infoValue}>Bunaken</span>
-              <span className={styles.infoLabel}>Sulawesi Utara</span>
+              <span className={styles.infoValue}>{product.lokasi || 'Gili Trawangan'}</span>
+              <span className={styles.infoLabel}>Lokasi</span>
             </div>
           </div>
         </div>
@@ -158,118 +318,114 @@ export default function ProductDetailPage() {
         <div className={styles.rightColumn}>
           <div className={styles.bookingCard}>
             <div className={styles.bookingHeader}>
-              <span className={styles.tagBlue}>SNORKELING</span>
-              <span style={{fontSize: '13px', color: '#94a3b8'}}>Lombok</span>
-            </div>
-            
-            <h1 className={styles.productTitle}>Snorkeling Gili Premium</h1>
-            
-            <div className={styles.ratingRow}>
-              <div className={styles.stars}>
-                <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                <Star size={16} fill="#f59e0b" color="#f59e0b" />
+              <div className={styles.vendorInfo}>
+                <span className={styles.vendorBadge}>{product.vendor?.kategori || 'VENDOR'}</span>
+                <span className={styles.vendorLocation}>{product.vendor?.nama_toko}</span>
               </div>
-              <span className={styles.ratingText}>4.9</span>
-              <span className={styles.reviewCount}>(124 ulasan)</span>
-              <a href="#" className={styles.reviewLink}>Lihat ulasan</a>
-            </div>
-
-            <div className={styles.priceDisplay}>
-              <div className={styles.currentPrice}>
-                Rp 350.000 <span>/orang</span>
+              <h1 className={styles.productTitle}>{product.nama_produk}</h1>
+              
+              <div className={styles.ratingRow}>
+                <div className={styles.stars}>
+                  {[...Array(5)].map((_, i) => (
+                    <Star 
+                      key={i} 
+                      size={16} 
+                      fill={i < Math.round(averageRating) ? "#f59e0b" : "none"} 
+                      color={i < Math.round(averageRating) ? "#f59e0b" : "#cbd5e1"} 
+                    />
+                  ))}
+                </div>
+                <span className={styles.ratingScore}>{averageRating.toFixed(1)}</span>
+                <span className={styles.reviewCount}>({reviewCount} ulasan)</span>
               </div>
-            </div>
-
-            <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Pilih Tanggal:</label>
-              <div className={styles.dateInputWrapper}>
-                <Calendar size={16} className={styles.calendarIcon} />
-                <input type="text" placeholder="Pilih tanggal kunjungan..." className={styles.dateInput} readOnly value="14 Juni 2026" />
-                <span className={styles.quotaBadge}>✔ Kuota tersisa: 12</span>
+              
+              <div className={styles.priceContainer}>
+                <span className={styles.mainPrice}>Rp {basePrice.toLocaleString('id-ID')}</span>
+                <span className={styles.priceUnit}>/orang</span>
               </div>
             </div>
 
-            <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Jumlah:</label>
-              <div className={styles.qtySelector}>
-                <button className={styles.qtyBtn} onClick={() => setQuantity(Math.max(1, quantity - 1))}>
-                  <Minus size={16} />
+            <div className={styles.bookingForm}>
+              <div className={styles.inputGroup}>
+                <label className={styles.inputLabel}>Jumlah:</label>
+                <div className={styles.qtySelector}>
+                  <button className={styles.qtyBtn} onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+                    <Minus size={16} />
+                  </button>
+                  <span className={styles.qtyValue}>{quantity}</span>
+                  <button className={styles.qtyBtn} onClick={() => setQuantity(quantity + 1)}>
+                    <Plus size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {product.crossSellingAsMain && product.crossSellingAsMain.length > 0 && (
+                <div className={styles.inputGroup}>
+                  <label className={styles.inputLabel}>Tambahan Opsional:</label>
+                  <div className={styles.addons}>
+                    {product.crossSellingAsMain.map((addonObj: any) => {
+                      const addon = addonObj.addonProduct;
+                      const isChecked = selectedAddons.includes(addon.id);
+                      return (
+                        <div className={styles.addonItem} key={addon.id}>
+                          <div className={styles.addonLeft}>
+                            <input 
+                              type="checkbox" 
+                              className={styles.checkbox} 
+                              checked={isChecked} 
+                              onChange={() => {
+                                if (isChecked) setSelectedAddons(prev => prev.filter(a => a !== addon.id));
+                                else setSelectedAddons(prev => [...prev, addon.id]);
+                              }} 
+                            />
+                            <span className={styles.addonName}><Plus size={14} style={{marginRight: '6px'}} /> {addon.nama_produk}</span>
+                          </div>
+                          <span className={styles.addonPrice}>+Rp {Number(addon.harga).toLocaleString('id-ID')}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className={styles.totalRow}>
+                <span className={styles.totalLabel}>Total:</span>
+                <div className={styles.totalPriceWrapper}>
+                  <span className={styles.finalPrice}>Rp {calculateTotal().toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+
+              <div className={styles.actionButtons}>
+                <button className={styles.btnPrimary} onClick={() => {
+                  if (!isAuthenticated) {
+                    navigate('/login');
+                  } else {
+                    saveToCart();
+                    navigate('/cart');
+                  }
+                }}>
+                  <ShoppingCart size={18} />
+                  {isAuthenticated ? 'Tambah ke Keranjang' : <><Lock size={14} style={{marginRight: '6px'}} /> Masuk untuk Memesan</>}
                 </button>
-                <span className={styles.qtyValue}>{quantity}</span>
-                <button className={styles.qtyBtn} onClick={() => setQuantity(quantity + 1)}>
-                  <Plus size={16} />
+                <button className={styles.btnSuccess} onClick={handleBook}>
+                  <Zap size={18} />
+                  Beli Sekarang
                 </button>
               </div>
-            </div>
 
-            <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Tambahan Opsional:</label>
-              <div className={styles.addons}>
-                <div className={styles.addonItem}>
-                  <div className={styles.addonLeft}>
-                    <input type="checkbox" className={styles.checkbox} checked={addons.makanSiang} onChange={() => setAddons({...addons, makanSiang: !addons.makanSiang})} />
-                    <span className={styles.addonName}>🍽 Makan Siang</span>
-                  </div>
-                  <span className={styles.addonPrice}>+Rp 75.000</span>
+              <div className={styles.cardFooter}>
+                <div className={styles.footerFeature}>
+                  <ShieldCheck size={14} color="#ef4444" />
+                  Pembayaran Aman
                 </div>
-                <div className={styles.addonItem}>
-                  <div className={styles.addonLeft}>
-                    <input type="checkbox" className={styles.checkbox} checked={addons.sewaAlat} onChange={() => setAddons({...addons, sewaAlat: !addons.sewaAlat})} />
-                    <span className={styles.addonName}>🤿 Sewa Alat Selam</span>
-                  </div>
-                  <span className={styles.addonPrice}>+Rp 100.000</span>
+                <div className={styles.footerFeature}>
+                  <Clock size={14} />
+                  Refund 24 Jam
                 </div>
-                <div className={styles.addonItem}>
-                  <div className={styles.addonLeft}>
-                    <input type="checkbox" className={styles.checkbox} checked={addons.antarJemput} onChange={() => setAddons({...addons, antarJemput: !addons.antarJemput})} />
-                    <span className={styles.addonName}>🚐 Antar-Jemput</span>
-                  </div>
-                  <span className={styles.addonPrice}>+Rp 50.000</span>
+                <div className={styles.footerFeature}>
+                  <Star size={14} color="#f59e0b" />
+                  Vendor Terverifikasi
                 </div>
-              </div>
-            </div>
-
-            <div className={styles.totalRow}>
-              <span className={styles.totalLabel}>Total:</span>
-              <div className={styles.totalPriceWrapper}>
-                <span className={styles.oldPrice}>Rp 975.000</span>
-                <span className={styles.finalPrice}>Rp {calculateTotal().toLocaleString('id-ID')}</span>
-              </div>
-            </div>
-
-            <div className={styles.actionButtons}>
-              <button className={styles.btnPrimary} onClick={() => {
-                if (!isAuthenticated) {
-                  navigate('/login');
-                } else {
-                  saveToCart();
-                  navigate('/cart');
-                }
-              }}>
-                <ShoppingCart size={18} />
-                {isAuthenticated ? 'Tambah ke Keranjang' : '🔒 Masuk untuk Memesan'}
-              </button>
-              <button className={styles.btnSuccess} onClick={handleBook}>
-                <Zap size={18} />
-                Beli Sekarang
-              </button>
-            </div>
-
-            <div className={styles.cardFooter}>
-              <div className={styles.footerFeature}>
-                <ShieldCheck size={14} color="#ef4444" />
-                Pembayaran Aman
-              </div>
-              <div className={styles.footerFeature}>
-                <Clock size={14} />
-                Refund 24 Jam
-              </div>
-              <div className={styles.footerFeature}>
-                <Star size={14} color="#f59e0b" />
-                Vendor Terverifikasi
               </div>
             </div>
           </div>
@@ -291,301 +447,133 @@ export default function ProductDetailPage() {
         </div>
 
         <div className={styles.tabContent}>
-          <div className={styles.descriptionCol}>
-            <h2 className={styles.sectionTitle}>Tentang Paket Snorkeling Gili Premium</h2>
-            <p className={styles.descText}>
-              Nikmati petualangan bawah laut yang tak terlupakan di Taman Nasional Bunaken, salah satu surga snorkeling terbaik di dunia. Dengan kejernihan air yang luar biasa dan keanekaragaman hayati laut yang kaya, Bunaken menawarkan pengalaman yang sempurna bagi para pecinta alam bawah laut, baik pemula maupun yang sudah berpengalaman.
-            </p>
-            <p className={styles.descText}>
-              Paket Premium kami dirancang untuk memberikan pengalaman snorkeling terbaik dengan panduan profesional bersertifikat, peralatan berkualitas tinggi, dan akses ke lokasi-lokasi terbaik di sekitar pulau Bunaken. Anda akan menjelajahi terumbu karang yang berwarna-warni, bertemu dengan berbagai spesies ikan tropis, dan menyaksikan keindahan bawah laut yang memukau.
-            </p>
-            <p className={styles.descText}>
-              Setiap sesi snorkeling dipimpin oleh pemandu lokal berpengalaman yang fasih dalam bahasa Indonesia dan Inggris. Keselamatan dan kenyamanan Anda adalah prioritas utama kami — semua peralatan keselamatan disediakan dan briefing keselamatan dilakukan sebelum penyelaman dimulai.
-            </p>
+          {(activeTab === 'deskripsi' || activeTab === 'ulasan') && (
+            <>
+              {activeTab === 'deskripsi' && (
+                <div className={styles.descriptionCol}>
+                  <h2 className={styles.sectionTitle}>Tentang {product.nama_produk}</h2>
+                  <p className={styles.descText}>
+                    {product.deskripsi || "Jelajahi keindahan tersembunyi dengan paket wisata dari Divexplore 3D. Kami bekerjasama dengan vendor lokal terpercaya untuk memberikan pengalaman yang tak terlupakan. Fasilitas terbaik telah kami siapkan khusus untuk Anda."}
+                  </p>
 
-            <div className={styles.whatsIncluded}>
-              <div className={styles.includedTitle}>
-                <CheckCircle2 size={20} color="#10b981" />
-                Apa yang Termasuk
-              </div>
-              <div className={styles.includedList}>
-                <div className={styles.includedItem}>
-                  <CheckCircle2 size={16} color="#10b981" />
-                  <span>Panduan snorkeling profesional bersertifikat</span>
-                </div>
-                <div className={styles.includedItem}>
-                  <CheckCircle2 size={16} color="#10b981" />
-                  <span>Peralatan snorkeling lengkap (masker, snorkel, fins, wetsuit)</span>
-                </div>
-                <div className={styles.includedItem}>
-                  <CheckCircle2 size={16} color="#10b981" />
-                  <span>Transportasi kapal speedboat ke 3 titik snorkeling</span>
-                </div>
-                <div className={styles.includedItem}>
-                  <CheckCircle2 size={16} color="#10b981" />
-                  <span>Air mineral dan snack ringan selama aktivitas</span>
-                </div>
-                <div className={styles.includedItem}>
-                  <CheckCircle2 size={16} color="#10b981" />
-                  <span>Foto dan video bawah laut gratis (15 foto terbaik)</span>
-                </div>
-                <div className={styles.includedItem}>
-                  <CheckCircle2 size={16} color="#10b981" />
-                  <span>Asuransi kecelakaan selama aktivitas berlangsung</span>
-                </div>
-                <div className={styles.includedItem}>
-                  <CheckCircle2 size={16} color="#10b981" />
-                  <span>E-sertifikat peserta snorkeling Bunaken</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.reviewsCol}>
-            <div className={styles.reviewsHeader}>
-              <h2 className={styles.sectionTitle}>
-                <Star size={20} color="#f59e0b" style={{display: 'inline', marginRight: '8px'}} />
-                Ulasan Terbaru
-              </h2>
-              <a href="#" className={styles.viewAllLink}>Lihat semua →</a>
-            </div>
-
-            <div className={styles.reviewCard}>
-              <div className={styles.reviewerInfo}>
-                <div className={styles.reviewerProfile}>
-                  <img src="https://i.pravatar.cc/150?img=32" alt="Sari Dewi" className={styles.reviewerAvatar} />
-                  <div>
-                    <div className={styles.reviewerName}>Sari Dewi</div>
-                    <div className={styles.stars}>
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
+                  <div className={styles.whatsIncluded}>
+                    <div className={styles.includedTitle}>
+                      <CheckCircle2 size={20} color="#10b981" />
+                      Apa yang Termasuk
+                    </div>
+                    <div className={styles.includedList}>
+                      {dynamicData.included.map((item, idx) => (
+                        <div key={idx} className={styles.includedItem}>
+                          <CheckCircle2 size={16} color="#10b981" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
-                <span className={styles.reviewDate}>14 Jun 2025</span>
-              </div>
-              <p className={styles.reviewText}>
-                Pengalaman luar biasa! Air sangat jernih dan terumbu karangnya sangat indah. Pemandunya sangat profesional dan sabar. Pasti akan balik lagi!
-              </p>
-              <div className={styles.reviewTags}>
-                <span className={styles.reviewTag}>Snorkeling</span>
-                <span className={styles.reviewTag}>Premium</span>
-              </div>
-            </div>
+              )}
 
-            <div className={styles.reviewCard}>
-              <div className={styles.reviewerInfo}>
-                <div className={styles.reviewerProfile}>
-                  <img src="https://i.pravatar.cc/150?img=12" alt="Budi Santoso" className={styles.reviewerAvatar} />
-                  <div>
-                    <div className={styles.reviewerName}>Budi Santoso</div>
-                    <div className={styles.stars}>
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                    </div>
-                  </div>
+              <div className={styles.reviewsCol} style={activeTab === 'ulasan' ? { flex: 1, maxWidth: '100%' } : {}}>
+                <div className={styles.reviewsHeader}>
+                  <h2 className={styles.sectionTitle}>
+                    <Star size={20} color="#f59e0b" style={{display: 'inline', marginRight: '8px'}} />
+                    Ulasan Terbaru
+                  </h2>
+                  <span className={styles.viewAllLink}>Lihat semua <ArrowRight size={14} style={{marginLeft: '4px', display: 'inline-block'}} /></span>
                 </div>
-                <span className={styles.reviewDate}>2 Jun 2025</span>
-              </div>
-              <p className={styles.reviewText}>
-                Pertama kali snorkeling dan benar-benar terpukau. Tim sangat membantu dan memberikan rasa aman. Foto bawah air yang diberikan juga kualitasnya bagus sekali.
-              </p>
-              <div className={styles.reviewTags}>
-                <span className={styles.reviewTag}>Pemula</span>
-                <span className={styles.reviewTag}>Foto Gratis</span>
-              </div>
-            </div>
 
-            <div className={styles.reviewCard}>
-              <div className={styles.reviewerInfo}>
-                <div className={styles.reviewerProfile}>
-                  <img src="https://i.pravatar.cc/150?img=47" alt="Maya Rizka" className={styles.reviewerAvatar} />
-                  <div>
-                    <div className={styles.reviewerName}>Maya Rizka</div>
-                    <div className={styles.stars}>
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                      <Star size={12} fill="#f59e0b" color="#f59e0b" />
+                {product.reviews && product.reviews.length > 0 ? (
+                  product.reviews.map((review: any) => (
+                    <div key={review.id} className={styles.reviewCard}>
+                      <div className={styles.reviewerInfo}>
+                        <div className={styles.reviewerProfile}>
+                          <img 
+                            src={review.user?.foto_profil_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(review.user?.nama_lengkap || 'User')}`} 
+                            alt={review.user?.nama_lengkap || 'User'} 
+                            className={styles.reviewerAvatar} 
+                          />
+                          <div>
+                            <div className={styles.reviewerName}>{review.user?.nama_lengkap || 'Pengguna'}</div>
+                            <div className={styles.stars}>
+                              {[...Array(5)].map((_, i) => (
+                                <Star 
+                                  key={i} 
+                                  size={12} 
+                                  fill={i < (review.rating || 5) ? "#f59e0b" : "none"} 
+                                  color={i < (review.rating || 5) ? "#f59e0b" : "#cbd5e1"} 
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <span className={styles.reviewDate}>
+                          {new Date(review.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <p className={styles.reviewText}>{review.komentar}</p>
                     </div>
-                  </div>
-                </div>
-                <span className={styles.reviewDate}>28 Mei 2025</span>
+                  ))
+                ) : (
+                  <p className={styles.reviewText}>Belum ada ulasan untuk produk ini.</p>
+                )}
               </div>
-              <p className={styles.reviewText}>
-                Worth every penny! Bunaken memang surga snorkeling sesungguhnya. Kami ketemu penyu laut dan ribuan ikan warna-warni. Pelayanan sangat memuaskan dari awal hingga akhir.
-              </p>
-              <div className={styles.reviewTags}>
-                <span className={styles.reviewTag}>Keluarga</span>
-                <span className={styles.reviewTag}>Rekomendasi</span>
+            </>
+          )}
+
+          {activeTab === 'lokasi' && (
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <h2 className={styles.sectionTitle}>Lokasi & Titik Kumpul</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94a3b8' }}>
+                <MapPin size={18} />
+                <span>{product.vendor?.alamat_lengkap || product.lokasi || 'Gili Trawangan, Lombok, Nusa Tenggara Barat'}</span>
+              </div>
+              <div style={{ width: '100%', height: '400px', backgroundColor: '#1e293b', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+                  <MapPin size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
+                  <p>Peta interaktif (Google Maps / Leaflet) akan diintegrasikan di sini.</p>
+                  <p style={{ fontSize: '13px', marginTop: '8px', opacity: 0.7 }}>Menampilkan koordinat: {product.lokasi || 'Gili Trawangan'}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
-      {/* Related Products UMKM */}
-      <section className={styles.relatedSection}>
-        <div className={styles.relatedHeader}>
-          <h2 className={styles.sectionTitle}>
-            <ShoppingCart size={20} style={{display: 'inline', marginRight: '8px', verticalAlign: 'middle'}} />
-            Produk UMKM & Hotel Terkait
-          </h2>
-          <a href="#" className={styles.viewAllLink}>Lihat Semua →</a>
-        </div>
-        
-        <div className={styles.relatedGrid}>
-          {/* Item 1 */}
-          <div className={styles.relatedCard}>
-            <div className={styles.relatedImageContainer}>
-              <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=80" alt="Kuliner" className={styles.relatedImage} />
-              <span className={styles.relatedTag}>KULINER</span>
-            </div>
-            <div className={styles.relatedInfo}>
-              <h3 className={styles.relatedTitle}>Warung Pesisir Bu Bagong</h3>
-              <div className={styles.relatedLocation}>
-                <MapPin size={10} /> Pantai Gili Trawangan, Lombok
-              </div>
-              <div className={styles.relatedFooter}>
-                <div className={styles.relatedPrice}>Rp 65.000<span>/porsi</span></div>
-                <button className={styles.addBtn} onClick={() => { if (!isAuthenticated) { navigate('/login'); } }}>{ isAuthenticated ? 'Tambah' : '🔒 Masuk'}</button>
-              </div>
-            </div>
+      {/* Related Products */}
+      {relatedProducts.length > 0 && (
+        <section className={styles.relatedSection}>
+          <div className={styles.relatedHeader}>
+            <h2 className={styles.sectionTitle}>
+              <ShoppingCart size={20} style={{display: 'inline', marginRight: '8px', verticalAlign: 'middle'}} />
+              Rekomendasi Lainnya
+            </h2>
+            <span className={styles.viewAllLink} onClick={() => navigate('/catalog')} style={{cursor:'pointer'}}>Lihat Semua <ArrowRight size={14} style={{marginLeft: '4px', display: 'inline-block'}} /></span>
           </div>
+          
+          <div className={styles.relatedGrid}>
+            {relatedProducts.map(rel => (
+              <div key={rel.id} className={styles.relatedCard}>
+                <div className={styles.relatedImageContainer} onClick={() => navigate(`/product/${rel.id}`)} style={{cursor: 'pointer'}}>
+                  <img src={rel.thumbnail_url || PRODUCT_IMAGES[1]} alt={rel.nama_produk} className={styles.relatedImage} />
+                  <span className={styles.relatedTag} style={{ background: '#0ea5e9', color: 'white' }}>{rel.vendor?.kategori?.toUpperCase() || 'UMKM'}</span>
+                </div>
+                <div className={styles.relatedInfo}>
+                  <h3 className={styles.relatedTitle} onClick={() => navigate(`/product/${rel.id}`)} style={{cursor: 'pointer'}}>{rel.nama_produk}</h3>
+                  <div className={styles.relatedLocation}>
+                    <MapPin size={10} /> {rel.vendor?.nama_toko}
+                  </div>
+                  <div className={styles.relatedFooter}>
+                    <div className={styles.relatedPrice}>Rp {Number(rel.harga).toLocaleString('id-ID')}</div>
+                    <button className={styles.addBtn} onClick={() => navigate(`/product/${rel.id}`)}>Detail</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
-          {/* Item 2 */}
-          <div className={styles.relatedCard}>
-            <div className={styles.relatedImageContainer}>
-              <img src="https://images.unsplash.com/photo-1582719508461-905c673771fd?w=400&q=80" alt="Hotel" className={styles.relatedImage} />
-              <span className={`${styles.relatedTag} ${styles.relatedTagBlue}`}>HOTEL</span>
-            </div>
-            <div className={styles.relatedInfo}>
-              <h3 className={styles.relatedTitle}>Gili Sea Garden Resort ★★★</h3>
-              <div className={styles.relatedLocation}>
-                <MapPin size={10} /> Gili Trawangan, Lombok
-              </div>
-              <div className={styles.relatedFooter}>
-                <div className={styles.relatedPrice}>Rp 450.000<span>/malam</span></div>
-                <button className={styles.addBtn} onClick={() => { if (!isAuthenticated) { navigate('/login'); } }}>{ isAuthenticated ? 'Tambah' : '🔒 Masuk'}</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Item 3 */}
-          <div className={styles.relatedCard}>
-            <div className={styles.relatedImageContainer}>
-              <img src="https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?w=400&q=80" alt="UMKM" className={styles.relatedImage} />
-              <span className={styles.relatedTag}>UMKM</span>
-            </div>
-            <div className={styles.relatedInfo}>
-              <h3 className={styles.relatedTitle}>Kerajinan Laut Mama Vivi</h3>
-              <div className={styles.relatedLocation}>
-                <MapPin size={10} /> Gili Trawangan, Lombok
-              </div>
-              <div className={styles.relatedFooter}>
-                <div className={styles.relatedPrice}>Rp 35.000<span>/pcs</span></div>
-                <button className={styles.addBtn} onClick={() => { if (!isAuthenticated) { navigate('/login'); } }}>{ isAuthenticated ? 'Tambah' : '🔒 Masuk'}</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Item 4 */}
-          <div className={styles.relatedCard}>
-            <div className={styles.relatedImageContainer}>
-              <img src="https://images.unsplash.com/photo-1520116468816-95b69f847357?w=400&q=80" alt="Tur Bahari" className={styles.relatedImage} />
-              <span className={`${styles.relatedTag} ${styles.relatedTagGreen}`}>TUR BAHARI</span>
-            </div>
-            <div className={styles.relatedInfo}>
-              <h3 className={styles.relatedTitle}>Tur Nelayan Tradisional Gili</h3>
-              <div className={styles.relatedLocation}>
-                <MapPin size={10} /> Gili, Lombok
-              </div>
-              <div className={styles.relatedFooter}>
-                <div className={styles.relatedPrice}>Rp 120.000<span>/orang</span></div>
-                <button className={styles.addBtn} onClick={() => { if (!isAuthenticated) { navigate('/login'); } }}>{ isAuthenticated ? 'Tambah' : '🔒 Masuk'}</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Item 5 */}
-          <div className={styles.relatedCard}>
-            <div className={styles.relatedImageContainer}>
-              <img src="https://images.unsplash.com/photo-1516655855035-d5215bcb5604?w=400&q=80" alt="Sewa Kamera" className={styles.relatedImage} />
-              <span className={styles.relatedTag}>UMKM</span>
-            </div>
-            <div className={styles.relatedInfo}>
-              <h3 className={styles.relatedTitle}>Sewa Kamera Bawah Air GoPro</h3>
-              <div className={styles.relatedLocation}>
-                <MapPin size={10} /> Gili Trawangan, Lombok
-              </div>
-              <div className={styles.relatedFooter}>
-                <div className={styles.relatedPrice}>Rp 80.000<span>/hari</span></div>
-                <button className={styles.addBtn} onClick={() => { if (!isAuthenticated) { navigate('/login'); } }}>{ isAuthenticated ? 'Tambah' : '🔒 Masuk'}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className={styles.globalFooter}>
-        <div className={styles.footerTop}>
-          <div className={styles.footerBrand}>
-            <div className={styles.logo}>
-              <Box className={styles.logoIcon} size={24} />
-              <span>DIVEXPLORE-3D</span>
-            </div>
-            <p className={styles.footerDesc}>
-              Platform Wisata Bahari 3D #1 Indonesia. Jelajahi keindahan bawah laut dari layar Anda.
-            </p>
-            <div className={styles.socialLinks}>
-              <div className={styles.socialBtn}>IG</div>
-              <div className={styles.socialBtn}>TW</div>
-              <div className={styles.socialBtn}>FB</div>
-            </div>
-          </div>
-
-          <div className={styles.footerLinks}>
-            <div className={styles.linkGroup}>
-              <h4 className={styles.linkGroupTitle}>DESTINASI</h4>
-              <a href="#" className={styles.footerLinkItem}>Raja Ampat</a>
-              <a href="#" className={styles.footerLinkItem}>Bunaken</a>
-              <a href="#" className={styles.footerLinkItem}>Lombok</a>
-              <a href="#" className={styles.footerLinkItem}>Wakatobi</a>
-            </div>
-            <div className={styles.linkGroup}>
-              <h4 className={styles.linkGroupTitle}>TENTANG</h4>
-              <a href="#" className={styles.footerLinkItem}>Manifesto</a>
-              <a href="#" className={styles.footerLinkItem}>Tim Kami</a>
-              <a href="#" className={styles.footerLinkItem}>Karir</a>
-              <a href="#" className={styles.footerLinkItem}>Blog</a>
-            </div>
-            <div className={styles.linkGroup}>
-              <h4 className={styles.linkGroupTitle}>BANTUAN</h4>
-              <a href="#" className={styles.footerLinkItem}>Pusat Bantuan</a>
-              <a href="#" className={styles.footerLinkItem}>Kebijakan Privasi</a>
-              <a href="#" className={styles.footerLinkItem}>Syarat & Ketentuan</a>
-              <a href="#" className={styles.footerLinkItem}>Kontak Kami</a>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.footerBottom}>
-          <div>© 2026 DIVEXPLORE-3D. All rights reserved.</div>
-          <div className={styles.bottomIcons}>
-            <Box size={16} />
-            <span>IG</span>
-            <span>TW</span>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
