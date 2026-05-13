@@ -102,7 +102,7 @@ const googleLogin = async ({ id_token }) => {
     throw err;
   }
 
-  const { sub: google_id, email, name: nama_lengkap, email_verified } = payload;
+  const { sub: google_id, email, name: nama_lengkap, email_verified, picture } = payload;
 
   // VERIFIKASI GMAIL: Pastikan email Google pengguna berstatus 'verified'
   if (!email_verified) {
@@ -120,13 +120,14 @@ const googleLogin = async ({ id_token }) => {
 
   if (!user) {
     // Pertama kali login Google → buat akun baru otomatis sebagai wisatawan
-    // Role "wisatawan" di-hardcode — Google OAuth HANYA untuk wisatawan (B2C)
+    // Ambil foto profil asli dari Google (picture)
     user = await User.create({
       nama_lengkap,
       email,
       google_id,
       auth_provider: "google",
-      role: "wisatawan", // hardcoded, tidak bisa diubah dari luar
+      role: "wisatawan",
+      foto_profil_url: picture, // <--- Ambil dari Google
     });
   } else {
     // Akun dengan email ini sudah ada di database
@@ -139,9 +140,19 @@ const googleLogin = async ({ id_token }) => {
       throw err;
     }
 
-    // Wisatawan yang belum terhubung Google → hubungkan sekarang
+    // Update foto profil & google_id jika belum ada
+    const updateData = {};
     if (!user.google_id) {
-      await user.update({ google_id, auth_provider: "google" });
+      updateData.google_id = google_id;
+      updateData.auth_provider = "google";
+    }
+    // Jika foto masih kosong atau masih dummy, update dengan foto Google
+    if (!user.foto_profil_url || user.foto_profil_url.includes('dummy') || user.foto_profil_url.includes('ui-avatars')) {
+      updateData.foto_profil_url = picture;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await user.update(updateData);
     }
   }
 
