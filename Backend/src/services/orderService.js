@@ -24,7 +24,7 @@ const snap = new midtransClient.Snap({
  * @param {string} userId - ID Wisatawan
  * @param {Array} items - Array of { product_id, qty }
  */
-const createOrder = async (userId, items, promoCode = null) => {
+const createOrder = async (userId, items, promoCode = null, userInfo = null) => {
   // Mulai Transaksi Database
   const transaction = await sequelize.transaction();
 
@@ -171,6 +171,15 @@ const createOrder = async (userId, items, promoCode = null) => {
       { transaction },
     );
 
+    // 5.5 Update Nomor Telepon User jika dikirim dari checkout (Anti-Repot)
+    if (userInfo && userInfo.no_hp) {
+      const { User } = require("../models");
+      await User.update(
+        { nomor_telepon: userInfo.no_hp },
+        { where: { id: userId }, transaction }
+      );
+    }
+
     // 6. Buat Record di tabel OrderItems secara Bulk
     const orderItemsWithOrderId = orderItemsData.map((oi) => ({
       ...oi,
@@ -179,8 +188,6 @@ const createOrder = async (userId, items, promoCode = null) => {
     await OrderItem.bulkCreate(orderItemsWithOrderId, { transaction });
 
     // 7. Catat Audit Log (WP-4.2.2)
-    // Merekam snapshot keranjang sebelum dan sesudah
-    // agar kita punya bukti tak terbantahkan jika ada manipulasi harga.
     await AuditLog.create(
       {
         user_id: userId,
@@ -195,7 +202,6 @@ const createOrder = async (userId, items, promoCode = null) => {
     await transaction.commit();
 
     // 8. Generate Midtrans Snap Token (WP-3.2.2)
-    // Diluar transaksi DB agar jika Midtrans error, DB tetap aman pending
     let snapResponse = {};
     try {
       const parameter = {
@@ -205,7 +211,9 @@ const createOrder = async (userId, items, promoCode = null) => {
         },
         credit_card: { secure: true },
         customer_details: {
-          first_name: "Wisatawan",
+          first_name: userInfo?.nama || "Wisatawan",
+          phone: userInfo?.no_hp || "",
+          email: userInfo?.email || ""
         },
       };
       snapResponse = await snap.createTransaction(parameter);

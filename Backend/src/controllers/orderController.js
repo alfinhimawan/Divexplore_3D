@@ -11,14 +11,20 @@ const createOrderSchema = Joi.object({
         product_id: Joi.string().uuid().required(),
         qty: Joi.number().integer().min(1).required(),
         addon_ids: Joi.array().items(Joi.string().uuid()).optional(),
+        // Sertakan tanggal agar divalidasi controller
+        booking_date: Joi.string().optional().allow(null, ""),
+        check_in: Joi.string().optional().allow(null, ""),
+        check_out: Joi.string().optional().allow(null, "")
       }),
     )
     .min(1)
-    .required()
-    .messages({
-      "array.min": "Keranjang belanja tidak boleh kosong.",
-    }),
+    .required(),
   kode_promo: Joi.string().optional().allow(null, ""),
+  user_info: Joi.object({
+    nama: Joi.string().optional(),
+    no_hp: Joi.string().optional(),
+    email: Joi.string().email().optional()
+  }).optional()
 });
 
 // POST /api/orders
@@ -35,11 +41,11 @@ const createOrder = async (req, res, next) => {
     }
 
     // Eksekusi pembuatan order
-    // req.user.id didapat dari JWT token wisatawan
     const result = await orderService.createOrder(
       req.user.id,
       value.items,
       value.kode_promo,
+      value.user_info
     );
 
     res.status(201).json({
