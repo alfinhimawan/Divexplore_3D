@@ -1,10 +1,11 @@
 "use strict";
 const jwt = require("jsonwebtoken");
+const { User } = require("../models"); // Kunci: Harus di atas
+const logger = require("../utils/logger");
 
 const authenticate = (req, res, next) => {
-  // 1. Ambil token dari header Authorization: Bearer <token>
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // ambil bagian setelah "Bearer "
+  const token = authHeader && authHeader.split(" ")[1]; 
 
   if (!token) {
     return res.status(401).json({
@@ -13,7 +14,6 @@ const authenticate = (req, res, next) => {
     });
   }
 
-  // 2. Verifikasi token
   jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
     if (err) {
       return res.status(401).json({
@@ -23,10 +23,9 @@ const authenticate = (req, res, next) => {
     }
 
     try {
-      // 3. CEK KE DATABASE: Apakah user ini masih ada? (Penting jika DB di-reset)
-      const { User } = require("../models");
+      // Cek database apakah user masih aktif
       const userRecord = await User.findByPk(decoded.id, {
-        attributes: ["id", "role", "is_active"] // Cukup ambil field minimal
+        attributes: ["id", "role", "is_active"]
       });
 
       if (!userRecord || !userRecord.is_active) {
@@ -36,20 +35,18 @@ const authenticate = (req, res, next) => {
         });
       }
 
-      // 4. Token & User valid → simpan data user ke req.user
       req.user = decoded; 
       next();
     } catch (dbErr) {
+      logger.error(`[AuthMiddleware] Error: ${dbErr.message}`, { stack: dbErr.stack });
       return res.status(500).json({
         status: "error",
-        message: "Terjadi kesalahan sistem saat verifikasi akun.",
+        message: "Terjadi kesalahan internal pada server (Auth).",
       });
     }
   });
 };
 
-// Middleware khusus untuk cek role tertentu
-// Contoh pakai: authorize("admin") atau authorize("vendor", "admin")
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
