@@ -55,6 +55,11 @@ const getAllProducts = async (query = {}) => {
         model: Product3dHotspot,
         as: "hotspots",
       },
+      {
+        model: ProductInventory,
+        as: "inventories",
+        attributes: ["available_qty", "tanggal_ketersediaan"]
+      },
     ],
     order: [["createdAt", "DESC"]],
   });
