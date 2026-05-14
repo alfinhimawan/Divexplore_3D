@@ -35,6 +35,11 @@ router.get(
   orderController.getOrderDetail,
 );
 router.post(
+  "/:id/cancel",
+  authorize("wisatawan"),
+  orderController.cancelOrder,
+);
+router.post(
   "/:orderId/reviews",
   authorize("wisatawan"),
   reviewController.createReview,

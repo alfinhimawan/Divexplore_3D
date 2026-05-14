@@ -186,6 +186,20 @@ const getPaymentStatus = async (req, res, next) => {
   }
 };
 
+// POST /api/orders/:id/cancel
+const cancelOrder = async (req, res, next) => {
+  try {
+    const orderId = req.params.id;
+    await orderService.cancelOrder(orderId, req.user.id);
+    res.status(200).json({
+      status: "success",
+      message: "Pesanan berhasil dibatalkan.",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -195,4 +209,5 @@ module.exports = {
   getSnapToken,
   getPaymentStatus,
   getOrderDetail,
+  cancelOrder,
 };

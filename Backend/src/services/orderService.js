@@ -507,6 +507,42 @@ const getPaymentStatus = async (orderId, userId) => {
   }
 };
 
+/**
+ * Batalkan Pesanan (Kembalikan Stok)
+ */
+const cancelOrder = async (orderId, userId) => {
+  const order = await Order.findOne({ 
+    where: { id: orderId, user_id: userId },
+    include: [{ model: OrderItem, include: [Product] }]
+  });
+
+  if (!order) throw new Error("Pesanan tidak ditemukan.");
+  if (order.status !== 'pending') throw new Error("Hanya pesanan pending yang bisa dibatalkan.");
+
+  const transaction = await sequelize.transaction();
+  try {
+    // 1. Update status jadi cancelled
+    await order.update({ status: 'cancelled' }, { transaction });
+
+    // 2. Kembalikan stok (Inventory management)
+    for (const item of order.OrderItems) {
+      if (item.Product) {
+        await ProductInventory.increment('stok', { 
+          by: item.qty, 
+          where: { product_id: item.product_id },
+          transaction 
+        });
+      }
+    }
+
+    await transaction.commit();
+    return true;
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+};
+
 module.exports = {
   createOrder,
   getWisatawanOrders,
@@ -515,4 +551,5 @@ module.exports = {
   getAdminOrders,
   getSnapToken,
   getPaymentStatus,
+  cancelOrder,
 };
