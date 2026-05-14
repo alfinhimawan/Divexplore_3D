@@ -457,6 +457,7 @@ const getPaymentStatus = async (orderId, userId) => {
     console.log(`[PaymentStatus] Checking Midtrans for: ${queryId}`);
     
     const statusResponse = await snap.transaction.status(queryId);
+    console.log(`[PaymentStatus] Midtrans Raw Response for ${queryId}:`, JSON.stringify(statusResponse, null, 2));
     
     // Tambahkan info tambahan agar FE mudah membacanya
     return {
@@ -472,10 +473,13 @@ const getPaymentStatus = async (orderId, userId) => {
     if (order.paymentLogs && order.paymentLogs.length > 0) {
       try {
         lastLogData = JSON.parse(order.paymentLogs[0].raw_response);
-      } catch (e) {}
+        console.log(`[PaymentStatus] Found Internal Log for ${order.id}`);
+      } catch (e) {
+        console.error(`[PaymentStatus] Failed to parse internal log for ${order.id}`);
+      }
     }
 
-    return {
+    const fallbackData = {
       order_id: order.id,
       transaction_status: order.status,
       payment_type: lastLogData?.payment_type || null,
@@ -486,6 +490,9 @@ const getPaymentStatus = async (orderId, userId) => {
       gross_amount: order.total_pembayaran,
       is_fallback: true
     };
+    
+    console.log(`[PaymentStatus] Returning Fallback Data for ${order.id}:`, JSON.stringify(fallbackData, null, 2));
+    return fallbackData;
   }
 };
 
