@@ -9,10 +9,13 @@ import {
   ArrowLeft,
   ShoppingCart,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  MapPin,
+  Sparkles
 } from 'lucide-react';
 import styles from './CartPage.module.css';
 import Header from '../../components/common/Header';
+import Footer from '../../components/common/Footer';
 
 interface CartItem {
   id: string;
@@ -33,21 +36,7 @@ export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem('divexplore_cart');
     if (saved) return JSON.parse(saved);
-    return [
-      {
-        id: '1',
-        name: 'Snorkeling Gili Premium',
-        type: 'SNORKELING',
-        location: 'Lombok',
-        price: 350000,
-        quantity: 2,
-        image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-        addons: [
-          { name: 'Makan Siang', price: 75000 },
-          { name: 'Sewa Alat Selam', price: 100000 }
-        ]
-      }
-    ];
+    return [];
   });
 
   useEffect(() => {
@@ -83,8 +72,7 @@ export default function CartPage() {
   };
 
   const subtotal = calculateSubtotal();
-  const taxes = calculateTaxes(subtotal);
-  const total = subtotal + taxes;
+  const total = subtotal;
 
   const handleCheckout = () => {
     if (!isAuthenticated) {
@@ -120,9 +108,14 @@ export default function CartPage() {
             
             {cartItems.length === 0 ? (
               <div className={styles.emptyCart}>
-                <ShoppingCart size={48} className={styles.emptyIcon} />
-                <p>Keranjang Anda masih kosong</p>
-                <button className={styles.btnPrimary} onClick={() => navigate('/')}>Mulai Menjelajah</button>
+                <div className={styles.emptyIcon}>
+                  <ShoppingCart size={40} />
+                </div>
+                <h2>Keranjang Anda masih kosong</h2>
+                <p>Jelajahi petualangan bawah laut yang menakjubkan hari ini!</p>
+                <button className={styles.exploreBtn} onClick={() => navigate('/catalog')}>
+                  Mulai Menjelajah
+                </button>
               </div>
             ) : (
               <div className={styles.itemsList}>
@@ -132,23 +125,34 @@ export default function CartPage() {
                     
                     <div className={styles.itemDetails}>
                       <div className={styles.itemHeader}>
-                        <span className={styles.itemType}>{item.type}</span>
-                        <span className={styles.itemLocation}>{item.location}</span>
+                        <div className={styles.itemBadgeRow}>
+                          <span className={styles.itemType}>{item.type}</span>
+                          <span className={styles.itemLocation}>
+                            <MapPin size={12} /> {item.location}
+                          </span>
+                        </div>
+                        <button className={styles.removeBtn} onClick={() => removeItem(item.id)} title="Hapus Item">
+                          <Trash2 size={18} />
+                        </button>
                       </div>
+                      
                       <h3 className={styles.itemName}>{item.name}</h3>
                       
                       {item.addons.length > 0 && (
                         <div className={styles.itemAddons}>
-                          <p className={styles.addonsLabel}>Tambahan:</p>
+                          <p className={styles.addonsLabel}>Add-ons Pilihan:</p>
                           <ul>
                             {item.addons.map((addon, idx) => (
-                              <li key={idx}>+ {addon.name} (Rp {addon.price.toLocaleString('id-ID')})</li>
+                              <li key={idx}>
+                                <Sparkles size={12} color="#0ea5e9" />
+                                {addon.name} (Rp {addon.price.toLocaleString('id-ID')})
+                              </li>
                             ))}
                           </ul>
                         </div>
                       )}
                       
-                      <div className={styles.itemActions}>
+                      <div className={styles.itemFooter}>
                         <div className={styles.qtySelector}>
                           <button className={styles.qtyBtn} onClick={() => updateQuantity(item.id, -1)}>
                             <Minus size={14} />
@@ -158,20 +162,15 @@ export default function CartPage() {
                             <Plus size={14} />
                           </button>
                         </div>
-                        
-                        <button className={styles.removeBtn} onClick={() => removeItem(item.id)}>
-                          <Trash2 size={16} />
-                          <span>Hapus</span>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className={styles.itemPricing}>
-                      <div className={styles.itemPrice}>
-                        Rp {item.price.toLocaleString('id-ID')} <span>/ item</span>
-                      </div>
-                      <div className={styles.itemTotal}>
-                        Rp {((item.price + item.addons.reduce((s, a) => s + a.price, 0)) * item.quantity).toLocaleString('id-ID')}
+
+                        <div className={styles.itemPricing}>
+                          <div className={styles.itemPrice}>
+                            Rp {item.price.toLocaleString('id-ID')} <span>/ orang</span>
+                          </div>
+                          <div className={styles.itemTotal}>
+                            Rp {((item.price + item.addons.reduce((s, a) => s + a.price, 0)) * item.quantity).toLocaleString('id-ID')}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -183,21 +182,23 @@ export default function CartPage() {
           {/* Order Summary */}
           <div className={styles.summarySection}>
             <div className={styles.summaryCard}>
-              <h2 className={styles.summaryTitle}>Ringkasan Pesanan</h2>
+              <h2 className={styles.summaryTitle}>
+                <ShoppingCart size={24} color="#0ea5e9" />
+                Ringkasan Pesanan
+              </h2>
               
               <div className={styles.summaryRow}>
                 <span>Subtotal ({cartItems.length} item)</span>
                 <span>Rp {subtotal.toLocaleString('id-ID')}</span>
               </div>
-              <div className={styles.summaryRow}>
-                <span>Pajak & Biaya (11%)</span>
-                <span>Rp {taxes.toLocaleString('id-ID')}</span>
-              </div>
               
               <div className={styles.divider}></div>
               
               <div className={styles.totalRow}>
-                <span>Total Biaya</span>
+                <div className={styles.totalLabelGroup}>
+                  <span>Total Biaya</span>
+                  <span className={styles.taxNote}>*Harga sudah termasuk pajak</span>
+                </div>
                 <span className={styles.finalTotal}>Rp {total.toLocaleString('id-ID')}</span>
               </div>
               
@@ -207,7 +208,7 @@ export default function CartPage() {
                 disabled={cartItems.length === 0}
               >
                 <CreditCard size={18} />
-                Lanjutkan ke Pembayaran
+                Pesan Sekarang
               </button>
               
               <div className={styles.secureCheckout}>
@@ -220,16 +221,7 @@ export default function CartPage() {
       </main>
 
       {/* Footer */}
-      <footer className={styles.globalFooter}>
-        <div className={styles.footerBottom}>
-          <div>© 2026 DIVEXPLORE-3D. All rights reserved.</div>
-          <div className={styles.bottomIcons}>
-            <Box size={16} />
-            <span>IG</span>
-            <span>TW</span>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

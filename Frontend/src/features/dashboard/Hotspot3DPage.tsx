@@ -7,10 +7,6 @@ import {
   Box, 
   ShieldCheck, 
   Clock, 
-  Plus, 
-  Minus, 
-  RotateCcw, 
-  RefreshCw,
   Navigation
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -23,10 +19,10 @@ import Header from '../../components/common/Header';
 function HotspotMarker({ data, onClick, isSelected }: { data: any, onClick: (data: any) => void, isSelected: boolean }) {
   const meshRef = useRef<THREE.Group>(null);
   
-  // Simple floating animation
+  // Simple floating animation (Gunakan angka tetap agar tidak NaN)
   useFrame((state) => {
     if (meshRef.current) {
-      meshRef.current.position.y = data.position[1] + Math.sin(state.clock.elapsedTime * 2 + data.id) * 0.1;
+      meshRef.current.position.y = data.position[1] + Math.sin(state.clock.elapsedTime * 1.5) * 0.15;
     }
   });
 
@@ -116,13 +112,22 @@ export default function Hotspot3DPage() {
         const res = await api.get('/api/products');
         const products = res.data?.products || [];
         
-        const spots = products.map((p: any, i: number) => {
-          let pos = [Math.sin(i) * 2.5, Math.cos(i) * 1.5, Math.sin(i * 2) * 2];
-          if (p.hotspots && p.hotspots.length > 0) {
-            try {
-               const coords = JSON.parse(p.hotspots[0].coordinates_json);
-               pos = [coords.x || pos[0], coords.y || pos[1], coords.z || pos[2]];
-            } catch(e){}
+        // Batasi hanya 3 produk utama
+        const mainProducts = products.slice(0, 3);
+        
+        const spots = mainProducts.map((p: any, i: number) => {
+          // KOORDINAT TETAP (FIXED) - Dijamin tidak akan lari ke pojok
+          let pos: [number, number, number] = [0, 0, 0];
+          
+          if (i === 0) {
+            // Sharing Boat (Kiri)
+            pos = [-2.2, -0.3, 0];
+          } else if (i === 1) {
+            // Private Boat (Atas Tengah)
+            pos = [0, 1.5, -1];
+          } else if (i === 2) {
+            // Discovery Scuba (Kanan - Digeser ke tengah agar tidak tertutup sidebar)
+            pos = [1.2, -1.2, 1];
           }
           
           return {
@@ -177,14 +182,6 @@ export default function Hotspot3DPage() {
           <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
             <OceanScene hotspots={hotspots} selectedId={selectedHotspot?.id} onSelect={setSelectedHotspot} />
           </Canvas>
-          
-          {/* Controls Overlay */}
-          <div className={styles.controlsOverlay}>
-            <button className={styles.controlBtn} title="Zoom In"><Plus size={20} /></button>
-            <button className={styles.controlBtn} title="Zoom Out"><Minus size={20} /></button>
-            <button className={styles.controlBtn} title="Reset View"><RotateCcw size={20} /></button>
-            <button className={styles.controlBtn} title="Refresh"><RefreshCw size={20} /></button>
-          </div>
           
           {/* Bottom Badge */}
           <div className={styles.locationBadge}>

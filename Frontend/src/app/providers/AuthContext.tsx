@@ -3,9 +3,9 @@ import type { ReactNode } from 'react';
 import { api } from '../../utils/api';
 
 interface User {
-  name: string;
+  nama_lengkap: string;
   email: string;
-  avatar: string;
+  foto_profil_url?: string;
 }
 
 interface AuthContextType {
@@ -44,13 +44,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Simpan Karcis (Token) ke brankas browser
       localStorage.setItem('divexplore_token', token);
+      localStorage.setItem('divexplore_customer', JSON.stringify(userData)); // Simpan data user lengkap
       
       setIsAuthenticated(true);
-      setUser({
-        name: userData.nama_lengkap,
-        email: userData.email,
-        avatar: 'https://i.pravatar.cc/150?img=11'
-      });
+      setUser(userData);
       return true;
     } catch (error: any) {
       console.error("Login gagal:", error.message);
@@ -66,13 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = response.data.user;
 
       localStorage.setItem('divexplore_token', token);
+      localStorage.setItem('divexplore_customer', JSON.stringify(userData));
       
       setIsAuthenticated(true);
-      setUser({
-        name: userData.nama_lengkap,
-        email: userData.email,
-        avatar: userData.foto_profil_url || 'https://i.pravatar.cc/150?img=11'
-      });
+      setUser(userData);
       return true;
     } catch (error: any) {
       console.error("Google Login gagal:", error.message);

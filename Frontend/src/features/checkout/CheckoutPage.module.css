@@ -187,6 +187,10 @@
   font-size: 12px; color: #94a3b8;
 }
 .orderDetails span { display: flex; align-items: center; gap: 4px; }
+.dateInfo {
+  color: #0ea5e9 !important;
+  font-weight: 600;
+}
 .ratingBadge {
   display: inline-flex; align-items: center; gap: 4px;
   background: rgba(245,158,11,.12);
@@ -333,19 +337,36 @@
 .walletActive { border-color: #0ea5e9 !important; color: #0ea5e9 !important; background: rgba(14,165,233,.1) !important; }
 
 /* ── Cost Summary ───────────────────────────────────── */
-.costRows { margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; }
-.costRow { display: flex; justify-content: space-between; font-size: 13px; color: #94a3b8; }
+.costRows { margin-bottom: 20px; display: flex; flex-direction: column; gap: 16px; }
+.costGroup { display: flex; flex-direction: column; gap: 8px; }
+.costRow { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.itemName { font-size: 14px; font-weight: 600; color: #e2e8f0; line-height: 1.5; flex: 1; }
+.itemPrice { font-size: 14px; font-weight: 700; color: #f8fafc; white-space: nowrap; }
+
+.costRowAddon { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-left: 16px; position: relative; }
+.costRowAddon::before {
+  content: "";
+  position: absolute;
+  left: 4px; top: 8px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: #334155;
+}
+.addonName { font-size: 12.5px; color: #94a3b8; line-height: 1.5; flex: 1; }
+.addonPrice { font-size: 12.5px; font-weight: 500; color: #94a3b8; white-space: nowrap; }
+
 .totalRow {
   display: flex;
   justify-content: space-between;
-  font-size: 16px;
-  font-weight: 800;
-  color: #e2e8f0;
-  padding-top: 14px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #94a3b8;
+  padding-top: 18px;
   border-top: 1px solid #1e293b;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
-.totalVal { color: #f59e0b; font-size: 20px; }
+.totalVal { color: #f59e0b; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
 
 .agreeRow {
   display: flex;

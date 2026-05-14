@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthContext';
-import { Box } from 'lucide-react';
+import { Box, ShoppingCart } from 'lucide-react';
 import styles from './Header.module.css';
 import Swal from 'sweetalert2';
 
@@ -8,6 +9,32 @@ export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user, logout } = useAuth();
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    const updateCount = () => {
+      const saved = localStorage.getItem('divexplore_cart');
+      if (saved) {
+        try {
+          const items = JSON.parse(saved);
+          setCartCount(Array.isArray(items) ? items.length : 0);
+        } catch (e) {
+          setCartCount(0);
+        }
+      } else {
+        setCartCount(0);
+      }
+    };
+
+    updateCount();
+    window.addEventListener('storage', updateCount);
+    window.addEventListener('cartUpdated', updateCount);
+    
+    return () => {
+      window.removeEventListener('storage', updateCount);
+      window.removeEventListener('cartUpdated', updateCount);
+    };
+  }, []);
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -66,13 +93,25 @@ export default function Header() {
             Pesanan Saya
           </span>
         )}
+        <div 
+          className={`${styles.cartIconWrapper} ${isActive('/cart') ? styles.activeCart : ''}`}
+          onClick={() => navigate('/cart')}
+          title="Keranjang Belanja"
+        >
+          <ShoppingCart size={20} />
+          {cartCount > 0 && <span className={styles.cartBadge}>{cartCount}</span>}
+        </div>
       </nav>
       <div className={styles.userSection}>
         {isAuthenticated && user ? (
           <>
             <div className={styles.userInfo}>
-              <img src={user.avatar || 'https://i.pravatar.cc/150'} alt="User" className={styles.avatar} />
-              <span>{user.name}</span>
+              <img 
+                src={user.foto_profil_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama_lengkap || user.name)}&background=0ea5e9&color=fff`} 
+                alt="User" 
+                className={styles.avatar} 
+              />
+              <span>{user.nama_lengkap || user.name}</span>
             </div>
             <button className={styles.logoutBtn} onClick={handleLogout}>Keluar</button>
           </>

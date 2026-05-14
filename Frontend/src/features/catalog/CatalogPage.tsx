@@ -22,6 +22,7 @@ import {
 import styles from "./CatalogPage.module.css";
 import Header from "../../components/common/Header";
 import Footer from "../../components/common/Footer";
+import Swal from 'sweetalert2';
 
 // ── DATA CATALOG STRUCTURE ──────────────────────────────────────────────
 type CatalogStructure = {
@@ -86,11 +87,24 @@ export default function CatalogPage() {
   const [activeCategory, setActiveCategory] =
     useState<CategoryKey>("aktivitas");
   const [searchQuery, setSearchQuery] = useState("");
-
-  // State untuk nyimpan data dari API Backend
-  const [catalogData, setCatalogData] =
-    useState<CatalogStructure>(DEFAULT_CATALOG);
+  const [filterDate, setFilterDate] = useState<string>(() => {
+    return sessionStorage.getItem('divexplore_filter_date') || "";
+  });
+  const [catalogData, setCatalogData] = useState<CatalogStructure>(DEFAULT_CATALOG);
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleDateChange = (date: string) => {
+    setFilterDate(date);
+    sessionStorage.setItem('divexplore_filter_date', date);
+  };
+
+  const handleViewDetail = (productId: string) => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    navigate(`/product/${productId}${filterDate ? `?date=${filterDate}` : ""}`);
+  };
 
   // Fetching data asli saat halaman pertama kali dibuka
   useEffect(() => {
@@ -275,16 +289,28 @@ export default function CatalogPage() {
               <span className={styles.resultCount}>
                 {filtered.length} produk
               </span>
-            </div>
-            <div className={styles.searchBar}>
-              <Search size={16} className={styles.searchIcon} />
-              <input
-                type="text"
-                placeholder={`Cari di ${currentCat.label}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={styles.searchInput}
-              />
+              <div className={styles.filterGroup}>
+                <div className={styles.searchBar}>
+                  <Search className={styles.searchIcon} size={18} />
+                  <input
+                    type="text"
+                    placeholder={`Cari ${currentCat.label.toLowerCase()}...`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className={styles.searchInput}
+                  />
+                </div>
+                <div className={styles.dateFilter}>
+                  <Clock className={styles.filterIcon} size={18} />
+                  <input 
+                    type="date" 
+                    min={new Date().toISOString().split('T')[0]}
+                    value={filterDate}
+                    onChange={(e) => handleDateChange(e.target.value)}
+                    className={styles.dateInput}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -305,7 +331,7 @@ export default function CatalogPage() {
                 <div key={item.id} className={styles.productCard}>
                   <div
                     className={styles.cardImageWrapper}
-                    onClick={() => navigate("/product/" + item.id)}
+                    onClick={() => handleViewDetail(item.id)}
                     style={{ cursor: "pointer" }}
                   >
                     <img
@@ -323,7 +349,7 @@ export default function CatalogPage() {
                   <div className={styles.cardBody}>
                     <h3
                       className={styles.cardName}
-                      onClick={() => navigate("/product/" + item.id)}
+                      onClick={() => handleViewDetail(item.id)}
                       style={{ cursor: "pointer" }}
                     >
                       {item.name}
@@ -341,7 +367,24 @@ export default function CatalogPage() {
                       </div>
                     )}
                     <div className={styles.cardStock}>
-                      <Clock size={12} /> Tersisa {(item as any).inventories?.reduce((acc: any, inv: any) => acc + inv.available_qty, 0) || 0} slot
+                      <Clock size={12} /> 
+                      {(() => {
+                        const totalStock = (item as any).inventories?.reduce((acc: any, inv: any) => acc + inv.available_qty, 0) || 0;
+                        const name = item.name.toLowerCase();
+                        
+                        let label = 'slot';
+                        if (activeCategory === 'akomodasi') {
+                          if (name.includes('spa') || name.includes('sauna') || name.includes('paket')) {
+                            label = 'layanan';
+                          } else {
+                            label = 'kamar';
+                          }
+                        } else if (activeCategory === 'peralatan' || activeCategory === 'kuliner') {
+                          label = 'unit';
+                        }
+                        
+                        return ` Tersisa ${totalStock} ${label} tersedia`;
+                      })()}
                     </div>
                     <div className={styles.cardFooter}>
                       <div className={styles.cardPrice}>
@@ -367,9 +410,23 @@ export default function CatalogPage() {
                       className={styles.addToCartBtn}
                       style={{ background: currentCat.color }}
                       onClick={() => {
-                        // Simpan produk yang diklik ke localStorage
-                        const cartData = [
-                          {
+                        // PROTEKSI: Cek apakah sudah login
+                        if (!isAuthenticated) {
+                          navigate('/login');
+                          return;
+                        }
+
+                        // Ambil keranjang yang sudah ada
+                        const existingCart = JSON.parse(localStorage.getItem('divexplore_cart') || '[]');
+                        
+                        // Cek apakah item sudah ada di keranjang (berdasarkan product_id)
+                        const itemIndex = existingCart.findIndex((i: any) => i.product_id === item.id);
+                        
+                        if (itemIndex > -1) {
+                          existingCart[itemIndex].quantity += 1;
+                        } else {
+                          existingCart.push({
+                            id: item.id, // Untuk mapping di CartPage
                             product_id: item.id, // Untuk Backend
                             name: item.name,
                             type: currentCat.label,
@@ -378,18 +435,26 @@ export default function CatalogPage() {
                             quantity: 1,
                             image: item.image,
                             addons: [],
-                          },
-                        ];
-                        localStorage.setItem(
-                          "divexplore_cart",
-                          JSON.stringify(cartData),
-                        );
-
-                        if (!isAuthenticated) {
-                          navigate("/login");
-                        } else {
-                          navigate("/checkout"); // Langsung loncat ke checkout untuk demo
+                          });
                         }
+                        
+                        localStorage.setItem("divexplore_cart", JSON.stringify(existingCart));
+                        
+                        // Trigger custom event agar Header terupdate
+                        window.dispatchEvent(new Event('cartUpdated'));
+                        
+                        Swal.fire({
+                          title: 'Berhasil!',
+                          text: 'Pesanan berhasil dimasukkan ke keranjang',
+                          icon: 'success',
+                          toast: true,
+                          position: 'top-end',
+                          showConfirmButton: false,
+                          timer: 3000,
+                          background: '#1e293b',
+                          color: '#f8fafc',
+                          iconColor: '#0ea5e9'
+                        });
                       }}
                     >
                       <ShoppingCart size={15} />
@@ -404,7 +469,7 @@ export default function CatalogPage() {
                     </button>
                     <button
                       className={styles.detailBtn}
-                      onClick={() => navigate("/product/" + item.id)}
+                      onClick={() => handleViewDetail(item.id)}
                     >
                       Lihat Detail
                     </button>

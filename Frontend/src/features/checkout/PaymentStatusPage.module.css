@@ -98,10 +98,10 @@
 /* ── Status Card ────────────────────────────────────── */
 .statusCard {
   width: 100%;
-  max-width: 440px;
+  max-width: 650px;
   background: #131c2e;
   border-radius: 20px;
-  padding: 40px 36px;
+  padding: 48px 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -184,6 +184,29 @@
   transition: all .2s; white-space: nowrap;
 }
 .copyBtn:hover { background: rgba(14,165,233,.1); }
+
+/* ── QRIS specific ───────────────────────────────────── */
+.qrContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.qrImage {
+  width: 200px;
+  height: 200px;
+  background: white;
+  padding: 10px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.qrHint {
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
+  margin: 0;
+}
 
 /* ── Countdown Badge ────────────────────────────────── */
 .countdownBadge {
@@ -381,6 +404,34 @@
     opacity: 0;
     transform: translate(-50%, -18px);
   }
+}
+
+.loadingOverlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 450px;
+  background: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(12px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 20px;
+  color: #94a3b8;
+  font-size: 1.1rem;
+}
+
+.spinnerWrap {
+  background: rgba(14, 165, 233, 0.1);
+  padding: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinIcon {
+  animation: spin 2s linear infinite;
 }
 
 @keyframes spin { 100% { transform: rotate(360deg); } }

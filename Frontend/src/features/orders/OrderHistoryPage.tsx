@@ -134,6 +134,29 @@ export default function OrderHistoryPage() {
       setIsReviewOpen(true);
     }
   };
+  const handlePayNow = async (order: Order) => {
+    try {
+      // 1. Ambil Snap Token dari Backend untuk Order ini
+      const res = await api.get(`/api/orders/${order.id}/snap-token`);
+      const { snap_token } = res.data;
+
+      if (!snap_token) {
+        alert("Gagal mendapatkan token pembayaran.");
+        return;
+      }
+
+      // 2. Simpan data agar halaman Pembayaran bisa menampilkan info yang benar
+      localStorage.setItem('divexplore_last_snap_token', snap_token);
+      localStorage.setItem('divexplore_last_order_data', JSON.stringify(order));
+
+      // 3. Redirect ke halaman Pembayaran (Langkah 3)
+      navigate('/payment-status?status=pending&auto_pay=true');
+    } catch (err) {
+      console.error("Error pay now:", err);
+      alert("Terjadi kesalahan saat memulai pembayaran.");
+    }
+  };
+
   const TABS: { key: Tab; label: string }[] = [
     { key: 'semua',    label: 'Semua Pesanan' },
     { key: 'pending',  label: 'Menunggu Bayar' },
@@ -283,10 +306,6 @@ export default function OrderHistoryPage() {
                         (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=80';
                       }}
                     />
-                    <span className={styles.imgOverlay} style={{ color: cfg.color, background: cfg.bg, borderColor: cfg.border }}>
-                      <StatusIcon size={10} />
-                      {cfg.label}
-                    </span>
                   </div>
 
                   {/* Main Info */}
@@ -296,6 +315,10 @@ export default function OrderHistoryPage() {
                       <span className={styles.orderTime}>
                         <Clock size={11} /> {formatTime(order.createdAt)}
                       </span>
+                      <div className={styles.statusBadge} style={{ color: cfg.color, background: cfg.bg, borderColor: cfg.border }}>
+                        <StatusIcon size={10} />
+                        {cfg.label}
+                      </div>
                     </div>
 
                     <h3 className={styles.orderTitle}>{getProductName(order)}</h3>
@@ -339,8 +362,8 @@ export default function OrderHistoryPage() {
                         </>
                       )}
                       {order.status === 'pending' && (
-                        <button className={styles.btnPayNow} onClick={() => navigate('/catalog')}>
-                          <ShoppingBag size={13} /> Pesan Baru
+                        <button className={styles.btnPayNow} onClick={() => handlePayNow(order)}>
+                          <CreditCard size={13} /> Bayar Sekarang
                         </button>
                       )}
                       {order.status === 'canceled' && (

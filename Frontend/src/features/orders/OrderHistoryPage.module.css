@@ -216,23 +216,19 @@
   object-fit: cover;
   display: block;
 }
-.imgOverlay {
-  position: absolute;
-  bottom: 28px;
-  left: 28px;
-  right: 0;
+.statusBadge {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 9px;
-  font-weight: 700;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 800;
   letter-spacing: 0.5px;
-  padding: 3px 7px;
+  padding: 3px 10px;
   border-radius: 6px;
   border: 1px solid;
   white-space: nowrap;
-  width: fit-content;
   text-transform: uppercase;
+  margin-left: auto;
 }
 
 /* ── Card Body ───────────────────────────────────────── */

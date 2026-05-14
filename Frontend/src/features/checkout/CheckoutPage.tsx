@@ -11,13 +11,8 @@ declare global {
 }
 import {
   ShoppingCart, Mail, CreditCard,
-  Smartphone,
-  Building2,
   MapPin,
-  Calendar,
   Users,
-  Star,
-  Lock,
   ChevronRight,
   AlertTriangle,
   Shield,
@@ -54,13 +49,12 @@ export default function CheckoutPage() {
   const seconds = String(secondsLeft % 60).padStart(2, '0');
   const progressPct = ((TOTAL_SECONDS - secondsLeft) / TOTAL_SECONDS) * 100;
 
-  // Payment method
-  const [paymentMethod, setPaymentMethod] = useState<'ewallet' | 'bank' | 'card' | 'onsite'>('ewallet');
-  const [eWalletOption, setEWalletOption] = useState<'gopay' | 'ovo' | 'dana'>('gopay');
-  const [bankOption, setBankOption] = useState<'bca' | 'mandiri' | 'bni'>('bca');
-
   // Customer form
-  const [form, setForm] = useState({ name: user?.name ?? '', phone: '', email: user?.email ?? '', notes: '' });
+  const [form, setForm] = useState({ 
+    name: user?.nama_lengkap ?? '', 
+    phone: (user as any)?.no_hp ?? '', 
+    email: user?.email ?? '', 
+  });
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -90,48 +84,51 @@ export default function CheckoutPage() {
       return;
     }
 
-    const firstItem = cartItems[0];
     localStorage.setItem('divexplore_customer', JSON.stringify(form));
 
     try {
       setIsProcessing(true);
 
       // Siapkan payload sesuai spesifikasi Backend POST /api/orders
-      // Backend (orderController.js) hanya menerima: items (product_id, qty) dan kode_promo
       const payload = {
-        items: [
-          {
-            product_id: firstItem.product_id, // ID asli dari database Supabase
-            qty: firstItem.quantity
-          }
-        ]
+        items: cartItems.map((item: any) => ({
+          product_id: item.product_id,
+          qty: item.quantity,
+          addon_ids: (item.addon_ids && item.addon_ids.length > 0) ? item.addon_ids : undefined,
+          // Kirim metadata tanggal (booking_date, check_in, check_out)
+          booking_date: item.booking_date,
+          check_in: item.check_in,
+          check_out: item.check_out
+        })),
+        user_info: {
+          nama: form.name,
+          no_hp: form.phone,
+          email: form.email
+        }
       };
 
       // 1. Tembak API Backend untuk membuat pesanan
       const response = await api.post('/api/orders', payload);
       
       const snapToken = response.data?.snap_token;
+      const orderData = response.data?.order;
+      
       if (!snapToken) throw new Error("Gagal mendapatkan token pembayaran dari Midtrans.");
 
-      // 2. Munculkan Pop-up Snap Midtrans
-      window.snap.pay(snapToken, {
-        onSuccess: function(_result: any) {
-          // Midtrans berhasil dibayar (hanya untuk testing sandbox, 
-          // aslinya backend yang memproses webhook)
-          navigate('/payment-status?status=success');
-        },
-        onPending: function(_result: any) {
-          // Menunggu pembayaran (misal transfer VA/Qris blm dibayar)
-          navigate('/payment-status?status=pending');
-        },
-        onError: function(_result: any) {
-          alert("Pembayaran gagal!");
-        },
-        onClose: function() {
-          // User menutup pop-up sebelum menyelesaikan pembayaran
-          navigate('/payment-status?status=pending');
-        }
-      });
+      // 2. Simpan data penting ke localStorage agar bisa diakses di halaman pembayaran
+      localStorage.setItem('divexplore_last_snap_token', snapToken);
+      if (orderData) {
+        localStorage.setItem('divexplore_last_order_data', JSON.stringify(orderData));
+      }
+
+      // 3. Bersihkan keranjang
+      localStorage.removeItem('divexplore_cart');
+      localStorage.removeItem('divexplore_cart_direct');
+      window.dispatchEvent(new Event('cartUpdated'));
+
+      // 4. Redirect ke halaman Pembayaran (Langkah 3)
+      // Kita beri flag auto_pay=true agar halaman tujuan tahu harus buka pop-up otomatis
+      navigate('/payment-status?status=pending&auto_pay=true');
 
     } catch (error: any) {
       alert("Gagal memproses pesanan: " + error.message);
@@ -144,40 +141,28 @@ export default function CheckoutPage() {
   const [cartItems, setCartItems] = useState<any[]>([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('divexplore_cart');
+    const params = new URLSearchParams(window.location.search);
+    const isDirect = params.get('type') === 'direct';
+    const key = isDirect ? 'divexplore_cart_direct' : 'divexplore_cart';
+
+    const saved = localStorage.getItem(key);
     if (saved) {
       setCartItems(JSON.parse(saved));
     }
   }, []);
 
-  const firstItem = cartItems[0] || {
-    name: 'Gili Trawangan Snorkeling Experience',
-    type: 'Snorkeling',
-    location: 'Gili Trawangan, Lombok',
-    price: 350000,
-    quantity: 2,
-    image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=80',
-    addons: [
-      { name: 'Peralatan Snorkel', price: 75000 },
-    ]
+  // Hitung total dari SEMUA item di keranjang (bukan hanya firstItem)
+  const calculateCartTotal = () => {
+    return cartItems.reduce((total: number, item: any) => {
+      const itemSubtotal = item.price * item.quantity;
+      const addonsSubtotal = (item.addons || []).reduce(
+        (sum: number, a: any) => sum + (a.price * item.quantity), 0
+      );
+      return total + itemSubtotal + addonsSubtotal;
+    }, 0);
   };
 
-  const order = {
-    image: firstItem.image,
-    name: firstItem.name,
-    category: firstItem.type,
-    location: firstItem.location,
-    date: 'Sabtu, 14 Juni 2026',
-    people: firstItem.quantity,
-    rating: 4.9,
-    addons: firstItem.addons.map((a: any) => ({ label: a.name, price: a.price * firstItem.quantity })),
-    basePrice: firstItem.price * firstItem.quantity,
-  };
-
-  const addonTotal = order.addons.reduce((s: number, a: any) => s + a.price, 0);
-  const subtotal = order.basePrice + addonTotal;
-  // Total = Harga produk saja. Komisi & biaya Midtrans ditanggung platform (internal)
-  const total = subtotal;
+  const total = calculateCartTotal();
 
   return (
     <div className={styles.container}>
@@ -227,43 +212,55 @@ export default function CheckoutPage() {
           <div className={styles.card}>
             <div className={styles.cardTitle}>
               <ShoppingCart size={18} />
-              Ringkasan Pesanan
-            </div>
-            <div className={styles.orderItem}>
-              <img src={order.image} alt={order.name} className={styles.orderImg} />
-              <div className={styles.orderInfo}>
-                <h3 className={styles.orderName}>{order.name}</h3>
-                <div className={styles.orderMeta}>
-                  <span>{order.category}</span>
-                  <span className={styles.dot}>•</span>
-                  <MapPin size={12} />
-                  <span>{order.location}</span>
-                </div>
-                <div className={styles.orderDetails}>
-                  <span><Calendar size={12} /> {order.date}</span>
-                  <span><Users size={12} /> {order.people} Orang</span>
-                </div>
-                <div className={styles.ratingBadge}>
-                  <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                  <span>{order.rating}</span>
-                </div>
-              </div>
+              Ringkasan Pesanan ({cartItems.length} item)
             </div>
 
-            {order.addons.length > 0 && (
-              <div className={styles.addonsSection}>
-                <p className={styles.addonsLabel}>Tambahan:</p>
-                <div className={styles.addonTags}>
-                  {order.addons.map((a: any, i: number) => (
-                    <span key={i} className={styles.addonTag}>{a.label} +Rp {a.price.toLocaleString('id-ID')}</span>
-                  ))}
+            {cartItems.map((item: any, idx: number) => (
+              <div key={idx} className={styles.orderItem} style={{ borderBottom: idx < cartItems.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none', paddingBottom: '1.25rem', marginBottom: idx < cartItems.length - 1 ? '1.25rem' : 0 }}>
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className={styles.orderImg}
+                  onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=80'; }}
+                />
+                <div className={styles.orderInfo}>
+                  <h3 className={styles.orderName}>{item.name}</h3>
+                  <div className={styles.orderMeta}>
+                    <span>{item.type}</span>
+                    <span className={styles.dot}>•</span>
+                    <MapPin size={12} />
+                    <span>{item.location}</span>
+                  </div>
+                  <div className={styles.orderDetails}>
+                    <span><Users size={12} /> {item.quantity} Orang</span>
+                    {item.check_in ? (
+                      <span className={styles.dateInfo}>
+                        <CreditCard size={12} style={{ transform: 'rotate(-90deg)' }} /> 
+                        {new Date(item.check_in).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - {new Date(item.check_out).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    ) : item.booking_date ? (
+                      <span className={styles.dateInfo}>
+                        <CreditCard size={12} style={{ transform: 'rotate(-90deg)' }} /> 
+                        {new Date(item.booking_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </span>
+                    ) : null}
+                  </div>
+                  {(item.addons || []).length > 0 && (
+                    <div className={styles.addonTags} style={{ marginTop: '0.5rem' }}>
+                      {item.addons.map((a: any, ai: number) => (
+                        <span key={ai} className={styles.addonTag}>
+                          + {a.name} (Rp {a.price.toLocaleString('id-ID')})
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+            ))}
 
             <div className={styles.subtotalRow}>
               <span>Subtotal</span>
-              <span className={styles.subtotalVal}>Rp {subtotal.toLocaleString('id-ID')}</span>
+              <span className={styles.subtotalVal}>Rp {total.toLocaleString('id-ID')}</span>
             </div>
           </div>
 
@@ -318,116 +315,11 @@ export default function CheckoutPage() {
               </div>
               {errors.email && <p className={styles.errMsg}>{errors.email}</p>}
             </div>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Catatan Tambahan <span className={styles.opt}>(opsional)</span></label>
-              <textarea
-                name="notes"
-                className={styles.textarea}
-                placeholder="Permintaan khusus, alergi, dll."
-                value={form.notes}
-                onChange={handleInput}
-                rows={3}
-              />
-            </div>
           </div>
         </div>
 
         {/* Right Column */}
         <div className={styles.rightCol}>
-          {/* Payment Method */}
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>
-              <CreditCard size={18} />
-              Metode Pembayaran
-            </div>
-
-            {/* E-Wallet */}
-            <div
-              className={`${styles.payMethod} ${paymentMethod === 'ewallet' ? styles.payActive : ''}`}
-              onClick={() => setPaymentMethod('ewallet')}
-            >
-              <div className={styles.payRadio}>
-                <div className={`${styles.radioCircle} ${paymentMethod === 'ewallet' ? styles.radioActive : ''}`} />
-              </div>
-              <div className={styles.payInfo}>
-                <div className={styles.payLabel}><Smartphone size={16} /> E-Wallet</div>
-                {paymentMethod === 'ewallet' && (
-                  <div className={styles.subOptions}>
-                    {(['gopay', 'ovo', 'dana'] as const).map(w => (
-                      <button
-                        key={w}
-                        className={`${styles.walletBtn} ${eWalletOption === w ? styles.walletActive : ''}`}
-                        onClick={e => { e.stopPropagation(); setEWalletOption(w); }}
-                      >
-                        {w === 'gopay' ? (
-                          <img src="https://upload.wikimedia.org/wikipedia/commons/8/86/Gopay_logo.svg" alt="GoPay" style={{ height: '18px', objectFit: 'contain' }} />
-                        ) : w === 'ovo' ? (
-                          <img src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_ovo_purple.svg" alt="OVO" style={{ height: '18px', objectFit: 'contain' }} />
-                        ) : (
-                          <img src="https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg" alt="DANA" style={{ height: '18px', objectFit: 'contain' }} />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Transfer Bank */}
-            <div
-              className={`${styles.payMethod} ${paymentMethod === 'bank' ? styles.payActive : ''}`}
-              onClick={() => setPaymentMethod('bank')}
-            >
-              <div className={styles.payRadio}>
-                <div className={`${styles.radioCircle} ${paymentMethod === 'bank' ? styles.radioActive : ''}`} />
-              </div>
-              <div className={styles.payInfo}>
-                <div className={styles.payLabel}><Building2 size={16} /> Transfer Bank</div>
-                {paymentMethod === 'bank' && (
-                  <div className={styles.subOptions}>
-                    {(['bca', 'mandiri', 'bni'] as const).map(b => (
-                      <button
-                        key={b}
-                        className={`${styles.walletBtn} ${bankOption === b ? styles.walletActive : ''}`}
-                        onClick={e => { e.stopPropagation(); setBankOption(b); }}
-                      >
-                        {b.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Kartu */}
-            <div
-              className={`${styles.payMethod} ${paymentMethod === 'card' ? styles.payActive : ''}`}
-              onClick={() => setPaymentMethod('card')}
-            >
-              <div className={styles.payRadio}>
-                <div className={`${styles.radioCircle} ${paymentMethod === 'card' ? styles.radioActive : ''}`} />
-              </div>
-              <div className={styles.payInfo}>
-                <div className={styles.payLabel}><CreditCard size={16} /> Kartu Kredit / Debit</div>
-                <div className={styles.paySubLabel}>Visa, Mastercard</div>
-              </div>
-            </div>
-
-            {/* Bayar di Tempat */}
-            <div
-              className={`${styles.payMethod} ${paymentMethod === 'onsite' ? styles.payActive : ''}`}
-              onClick={() => setPaymentMethod('onsite')}
-            >
-              <div className={styles.payRadio}>
-                <div className={`${styles.radioCircle} ${paymentMethod === 'onsite' ? styles.radioActive : ''}`} />
-              </div>
-              <div className={styles.payInfo}>
-                <div className={styles.payLabel}><MapPin size={16} /> Bayar di Tempat</div>
-                <div className={styles.paySubLabel}>Bayar saat tiba di lokasi</div>
-              </div>
-            </div>
-          </div>
-
           {/* Cost Summary */}
           <div className={styles.card}>
             <div className={styles.cardTitle}>
@@ -435,16 +327,23 @@ export default function CheckoutPage() {
               Ringkasan Biaya
             </div>
             <div className={styles.costRows}>
-              <div className={styles.costRow}>
-                <span>{order.name} ({order.people}×)</span>
-                <span>Rp {order.basePrice.toLocaleString('id-ID')}</span>
-              </div>
-              {order.addons.map((a: any, i: number) => (
-                <div key={i} className={styles.costRow}>
-                  <span>{a.label}</span>
-                  <span>Rp {a.price.toLocaleString('id-ID')}</span>
-                </div>
-              ))}
+              {cartItems.map((item: any, idx: number) => {
+                const itemBase = item.price * item.quantity;
+                return (
+                  <div key={`group-${idx}`} className={styles.costGroup}>
+                    <div className={styles.costRow}>
+                      <span className={styles.itemName}>{item.name} ({item.quantity}×)</span>
+                      <span className={styles.itemPrice}>Rp {itemBase.toLocaleString('id-ID')}</span>
+                    </div>
+                    {(item.addons || []).map((a: any, ai: number) => (
+                      <div key={`addon-${idx}-${ai}`} className={styles.costRowAddon}>
+                        <span className={styles.addonName}>{a.name} ({item.quantity}×)</span>
+                        <span className={styles.addonPrice}>Rp {(a.price * item.quantity).toLocaleString('id-ID')}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
             <div className={styles.totalRow}>
               <span>TOTAL</span>
@@ -469,7 +368,6 @@ export default function CheckoutPage() {
               onClick={handleSubmit}
               disabled={isProcessing}
             >
-              <Lock size={16} />
               {isProcessing ? 'Memproses Midtrans...' : 'Konfirmasi & Bayar'}
             </button>
             <button 

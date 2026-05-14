@@ -16,16 +16,23 @@ import {
   FileText,
   Package,
   Minus,
-  Plus, Lock, ArrowRight } from 'lucide-react';
+  Plus, ArrowRight } from 'lucide-react';
 import styles from './ProductDetailPage.module.css';
 import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
+import Swal from 'sweetalert2';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
+
   const [product, setProduct] = useState<any>(null);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +40,22 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('deskripsi');
+
+  // Inisialisasi state tanggal dari URL atau SessionStorage (Bulletproof)
+  const queryParams = new URLSearchParams(window.location.search);
+  const initialDate = queryParams.get('date') || sessionStorage.getItem('divexplore_filter_date') || "";
+
+  const [bookingDate, setBookingDate] = useState<string>(initialDate);
+  const [checkInDate, setCheckInDate] = useState<string>(initialDate);
+  
+  // Set check-out otomatis H+1 jika check-in ada
+  const getInitialCheckOut = () => {
+    if (!initialDate) return "";
+    const nextDay = new Date(initialDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    return nextDay.toISOString().split('T')[0];
+  };
+  const [checkOutDate, setCheckOutDate] = useState<string>(getInitialCheckOut());
 
   const PRODUCT_IMAGES = [
     "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1600&q=80",
@@ -98,6 +121,8 @@ export default function ProductDetailPage() {
       product.crossSellingAsMain.forEach((addonObj: any) => {
         if (selectedAddons.includes(addonObj.addonProduct.id)) {
           res.push({
+            id: addonObj.id,                              // ID dari tabel ProductAddon (join table)
+            addon_product_id: addonObj.addonProduct.id,  // ID produk addon
             name: addonObj.addonProduct.nama_produk,
             price: Number(addonObj.addonProduct.harga)
           });
@@ -170,31 +195,118 @@ export default function ProductDetailPage() {
     }
   };
 
+  if (!product) return <div className={styles.error}>Produk tidak ditemukan</div>;
+
+  const category = product?.vendor?.kategori?.toLowerCase() || '';
+  const isAkomodasi = category.includes('homestay');
+
   const dynamicData = getDynamicFeatures();
 
-  const saveToCart = () => {
+  const handleAddToCart = () => {
     if (!product) return;
+
+    // PROTEKSI: Cek apakah sudah login
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    // VALIDASI TANGGAL
+    const category = product?.vendor?.kategori?.toLowerCase() || '';
+    if (category.includes('homestay')) {
+      if (!checkInDate || !checkOutDate) {
+        Swal.fire('Perhatian', 'Harap pilih tanggal Check-in dan Check-out', 'warning');
+        return;
+      }
+      if (new Date(checkOutDate) <= new Date(checkInDate)) {
+        Swal.fire('Error', 'Tanggal Check-out harus setelah Check-in', 'error');
+        return;
+      }
+    } else {
+      if (!bookingDate) {
+        Swal.fire('Perhatian', 'Harap pilih tanggal rencana kunjungan Anda', 'warning');
+        return;
+      }
+    }
+
     const cartItem = {
       id: product.id,
-      product_id: product.id, // For backend API compatibility
+      product_id: product.id,
       name: product.nama_produk,
       type: product.vendor?.kategori || 'AKTIVITAS',
       location: product.lokasi || 'Indonesia',
       price: basePrice,
       quantity: quantity,
       image: product.thumbnail_url || PRODUCT_IMAGES[0],
-      addons: getSelectedAddonsData()
+      addons: getSelectedAddonsData(),
+      addon_ids: getSelectedAddonsData().map((a: any) => a.id).filter(Boolean),
+      // Sertakan data tanggal ke keranjang
+      booking_date: bookingDate,
+      check_in: checkInDate,
+      check_out: checkOutDate
     };
-    localStorage.setItem('divexplore_cart', JSON.stringify([cartItem]));
+    
+    const existingCart = JSON.parse(localStorage.getItem('divexplore_cart') || '[]');
+    const existingIndex = existingCart.findIndex((item: any) => item.id === cartItem.id);
+    
+    if (existingIndex > -1) {
+      existingCart[existingIndex] = cartItem; 
+    } else {
+      existingCart.push(cartItem);
+    }
+    
+    localStorage.setItem('divexplore_cart', JSON.stringify(existingCart));
+    window.dispatchEvent(new Event('cartUpdated'));
+
+    Swal.fire({
+      title: 'Berhasil!',
+      text: 'Pesanan berhasil dimasukkan ke keranjang',
+      icon: 'success',
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 3000,
+      background: '#1e293b',
+      color: '#f8fafc',
+      iconColor: '#0ea5e9'
+    });
   };
 
   const handleBook = () => {
-    if (!isAuthenticated) {
-      navigate('/login');
+    if (!product) return;
+
+    // VALIDASI TANGGAL (Sama seperti Add to Cart)
+    const category = product?.vendor?.kategori?.toLowerCase() || '';
+    if (category.includes('homestay')) {
+      if (!checkInDate || !checkOutDate) {
+        Swal.fire('Perhatian', 'Harap pilih tanggal Check-in dan Check-out', 'warning');
+        return;
+      }
     } else {
-      saveToCart();
-      navigate('/checkout');
+      if (!bookingDate) {
+        Swal.fire('Perhatian', 'Harap pilih tanggal rencana kunjungan Anda', 'warning');
+        return;
+      }
     }
+
+    const directItem = {
+      id: product.id,
+      product_id: product.id,
+      name: product.nama_produk,
+      type: product.vendor?.kategori || 'AKTIVITAS',
+      location: product.lokasi || 'Indonesia',
+      price: basePrice,
+      quantity: quantity,
+      image: product.thumbnail_url || PRODUCT_IMAGES[0],
+      addons: getSelectedAddonsData(),
+      addon_ids: getSelectedAddonsData().map((a: any) => a.id).filter(Boolean),
+      booking_date: bookingDate,
+      check_in: checkInDate,
+      check_out: checkOutDate
+    };
+    
+    localStorage.setItem('divexplore_cart_direct', JSON.stringify([directItem]));
+    navigate('/checkout?type=direct');
   };
 
   if (isLoading) {
@@ -284,11 +396,74 @@ export default function ProductDetailPage() {
                 : styles.stockOut
             }`}>
               <Package size={14} />
-              {product.inventories.reduce((acc: number, inv: any) => acc + inv.available_qty, 0) > 0 
-                ? `Tersisa ${product.inventories.reduce((acc: number, inv: any) => acc + inv.available_qty, 0)} slot tersedia`
-                : 'Maaf, Stok Habis'}
+              {(() => {
+                const totalStock = product.inventories.reduce((acc: number, inv: any) => acc + inv.available_qty, 0);
+                if (totalStock <= 0) return 'Maaf, Stok Habis';
+                
+                const category = product?.vendor?.kategori?.toLowerCase() || '';
+                const name = product?.nama_produk?.toLowerCase() || '';
+                
+                let label = 'slot';
+                if (category.includes('homestay')) {
+                  if (name.includes('spa') || name.includes('sauna') || name.includes('paket')) {
+                    label = 'layanan';
+                  } else {
+                    label = 'kamar';
+                  }
+                } else if (category.includes('peralatan') || category.includes('kuliner')) {
+                  label = 'unit';
+                }
+                
+                return `Tersisa ${totalStock} ${label} tersedia`;
+              })()}
             </div>
           )}
+
+            {/* BAGIAN BARU: PEMILIHAN TANGGAL (PREMIUM UI) */}
+            <div className={styles.dateSelectionCard}>
+              <div className={styles.dateHeader}>
+                <Clock className={styles.dateIcon} size={20} />
+                <span>{isAkomodasi ? 'Tentukan Waktu Menginap' : 'Pilih Tanggal Kunjungan'}</span>
+              </div>
+              
+              <div className={styles.dateGrid}>
+                {isAkomodasi ? (
+                  <>
+                    <div className={styles.dateField}>
+                      <label>Check-in</label>
+                      <input 
+                        type="date" 
+                        min={new Date().toISOString().split('T')[0]}
+                        value={checkInDate}
+                        onChange={(e) => setCheckInDate(e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.dateField}>
+                      <label>Check-out</label>
+                      <input 
+                        type="date" 
+                        min={checkInDate || new Date().toISOString().split('T')[0]}
+                        value={checkOutDate}
+                        onChange={(e) => setCheckOutDate(e.target.value)}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className={styles.dateField}>
+                    <label>Tanggal Rencana Kunjungan</label>
+                    <input 
+                      type="date" 
+                      min={new Date().toISOString().split('T')[0]}
+                      value={bookingDate}
+                      onChange={(e) => setBookingDate(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+              <p className={styles.dateHint}>
+                * Ketersediaan slot akan dikonfirmasi otomatis saat pembayaran
+              </p>
+            </div>
 
           <div className={styles.infoCards}>
             <div className={styles.infoCard}>
@@ -396,18 +571,17 @@ export default function ProductDetailPage() {
               </div>
 
               <div className={styles.actionButtons}>
-                <button className={styles.btnPrimary} onClick={() => {
+                <button className={styles.btnPrimary} onClick={handleAddToCart}>
+                  <ShoppingCart size={18} />
+                  Tambah ke Keranjang
+                </button>
+                <button className={styles.btnSuccess} onClick={() => {
                   if (!isAuthenticated) {
                     navigate('/login');
                   } else {
-                    saveToCart();
-                    navigate('/cart');
+                    handleBook();
                   }
                 }}>
-                  <ShoppingCart size={18} />
-                  {isAuthenticated ? 'Tambah ke Keranjang' : <><Lock size={14} style={{marginRight: '6px'}} /> Masuk untuk Memesan</>}
-                </button>
-                <button className={styles.btnSuccess} onClick={handleBook}>
                   <Zap size={18} />
                   Beli Sekarang
                 </button>

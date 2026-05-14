@@ -203,10 +203,11 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null) => 
 
     // 8. Generate Midtrans Snap Token (WP-3.2.2)
     let snapResponse = {};
+    const midtransOrderId = `${newOrder.id}-${Date.now()}`;
     try {
       const parameter = {
         transaction_details: {
-          order_id: newOrder.id,
+          order_id: midtransOrderId,
           gross_amount: Math.round(totalPembayaran),
         },
         credit_card: { secure: true },
@@ -217,6 +218,9 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null) => 
         },
       };
       snapResponse = await snap.createTransaction(parameter);
+      
+      // Simpan Midtrans Order ID agar bisa dicek statusnya nanti
+      await newOrder.update({ last_midtrans_id: midtransOrderId });
     } catch (midtransErr) {
       // Gunakan logger agar error tercatat di file log (bukan hanya console)
       const logger = require("../utils/logger");
@@ -229,6 +233,7 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null) => 
       order: newOrder,
       payment_url: snapResponse.redirect_url,
       snap_token: snapResponse.token,
+      midtrans_order_id: midtransOrderId
     };
   } catch (error) {
     // Jika ada 1 saja yang error (misal stok habis), BATALKAN semua (ROLLBACK)
@@ -388,11 +393,12 @@ const getSnapToken = async (orderId, userId) => {
 
   // Generate Midtrans Snap Token
   try {
+    const midtransOrderId = `${order.id}-${Date.now()}`;
     const parameter = {
       transaction_details: {
         // Tambahkan suffix agar Midtrans menganggap ini transaksi baru 
         // tapi kita tetap bisa mengenali ID aslinya
-        order_id: `${order.id}-${Date.now()}`,
+        order_id: midtransOrderId,
         gross_amount: Math.round(order.total_pembayaran),
       },
       credit_card: { secure: true },
@@ -403,7 +409,14 @@ const getSnapToken = async (orderId, userId) => {
       },
     };
     const snapResponse = await snap.createTransaction(parameter);
-    return { snap_token: snapResponse.token };
+    
+    // Update ID Midtrans terakhir di DB
+    await order.update({ last_midtrans_id: midtransOrderId });
+
+    return { 
+      snap_token: snapResponse.token,
+      midtrans_order_id: midtransOrderId 
+    };
   } catch (midtransErr) {
     throw new Error("Gagal menghubungi Midtrans: " + midtransErr.message);
   }
@@ -417,17 +430,15 @@ const getPaymentStatus = async (orderId, userId) => {
   if (!order) throw new Error("Pesanan tidak ditemukan.");
 
   try {
-    // 1. Coba cek dengan ID asli dulu (untuk pesanan lama atau percobaan pertama)
-    const statusResponse = await snap.transaction.status(order.id);
+    // GUNAKAN ID Midtrans terakhir yang tersimpan di DB kita
+    const queryId = order.last_midtrans_id || order.id;
+    const statusResponse = await snap.transaction.status(queryId);
     return statusResponse;
   } catch (err) {
-    // 2. Jika 404, berarti kemungkinan menggunakan suffix ID-timestamp.
-    // Di sistem produksi, idealnya kita simpan last_midtrans_id di database.
-    // Sebagai solusi cerdas, kita kembalikan status internal agar FE tidak bingung.
+    // Fallback jika tidak ditemukan di Midtrans
     return {
       transaction_status: order.status,
       gross_amount: order.total_pembayaran,
-      // Jika status DB sudah 'paid', kita kirimkan sebagai sinyal sukses
       payment_type: order.status === 'paid' ? 'already_paid' : null 
     };
   }
