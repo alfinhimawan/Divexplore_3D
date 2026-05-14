@@ -29,6 +29,11 @@ router.get(
   authorize("wisatawan"),
   orderController.getPaymentStatus,
 );
+router.get(
+  "/:id",
+  authorize("wisatawan"),
+  orderController.getOrderDetail,
+);
 router.post(
   "/:orderId/reviews",
   authorize("wisatawan"),
