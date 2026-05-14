@@ -146,7 +146,9 @@ const getSnapToken = async (req, res, next) => {
     }
 
     // 2. Jika belum pilih, baru minta token Snap
-    const result = await orderService.getSnapToken(orderId, req.user.id);
+    const origin = req.get('origin') || req.get('referer')?.split('/').slice(0, 3).join('/');
+    
+    const result = await orderService.getSnapToken(orderId, req.user.id, origin);
     res.status(200).json({
       status: "success",
       data: result,

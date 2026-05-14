@@ -228,12 +228,17 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
           phone: userInfo?.nomor_telepon || "",
           email: userInfo?.email || ""
         },
-        callbacks: {
+      };
+
+      // Hanya tambahkan callback jika origin terdeteksi (Cara paling bersih & efisien)
+      if (origin) {
+        parameter.callbacks = {
           finish: `${origin}/payment-status?status=pending`,
           error: `${origin}/payment-status?status=error`,
           pending: `${origin}/payment-status?status=pending`
-        }
-      };
+        };
+      }
+
       snapResponse = await snap.createTransaction(parameter);
     } catch (midtransErr) {
       const logger = require("../utils/logger");
@@ -388,7 +393,7 @@ const getAdminOrders = async () => {
 /**
  * Ambil Snap Token untuk Order yang sudah ada (untuk bayar ulang dari riwayat)
  */
-const getSnapToken = async (orderId, userId) => {
+const getSnapToken = async (orderId, userId, origin) => {
   const order = await Order.findOne({
     where: { id: orderId, user_id: userId },
     include: [{ association: "user", attributes: ["nama_lengkap", "email", "nomor_telepon"] }]
@@ -421,13 +426,18 @@ const getSnapToken = async (orderId, userId) => {
         email: order.user?.email || "",
         phone: order.user?.nomor_telepon || "",
       },
-      callbacks: {
-        finish: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status?status=pending`,
-        error: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status?status=error`,
-        pending: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status?status=pending`
+      };
+
+      // Hanya tambahkan callback jika origin terdeteksi (Cara paling bersih & efisien)
+      if (origin) {
+        parameter.callbacks = {
+          finish: `${origin}/payment-status?status=pending`,
+          error: `${origin}/payment-status?status=error`,
+          pending: `${origin}/payment-status?status=pending`
+        };
       }
-    };
-    const snapResponse = await snap.createTransaction(parameter);
+
+      const snapResponse = await snap.createTransaction(parameter);
     
     // Update ID Midtrans terakhir di DB
     await order.update({ last_midtrans_id: midtransOrderId });
@@ -488,7 +498,8 @@ const getPaymentStatus = async (orderId, userId) => {
       biller_code: lastLogData?.biller_code || null,
       permata_va_number: lastLogData?.permata_va_number || null,
       gross_amount: order.total_pembayaran,
-      is_fallback: true
+      is_fallback: true,
+      error_debug: err.message // Kirim pesan error asli ke FE untuk debug
     };
     
     console.log(`[PaymentStatus] Returning Fallback Data for ${order.id}:`, JSON.stringify(fallbackData, null, 2));
