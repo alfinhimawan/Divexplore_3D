@@ -206,12 +206,16 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null) => 
       );
     }
 
-    // Jika semua sukses, COMMIT transaksi secara permanen ke Database
+    // 8. Tentukan ID Midtrans sejak awal agar sinkronisasi tidak balapan (Race Condition)
+    const midtransOrderId = `${newOrder.id}-${Date.now()}`;
+    await newOrder.update({ last_midtrans_id: midtransOrderId }, { transaction });
+
+    // 9. Jika semua sukses, COMMIT transaksi secara permanen ke Database
+    // Ini penting agar ID Midtrans sudah ada di DB sebelum FE mulai polling
     await transaction.commit();
 
-    // 8. Generate Midtrans Snap Token (WP-3.2.2)
+    // 10. Generate Midtrans Snap Token
     let snapResponse = {};
-    const midtransOrderId = `${newOrder.id}-${Date.now()}`;
     try {
       const parameter = {
         transaction_details: {
@@ -231,11 +235,7 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null) => 
         }
       };
       snapResponse = await snap.createTransaction(parameter);
-      
-      // Simpan Midtrans Order ID agar bisa dicek statusnya nanti
-      await newOrder.update({ last_midtrans_id: midtransOrderId });
     } catch (midtransErr) {
-      // Gunakan logger agar error tercatat di file log (bukan hanya console)
       const logger = require("../utils/logger");
       logger.error("Gagal generate Midtrans Token", {
         error: midtransErr.message,
