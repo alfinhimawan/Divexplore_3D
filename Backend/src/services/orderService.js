@@ -528,7 +528,7 @@ const cancelOrder = async (orderId, userId) => {
     if (order.items && order.items.length > 0) {
       for (const item of order.items) {
         if (item.product_id) {
-          await ProductInventory.increment('stok', { 
+          await ProductInventory.increment('available_qty', { 
             by: item.qty, 
             where: { product_id: item.product_id },
             transaction 
