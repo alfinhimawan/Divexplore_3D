@@ -221,9 +221,14 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null) => 
         credit_card: { secure: true },
         customer_details: {
           first_name: userInfo?.nama || "Wisatawan",
-          phone: userInfo?.no_hp || "",
+          phone: userInfo?.nomor_telepon || "",
           email: userInfo?.email || ""
         },
+        callbacks: {
+          finish: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status?status=pending`,
+          error: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status?status=error`,
+          pending: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status?status=pending`
+        }
       };
       snapResponse = await snap.createTransaction(parameter);
       
@@ -416,6 +421,11 @@ const getSnapToken = async (orderId, userId) => {
         email: order.user?.email || "",
         phone: order.user?.nomor_telepon || "",
       },
+      callbacks: {
+        finish: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status?status=pending`,
+        error: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status?status=error`,
+        pending: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status?status=pending`
+      }
     };
     const snapResponse = await snap.createTransaction(parameter);
     
