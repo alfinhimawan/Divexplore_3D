@@ -488,6 +488,8 @@ const getPaymentStatus = async (orderId, userId) => {
     // SINKRONISASI KRUSIAL: Simpan ke PaymentLog agar DB tidak kosong
     const { PaymentLog } = require("../models");
     if (statusResponse.transaction_status && statusResponse.transaction_status !== 'null') {
+      const normalizedType = statusResponse.payment_type;
+
       // Cari log terakhir untuk order ini
       const [log, created] = await PaymentLog.findOrCreate({
         where: { 
@@ -496,17 +498,17 @@ const getPaymentStatus = async (orderId, userId) => {
         },
         defaults: {
           status_pembayaran: statusResponse.transaction_status,
-          payment_type: statusResponse.payment_type,
+          payment_type: normalizedType,
           transaction_id_midtrans: statusResponse.transaction_id,
           raw_response: JSON.stringify(statusResponse)
         }
       });
 
       // Jika log sudah ada tapi status/tipe berubah, update!
-      if (!created && (log.status_pembayaran !== statusResponse.transaction_status || log.payment_type !== statusResponse.payment_type)) {
+      if (!created && (log.status_pembayaran !== statusResponse.transaction_status || log.payment_type !== normalizedType)) {
         await log.update({
           status_pembayaran: statusResponse.transaction_status,
-          payment_type: statusResponse.payment_type,
+          payment_type: normalizedType,
           transaction_id_midtrans: statusResponse.transaction_id,
           raw_response: JSON.stringify(statusResponse)
         });
