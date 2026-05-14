@@ -307,8 +307,7 @@ const getWisatawanOrders = async (userId) => {
       {
         model: require("../models").PaymentLog,
         as: "paymentLogs",
-        attributes: ["payment_type"],
-        limit: 1,
+        attributes: ["payment_type", "status_pembayaran"],
         order: [["createdAt", "DESC"]],
       },
       {
@@ -486,23 +485,56 @@ const getPaymentStatus = async (orderId, userId) => {
     const statusResponse = await snap.transaction.status(queryId);
     console.log(`[PaymentStatus] Midtrans Raw Response for ${queryId}:`, JSON.stringify(statusResponse, null, 2));
     
-    // LOGIKA KRUSIAL: Jika di DB kita sudah 'cancelled', tapi di Midtrans masih 'pending',
-    // kita harus tetap mengirimkan 'cancel' ke Frontend agar user tidak bingung.
+    // SINKRONISASI KRUSIAL: Simpan ke PaymentLog agar DB tidak kosong
+    const { PaymentLog } = require("../models");
+    if (statusResponse.transaction_status && statusResponse.transaction_status !== 'null') {
+      // Cari log terakhir untuk order ini
+      const [log, created] = await PaymentLog.findOrCreate({
+        where: { 
+          order_id: order.id,
+          external_id: queryId
+        },
+        defaults: {
+          status_pembayaran: statusResponse.transaction_status,
+          payment_type: statusResponse.payment_type,
+          transaction_id_midtrans: statusResponse.transaction_id,
+          raw_response: JSON.stringify(statusResponse)
+        }
+      });
+
+      // Jika log sudah ada tapi status/tipe berubah, update!
+      if (!created && (log.status_pembayaran !== statusResponse.transaction_status || log.payment_type !== statusResponse.payment_type)) {
+        await log.update({
+          status_pembayaran: statusResponse.transaction_status,
+          payment_type: statusResponse.payment_type,
+          transaction_id_midtrans: statusResponse.transaction_id,
+          raw_response: JSON.stringify(statusResponse)
+        });
+      }
+    }
+
+    // 1. Update status di tabel Order berdasarkan hasil Midtrans (kecuali jika sudah cancel manual)
     let displayStatus = statusResponse.transaction_status;
     
-    // 1. Cek jika sudah dibatalkan manual
     if (order.status === 'cancelled' && displayStatus === 'pending') {
       displayStatus = 'cancel';
+    } else if (displayStatus === 'settlement' || displayStatus === 'capture') {
+      if (order.status !== 'paid') {
+        await order.update({ status: 'paid' });
+      }
+      displayStatus = 'success';
+    } else if (displayStatus === 'expire' || displayStatus === 'cancel') {
+      if (order.status !== 'expired' && order.status !== 'cancelled') {
+        await order.update({ status: displayStatus === 'expire' ? 'expired' : 'cancelled' });
+      }
     }
     
-    // 2. Cek jika sudah melewati batas 15 menit (Auto-Expire)
+    // 2. Cek jika sudah melewati batas 15 menit secara internal
     const now = new Date();
     if (order.status === 'pending' && order.timeout_at && now > new Date(order.timeout_at)) {
       if (displayStatus === 'pending') {
         displayStatus = 'expire';
-        // Sekalian update status di DB agar sinkron selamanya
         await order.update({ status: 'expired' });
-        console.log(`[PaymentStatus] Order ${order.id} auto-expired due to 15m timeout.`);
       }
     }
 
@@ -571,12 +603,23 @@ const cancelOrder = async (orderId, userId) => {
     // 2. Update status jadi cancelled di Database Utama
     await order.update({ status: 'cancelled' }, { transaction });
 
-    // 3. Catat di PaymentLogs agar riwayatnya Jelas
+    // 3. Ambil tipe pembayaran terakhir agar tidak hilang (Anti-Echannel Bug)
+    const lastLog = await PaymentLog.findOne({
+      where: { order_id: order.id },
+      order: [['createdAt', 'DESC']]
+    });
+
+    // 4. Catat di PaymentLogs agar riwayatnya Jelas
     await PaymentLog.create({
       order_id: order.id,
       external_id: order.last_midtrans_id,
       status_pembayaran: 'cancelled',
-      raw_response: JSON.stringify({ message: "Cancelled by user via Frontend", timestamp: new Date() })
+      payment_type: lastLog ? lastLog.payment_type : null,
+      raw_response: JSON.stringify({ 
+        message: "Cancelled by user via Frontend", 
+        previous_type: lastLog ? lastLog.payment_type : 'unknown',
+        timestamp: new Date() 
+      })
     }, { transaction });
 
     // 4. Kembalikan stok (Inventory management)
