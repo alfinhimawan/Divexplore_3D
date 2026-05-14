@@ -20,11 +20,11 @@ const createOrderSchema = Joi.object({
     .min(1)
     .required(),
   kode_promo: Joi.string().optional().allow(null, ""),
-  user_info: Joi.object({
+  user_info: {
     nama: Joi.string().optional(),
-    no_hp: Joi.string().optional(),
+    nomor_telepon: Joi.string().optional(),
     email: Joi.string().email().optional()
-  }).optional()
+  }
 });
 
 // POST /api/orders
