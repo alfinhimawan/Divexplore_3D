@@ -24,6 +24,11 @@ router.get(
   authorize("wisatawan"),
   orderController.getSnapToken,
 );
+router.get(
+  "/:id/payment-status",
+  authorize("wisatawan"),
+  orderController.getPaymentStatus,
+);
 router.post(
   "/:orderId/reviews",
   authorize("wisatawan"),

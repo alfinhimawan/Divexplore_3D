@@ -138,6 +138,20 @@ const getSnapToken = async (req, res, next) => {
   }
 };
 
+// GET /api/orders/:id/payment-status
+const getPaymentStatus = async (req, res, next) => {
+  try {
+    const orderId = req.params.id;
+    const result = await orderService.getPaymentStatus(orderId, req.user.id);
+    res.status(200).json({
+      status: "success",
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -145,4 +159,5 @@ module.exports = {
   getVendorOrders,
   getAdminOrders,
   getSnapToken,
+  getPaymentStatus,
 };
