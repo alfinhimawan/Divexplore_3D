@@ -198,6 +198,14 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null) => 
       { transaction },
     );
 
+    // 7. Update nomor telepon user jika belum ada atau berubah (Auto-Profile Sync)
+    if (userInfo?.nomor_telepon) {
+      await require("../models").User.update(
+        { nomor_telepon: userInfo.nomor_telepon },
+        { where: { id: userId }, transaction }
+      );
+    }
+
     // Jika semua sukses, COMMIT transaksi secara permanen ke Database
     await transaction.commit();
 
