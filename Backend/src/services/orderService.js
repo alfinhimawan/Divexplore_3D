@@ -7,6 +7,7 @@ const {
   ProductInventory,
   AuditLog,
   Promo,
+  PaymentLog,
 } = require("../models");
 const midtransClient = require("midtrans-client");
 
