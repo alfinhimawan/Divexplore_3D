@@ -124,10 +124,25 @@ const getAdminOrders = async (req, res, next) => {
   }
 };
 
+// GET /api/orders/:id/snap-token
+const getSnapToken = async (req, res, next) => {
+  try {
+    const orderId = req.params.id;
+    const result = await orderService.getSnapToken(orderId, req.user.id);
+    res.status(200).json({
+      status: "success",
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
   downloadInvoice,
   getVendorOrders,
   getAdminOrders,
+  getSnapToken,
 };

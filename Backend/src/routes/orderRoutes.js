@@ -19,6 +19,11 @@ router.get(
   authorize("wisatawan"),
   orderController.downloadInvoice,
 );
+router.get(
+  "/:id/snap-token",
+  authorize("wisatawan"),
+  orderController.getSnapToken,
+);
 router.post(
   "/:orderId/reviews",
   authorize("wisatawan"),

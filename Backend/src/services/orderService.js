@@ -361,10 +361,51 @@ const getAdminOrders = async () => {
   return orders;
 };
 
+/**
+ * Ambil Snap Token untuk Order yang sudah ada (untuk bayar ulang dari riwayat)
+ */
+const getSnapToken = async (orderId, userId) => {
+  const order = await Order.findOne({
+    where: { id: orderId, user_id: userId },
+    include: [{ association: "user", attributes: ["nama_lengkap", "email", "nomor_telepon"] }]
+  });
+
+  if (!order) {
+    const err = new Error("Pesanan tidak ditemukan.");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (order.status !== "pending") {
+    throw new Error("Pesanan ini sudah dibayar atau dibatalkan.");
+  }
+
+  // Generate Midtrans Snap Token
+  try {
+    const parameter = {
+      transaction_details: {
+        order_id: order.id,
+        gross_amount: Math.round(order.total_pembayaran),
+      },
+      credit_card: { secure: true },
+      customer_details: {
+        first_name: order.user?.nama_lengkap || "Wisatawan",
+        email: order.user?.email || "",
+        phone: order.user?.nomor_telepon || "",
+      },
+    };
+    const snapResponse = await snap.createTransaction(parameter);
+    return { snap_token: snapResponse.token };
+  } catch (midtransErr) {
+    throw new Error("Gagal menghubungi Midtrans: " + midtransErr.message);
+  }
+};
+
 module.exports = {
   createOrder,
   getWisatawanOrders,
   getOrderById,
   getVendorOrders,
   getAdminOrders,
+  getSnapToken,
 };
