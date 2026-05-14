@@ -228,6 +228,10 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
           phone: userInfo?.nomor_telepon || "",
           email: userInfo?.email || ""
         },
+        expiry: {
+          unit: "minutes",
+          duration: 15
+        },
       };
 
       // Hanya tambahkan callback jika origin terdeteksi (Cara paling bersih & efisien)
@@ -469,9 +473,29 @@ const getPaymentStatus = async (orderId, userId) => {
     const statusResponse = await snap.transaction.status(queryId);
     console.log(`[PaymentStatus] Midtrans Raw Response for ${queryId}:`, JSON.stringify(statusResponse, null, 2));
     
-    // Tambahkan info tambahan agar FE mudah membacanya
+    // LOGIKA KRUSIAL: Jika di DB kita sudah 'cancelled', tapi di Midtrans masih 'pending',
+    // kita harus tetap mengirimkan 'cancel' ke Frontend agar user tidak bingung.
+    let displayStatus = statusResponse.transaction_status;
+    
+    // 1. Cek jika sudah dibatalkan manual
+    if (order.status === 'cancelled' && displayStatus === 'pending') {
+      displayStatus = 'cancel';
+    }
+    
+    // 2. Cek jika sudah melewati batas 15 menit (Auto-Expire)
+    const now = new Date();
+    if (order.status === 'pending' && order.timeout_at && now > new Date(order.timeout_at)) {
+      if (displayStatus === 'pending') {
+        displayStatus = 'expire';
+        // Sekalian update status di DB agar sinkron selamanya
+        await order.update({ status: 'expired' });
+        console.log(`[PaymentStatus] Order ${order.id} auto-expired due to 15m timeout.`);
+      }
+    }
+
     return {
       ...statusResponse,
+      transaction_status: displayStatus,
       order_id: order.id,
       gross_amount: order.total_pembayaran
     };
@@ -513,7 +537,7 @@ const getPaymentStatus = async (orderId, userId) => {
 const cancelOrder = async (orderId, userId) => {
   const order = await Order.findOne({ 
     where: { id: orderId, user_id: userId },
-    include: [{ model: OrderItem, as: "items", include: [{ model: Product, as: "product" }] }]
+    include: [{ model: OrderItem, as: "items" }]
   });
 
   if (!order) throw new Error("Pesanan tidak ditemukan.");
@@ -521,10 +545,28 @@ const cancelOrder = async (orderId, userId) => {
 
   const transaction = await sequelize.transaction();
   try {
-    // 1. Update status jadi cancelled
+    // 1. Beritahu Midtrans untuk membatalkan transaksi (Agar tidak bisa dibayar lagi)
+    try {
+      const midtransQueryId = order.last_midtrans_id || order.id;
+      await snap.transaction.cancel(midtransQueryId);
+      console.log(`[CancelOrder] Midtrans transaction ${midtransQueryId} cancelled.`);
+    } catch (midtransErr) {
+      // Jika gagal di Midtrans (misal sudah expired duluan), abaikan saja dan lanjut proses internal
+      console.warn(`[CancelOrder] Midtrans cancel failed/ignored: ${midtransErr.message}`);
+    }
+
+    // 2. Update status jadi cancelled di Database Utama
     await order.update({ status: 'cancelled' }, { transaction });
 
-    // 2. Kembalikan stok (Inventory management)
+    // 3. Catat di PaymentLogs agar riwayatnya Jelas
+    await PaymentLog.create({
+      order_id: order.id,
+      external_id: order.last_midtrans_id,
+      status_pembayaran: 'cancelled',
+      raw_response: JSON.stringify({ message: "Cancelled by user via Frontend", timestamp: new Date() })
+    }, { transaction });
+
+    // 4. Kembalikan stok (Inventory management)
     if (order.items && order.items.length > 0) {
       for (const item of order.items) {
         if (item.product_id) {
