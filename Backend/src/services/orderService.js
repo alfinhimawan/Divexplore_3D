@@ -174,9 +174,21 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
 
     // 5.5 Update Nomor Telepon User jika dikirim dari checkout (Anti-Repot)
     if (userInfo && userInfo.no_hp) {
+      let formattedPhone = userInfo.no_hp.toString().trim();
+      
+      // LOGIKA AUTO-ZERO: Pastikan diawali dengan 0
+      if (!formattedPhone.startsWith('0')) {
+        // Jika diawali 62, ubah jadi 0
+        if (formattedPhone.startsWith('62')) {
+          formattedPhone = '0' + formattedPhone.substring(2);
+        } else {
+          formattedPhone = '0' + formattedPhone;
+        }
+      }
+
       const { User } = require("../models");
       await User.update(
-        { nomor_telepon: userInfo.no_hp },
+        { nomor_telepon: formattedPhone },
         { where: { id: userId }, transaction }
       );
     }
