@@ -445,20 +445,46 @@ const getSnapToken = async (orderId, userId) => {
  * Cek status pembayaran asli ke Midtrans (untuk sinkronisasi FE)
  */
 const getPaymentStatus = async (orderId, userId) => {
-  const order = await Order.findOne({ where: { id: orderId, user_id: userId } });
+  const order = await Order.findOne({ 
+    where: { id: orderId, user_id: userId },
+    include: [{ model: require("../models").PaymentLog, as: "paymentLogs", limit: 1, order: [['createdAt', 'DESC']] }]
+  });
+  
   if (!order) throw new Error("Pesanan tidak ditemukan.");
 
   try {
-    // GUNAKAN ID Midtrans terakhir yang tersimpan di DB kita
     const queryId = order.last_midtrans_id || order.id;
+    console.log(`[PaymentStatus] Checking Midtrans for: ${queryId}`);
+    
     const statusResponse = await snap.transaction.status(queryId);
-    return statusResponse;
-  } catch (err) {
-    // Fallback jika tidak ditemukan di Midtrans
+    
+    // Tambahkan info tambahan agar FE mudah membacanya
     return {
+      ...statusResponse,
+      order_id: order.id,
+      gross_amount: order.total_pembayaran
+    };
+  } catch (err) {
+    console.warn(`[PaymentStatus] Midtrans Error for ${order.id}: ${err.message}`);
+    
+    // Jika gagal ke Midtrans, coba ambil dari log internal kita
+    let lastLogData = null;
+    if (order.paymentLogs && order.paymentLogs.length > 0) {
+      try {
+        lastLogData = JSON.parse(order.paymentLogs[0].raw_response);
+      } catch (e) {}
+    }
+
+    return {
+      order_id: order.id,
       transaction_status: order.status,
+      payment_type: lastLogData?.payment_type || null,
+      va_numbers: lastLogData?.va_numbers || [],
+      bill_key: lastLogData?.bill_key || null,
+      biller_code: lastLogData?.biller_code || null,
+      permata_va_number: lastLogData?.permata_va_number || null,
       gross_amount: order.total_pembayaran,
-      payment_type: order.status === 'paid' ? 'already_paid' : null 
+      is_fallback: true
     };
   }
 };
