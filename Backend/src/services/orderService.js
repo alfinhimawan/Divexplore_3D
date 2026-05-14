@@ -11,6 +11,18 @@ const {
 } = require("../models");
 const midtransClient = require("midtrans-client");
 
+/**
+ * Helper untuk menghitung jumlah malam
+ */
+const calculateNights = (checkIn, checkOut) => {
+  if (!checkIn || !checkOut) return 1;
+  const start = new Date(checkIn);
+  const end = new Date(checkOut);
+  const diffTime = end.getTime() - start.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? diffDays : 1;
+};
+
 // Konfigurasi Midtrans (Memaksa Sandbox mode untuk keperluan presentasi)
 const snap = new midtransClient.Snap({
   isProduction: false, // <-- DIUBAH PAKSA KE FALSE AGAR KUNCI SIMULASI BISA BERJALAN
@@ -52,7 +64,7 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
     // 1. Loop semua item yang mau dibeli
     for (const item of items) {
       const product = await Product.findByPk(item.product_id, {
-        include: ["addons"],
+        include: ["addons", "vendor"],
         transaction,
       });
       if (!product || !product.is_active) {
@@ -76,7 +88,12 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
 
       // 1. TAMBAHKAN PRODUK UTAMA KE DAFTAR ITEM PESANAN
       const hargaUtama = parseFloat(product.harga);
-      const subtotalUtama = hargaUtama * item.qty;
+      
+      // Hitung Pengali (Nights) jika Akomodasi
+      const isAkomodasi = product.vendor && product.vendor.kategori && product.vendor.kategori.toLowerCase().includes('akomodasi');
+      const nights = isAkomodasi ? calculateNights(item.check_in, item.check_out) : 1;
+
+      const subtotalUtama = hargaUtama * item.qty * nights;
       totalNominal += subtotalUtama;
 
       orderItemsData.push({
@@ -106,7 +123,9 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
           if (rule.addonProduct) {
             const addon = rule.addonProduct;
             const hargaAddon = parseFloat(addon.harga);
-            const subtotalAddon = hargaAddon * item.qty;
+            
+            // Addon juga dikalikan nights jika produk utamanya akomodasi (opsional, tapi biasanya addon ikut durasi)
+            const subtotalAddon = hargaAddon * item.qty * nights;
             totalNominal += subtotalAddon;
 
             // Masukkan add-on sebagai baris terpisah dengan VENDOR ID aslinya
