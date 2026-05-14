@@ -384,7 +384,9 @@ const getSnapToken = async (orderId, userId) => {
   try {
     const parameter = {
       transaction_details: {
-        order_id: order.id,
+        // Tambahkan suffix agar Midtrans menganggap ini transaksi baru 
+        // tapi kita tetap bisa mengenali ID aslinya
+        order_id: `${order.id}-${Date.now()}`,
         gross_amount: Math.round(order.total_pembayaran),
       },
       credit_card: { secure: true },

@@ -46,7 +46,7 @@ const handleMidtransWebhook = async (payload) => {
   logger.info(`Payload: ${JSON.stringify(payload)}`);
 
   const {
-    order_id,
+    order_id: rawOrderId,
     transaction_status,
     transaction_id,
     payment_type,
@@ -54,6 +54,10 @@ const handleMidtransWebhook = async (payload) => {
     gross_amount,
     signature_key,
   } = payload;
+
+  // PENTING: Ekstrak ID asli jika ada suffix (misal: UUID-177123456789)
+  // UUID standar panjangnya 36 karakter.
+  const order_id = rawOrderId.length > 36 ? rawOrderId.substring(0, 36) : rawOrderId;
 
   // PENTING: Validasi Signature Key (Security Compliance)
   if (!signature_key) {
@@ -73,16 +77,16 @@ const handleMidtransWebhook = async (payload) => {
   // Coba validasi dengan format asli dari Midtrans
   const hashRaw = crypto
     .createHash("sha512")
-    .update(`${order_id}${status_code}${rawAmount}${serverKey}`)
+    .update(`${rawOrderId}${status_code}${rawAmount}${serverKey}`)
     .digest("hex");
     
   // Coba juga dengan format bulat (fallback)
   const hashRounded = crypto
     .createHash("sha512")
-    .update(`${order_id}${status_code}${roundedAmount}${serverKey}`)
+    .update(`${rawOrderId}${status_code}${roundedAmount}${serverKey}`)
     .digest("hex");
 
-  logger.info(`[Webhook] DEBUG SIGNATURE — order_id: ${order_id}, status_code: ${status_code}, rawAmount: ${rawAmount}, roundedAmount: ${roundedAmount}`);
+  logger.info(`[Webhook] DEBUG SIGNATURE — rawOrderId: ${rawOrderId}, status_code: ${status_code}, rawAmount: ${rawAmount}, roundedAmount: ${roundedAmount}`);
   logger.info(`[Webhook] hashRaw: ${hashRaw}`);
   logger.info(`[Webhook] hashRounded: ${hashRounded}`);
   logger.info(`[Webhook] received: ${signature_key}`);
