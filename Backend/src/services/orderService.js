@@ -513,7 +513,7 @@ const getPaymentStatus = async (orderId, userId) => {
 const cancelOrder = async (orderId, userId) => {
   const order = await Order.findOne({ 
     where: { id: orderId, user_id: userId },
-    include: [{ model: OrderItem, include: [Product] }]
+    include: [{ model: OrderItem, as: "items", include: [{ model: Product, as: "product" }] }]
   });
 
   if (!order) throw new Error("Pesanan tidak ditemukan.");
@@ -525,13 +525,15 @@ const cancelOrder = async (orderId, userId) => {
     await order.update({ status: 'cancelled' }, { transaction });
 
     // 2. Kembalikan stok (Inventory management)
-    for (const item of order.OrderItems) {
-      if (item.Product) {
-        await ProductInventory.increment('stok', { 
-          by: item.qty, 
-          where: { product_id: item.product_id },
-          transaction 
-        });
+    if (order.items && order.items.length > 0) {
+      for (const item of order.items) {
+        if (item.product_id) {
+          await ProductInventory.increment('stok', { 
+            by: item.qty, 
+            where: { product_id: item.product_id },
+            transaction 
+          });
+        }
       }
     }
 
