@@ -393,11 +393,12 @@ const getSnapToken = async (orderId, userId) => {
 
   // Generate Midtrans Snap Token
   try {
-    const midtransOrderId = `${order.id}-${Date.now()}`;
+    // JANGAN buat ID baru jika sudah ada ID Midtrans terakhir yang tersimpan di DB
+    // Ini kunci agar Midtrans tidak memunculkan pop-up pilihan metode lagi jika sudah dipilih
+    const midtransOrderId = order.last_midtrans_id || `${order.id}-${Date.now()}`;
+    
     const parameter = {
       transaction_details: {
-        // Tambahkan suffix agar Midtrans menganggap ini transaksi baru 
-        // tapi kita tetap bisa mengenali ID aslinya
         order_id: midtransOrderId,
         gross_amount: Math.round(order.total_pembayaran),
       },

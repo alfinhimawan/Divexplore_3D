@@ -128,6 +128,20 @@ const getAdminOrders = async (req, res, next) => {
 const getSnapToken = async (req, res, next) => {
   try {
     const orderId = req.params.id;
+    
+    // 1. Cek dulu apakah user sudah pilih metode (VA/QRIS)
+    const status = await orderService.getPaymentStatus(orderId, req.user.id);
+    if (status.payment_type && status.payment_type !== 'null' && status.transaction_status === 'pending') {
+      return res.status(200).json({
+        status: "success",
+        data: {
+          skip_popup: true,
+          message: "Metode pembayaran sudah dipilih"
+        }
+      });
+    }
+
+    // 2. Jika belum pilih, baru minta token Snap
     const result = await orderService.getSnapToken(orderId, req.user.id);
     res.status(200).json({
       status: "success",
