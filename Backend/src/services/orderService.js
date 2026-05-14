@@ -24,7 +24,7 @@ const snap = new midtransClient.Snap({
  * @param {string} userId - ID Wisatawan
  * @param {Array} items - Array of { product_id, qty }
  */
-const createOrder = async (userId, items, promoCode = null, userInfo = null) => {
+const createOrder = async (userId, items, promoCode = null, userInfo = null, origin) => {
   // Mulai Transaksi Database
   const transaction = await sequelize.transaction();
 
@@ -229,9 +229,9 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null) => 
           email: userInfo?.email || ""
         },
         callbacks: {
-          finish: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status?status=pending`,
-          error: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status?status=error`,
-          pending: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-status?status=pending`
+          finish: `${origin}/payment-status?status=pending`,
+          error: `${origin}/payment-status?status=error`,
+          pending: `${origin}/payment-status?status=pending`
         }
       };
       snapResponse = await snap.createTransaction(parameter);

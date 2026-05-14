@@ -41,11 +41,15 @@ const createOrder = async (req, res, next) => {
     }
 
     // Eksekusi pembuatan order
+    // Ambil domain asal secara otomatis (Premium Way)
+    const origin = req.get('origin') || req.get('referer')?.split('/').slice(0, 3).join('/');
+
     const result = await orderService.createOrder(
       req.user.id,
       value.items,
       value.kode_promo,
-      value.user_info
+      value.user_info,
+      origin // Kirim domain yang terdeteksi otomatis
     );
 
     res.status(201).json({
