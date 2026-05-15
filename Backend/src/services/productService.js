@@ -48,6 +48,13 @@ const getAllProducts = async (query = {}) => {
             model: Product,
             as: "addonProduct",
             attributes: ["id", "nama_produk", "harga"],
+            include: [
+              {
+                model: Vendor,
+                as: "vendor",
+                attributes: ["id", "nama_toko", "kategori"],
+              },
+            ],
           },
         ],
       },
