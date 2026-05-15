@@ -7,64 +7,98 @@ module.exports = {
 
     const products = await queryInterface.sequelize.query(
       `SELECT id, nama_produk FROM "Products"`,
-      { type: queryInterface.sequelize.QueryTypes.SELECT }
+      { type: queryInterface.sequelize.QueryTypes.SELECT },
     );
 
     const getProductId = (nama) => {
-      const p = products.find(prod => prod.nama_produk === nama);
+      const p = products.find((prod) => prod.nama_produk === nama);
       return p ? p.id : null;
     };
 
-    const islandHoppingSharing = getProductId("Open Tur Island Hopping (3 Gili — Sharing Boat)");
-    const islandHoppingPrivate = getProductId("Open Tur Island Hopping (3 Gili — Private Boat)");
-    const funDive = getProductId("Aktivitas Penyelaman — Fun Dive (2 Log)");
-    const dsd = getProductId("Aktivitas Penyelaman — Discovery Scuba Dive (DSD 1 Log)");
-    const jetski = getProductId("Aksi Bahari — Jetski (15 Menit)");
-    const bananaBoat = getProductId("Aksi Bahari — Banana Boat (15 Menit, Kapasitas 5 Orang)");
+    // --- Produk Utama (Aktivitas) dengan Nama Eksak ---
+    const pIslandHoppingSharing = getProductId(
+      "Open Tur Island Hopping (3 Gili: Trawangan, Meno, Air) - Sharing Boat",
+    );
+    const pIslandHoppingPrivate = getProductId(
+      "Open Tur Island Hopping (3 Gili: Trawangan, Meno, Air) - Private Boat",
+    );
+    const pDivingDsd = getProductId(
+      "Aktivitas Penyelaman Diving (Discovery Scuba Dive/DSD)",
+    );
+    const pDivingFun = getProductId(
+      "Aktivitas Penyelaman Diving (Fun Dive 2 Log)",
+    );
+    const pJetski = getProductId("Aksi & Petualangan Bahari (Jetski)");
+    const pBananaBoat = getProductId("Aksi & Petualangan Bahari (Banana Boat)");
+    const pPaddle = getProductId(
+      "Eksplorasi Pesisir & Rekreasi (Stand-up Paddle)",
+    );
+    const pKayak = getProductId(
+      "Eksplorasi Pesisir & Rekreasi (Kayak Transparan)",
+    );
 
-    const snorkelSet = getProductId("Set Snorkel Premium + Kaki Katak (Sewa/Hari)");
-    const goProCamera = getProductId("Kamera Aksi GoPro/Insta360 (Sewa/Hari)");
-    const rashGuard = getProductId("Rash Guard / Wetsuit Ringan (Sewa/Hari)");
-    const seafoodPlatter = getProductId("Paket Seafood Platter Saus Sukardi (Porsi 2 Orang)");
-    const fotograferDarat = getProductId("Fotografer Darat / Pantai (Per Jam)");
-    const drone = getProductId("Dokumentasi Udara — Drone DJI (Per Jam)");
-    const deluxeRoom = getProductId("Kamar Deluxe Ocean View (Kapasitas 2 Orang)");
-    const fotoBawahAir = getProductId("Pendampingan Foto Bawah Air (Per Jam)");
+    const mainProducts = [
+      pIslandHoppingSharing,
+      pIslandHoppingPrivate,
+      pDivingDsd,
+      pDivingFun,
+      pJetski,
+      pBananaBoat,
+      pPaddle,
+      pKayak,
+    ].filter((id) => id);
 
-    const bundlingRules = [
-      [islandHoppingSharing, snorkelSet],
-      [islandHoppingSharing, goProCamera],
-      [islandHoppingSharing, rashGuard],
-      [islandHoppingSharing, seafoodPlatter],
-      [islandHoppingSharing, fotograferDarat],
-      [islandHoppingSharing, drone],
-      [islandHoppingSharing, deluxeRoom],
-      [islandHoppingPrivate, snorkelSet],
-      [islandHoppingPrivate, drone],
-      [funDive, goProCamera],
-      [funDive, fotoBawahAir],
-      [dsd, snorkelSet],
-      [dsd, goProCamera],
-      [jetski, fotograferDarat],
-      [bananaBoat, fotograferDarat]
-    ];
+    // --- Produk Add-on dengan Nama Eksak ---
+    const pSnorkel = getProductId("Set Snorkel Premium + Kaki Katak");
+    const pGoPro = getProductId("Kamera Aksi (GoPro/Insta360)");
+    const pDryBag = getProductId("Dry Bag (Tas Anti Air 10L)");
+    const pSunblock = getProductId("Sunblock Ramah Terumbu Karang");
+    const pWetsuit = getProductId("Rash Guard / Wetsuit Ringan");
+    const pStandard = getProductId("Standard Garden View");
+    const pDeluxe = getProductId("Deluxe Ocean View");
+    const pBungalow = getProductId("Private Family Bungalow");
+    const pSpa = getProductId("Paket Spa / Sauna");
+    const pSeafood = getProductId("Paket Seafood Platter Saus Sukardi");
+    const pFotoDarat = getProductId("Fotografer Darat/Pantai");
+    const pFotoBawahAir = getProductId("Pendampingan Foto Bawah Air");
+    const pDrone = getProductId("Dokumentasi Udara (Drone)");
 
-    const crossSellingData = bundlingRules
-      .filter(([primary, addon]) => primary && addon)
-      .map(([primary, addon]) => ({
-        id: uuidv4(),
-        primary_product_id: primary,
-        addon_product_id: addon,
-        createdAt: now,
-      }));
+    const addonIds = [
+      pSnorkel,
+      pGoPro,
+      pDryBag,
+      pSunblock,
+      pWetsuit,
+      pStandard,
+      pDeluxe,
+      pBungalow,
+      pSpa,
+      pSeafood,
+      pFotoDarat,
+      pFotoBawahAir,
+      pDrone,
+    ].filter((id) => id);
 
-    if (crossSellingData.length > 0) {
-      await queryInterface.bulkInsert("CrossSellingRules", crossSellingData);
+    const crossSellingRules = [];
+    mainProducts.forEach((mainId) => {
+      addonIds.forEach((addonId) => {
+        crossSellingRules.push({
+          id: uuidv4(),
+          primary_product_id: mainId,
+          addon_product_id: addonId,
+          createdAt: now,
+        });
+      });
+    });
+
+    if (crossSellingRules.length > 0) {
+      await queryInterface.bulkInsert("CrossSellingRules", crossSellingRules);
     }
 
+    // --- Hotspots 3D ---
     const scenes = await queryInterface.sequelize.query(
       `SELECT id, nama_scene FROM "Scenes" WHERE nama_scene = 'Kawasan 3 Gili — Lombok'`,
-      { type: queryInterface.sequelize.QueryTypes.SELECT }
+      { type: queryInterface.sequelize.QueryTypes.SELECT },
     );
 
     if (scenes.length > 0) {
@@ -73,7 +107,7 @@ module.exports = {
         {
           id: uuidv4(),
           scene_id: sceneId,
-          product_id: islandHoppingSharing,
+          product_id: pIslandHoppingSharing,
           target_scene_id: null,
           type: "product",
           icon_type: "shopping_cart",
@@ -85,7 +119,7 @@ module.exports = {
         {
           id: uuidv4(),
           scene_id: sceneId,
-          product_id: funDive,
+          product_id: pDivingFun,
           target_scene_id: null,
           type: "product",
           icon_type: "shopping_cart",
@@ -97,7 +131,7 @@ module.exports = {
         {
           id: uuidv4(),
           scene_id: sceneId,
-          product_id: drone,
+          product_id: pDrone,
           target_scene_id: null,
           type: "product",
           icon_type: "shopping_cart",
@@ -105,14 +139,15 @@ module.exports = {
           description: "Klik untuk pesan Dokumentasi Drone!",
           createdAt: now,
           updatedAt: now,
-        }
-      ].filter(h => h.product_id);
+        },
+      ].filter((h) => h.product_id);
 
       if (hotspots.length > 0) {
         await queryInterface.bulkInsert("Product3dHotspots", hotspots);
       }
     }
 
+    // --- Promos ---
     await queryInterface.bulkInsert("Promos", [
       {
         id: uuidv4(),
@@ -131,7 +166,16 @@ module.exports = {
         valid_until: new Date("2026-08-31"),
         createdAt: now,
         updatedAt: now,
-      }
+      },
+      {
+        id: uuidv4(),
+        kode_promo: "DIVEPROMO",
+        diskon_persen: 20,
+        max_potongan: 200000,
+        valid_until: new Date("2026-06-30"),
+        createdAt: now,
+        updatedAt: now,
+      },
     ]);
   },
 
@@ -139,5 +183,5 @@ module.exports = {
     await queryInterface.bulkDelete("Promos", null, {});
     await queryInterface.bulkDelete("Product3dHotspots", null, {});
     await queryInterface.bulkDelete("CrossSellingRules", null, {});
-  }
+  },
 };

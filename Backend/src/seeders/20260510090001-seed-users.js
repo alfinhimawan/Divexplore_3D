@@ -79,7 +79,31 @@ module.exports = {
         nomor_telepon: "081234560005",
         createdAt: now,
         updatedAt: now,
-      }
+      },
+      {
+        id: uuidv4(),
+        nama_lengkap: "Ibu Marwah",
+        email: "v6.marwah@divexplore.id",
+        password_hash,
+        auth_provider: "local",
+        google_id: null,
+        role: "vendor",
+        nomor_telepon: "081234560006",
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: uuidv4(),
+        nama_lengkap: "Admin Oleh-oleh",
+        email: "v7.oleholeh@divexplore.id",
+        password_hash,
+        auth_provider: "local",
+        google_id: null,
+        role: "vendor",
+        nomor_telepon: "081234560007",
+        createdAt: now,
+        updatedAt: now,
+      },
     ];
 
     await queryInterface.bulkInsert("Users", users);
@@ -94,7 +118,9 @@ module.exports = {
         "v3.homestay@divexplore.id",
         "v4.kuliner@divexplore.id",
         "v5.foto@divexplore.id",
-      ]
+        "v6.marwah@divexplore.id",
+        "v7.oleholeh@divexplore.id",
+      ],
     });
-  }
+  },
 };

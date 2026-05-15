@@ -7,31 +7,24 @@ module.exports = {
 
     const products = await queryInterface.sequelize.query(
       `SELECT id, nama_produk FROM "Products"`,
-      { type: queryInterface.sequelize.QueryTypes.SELECT }
+      { type: queryInterface.sequelize.QueryTypes.SELECT },
     );
 
     const getProductId = (nama) => {
-      const p = products.find(prod => prod.nama_produk === nama);
+      const p = products.find((prod) => prod.nama_produk === nama);
       return p ? p.id : null;
     };
 
-    const pIslandHopping = getProductId("Open Tur Island Hopping (3 Gili — Sharing Boat)");
-    const pFunDive = getProductId("Aktivitas Penyelaman — Fun Dive (2 Log)");
-    const pDsd = getProductId("Aktivitas Penyelaman — Discovery Scuba Dive (DSD 1 Log)");
-    const pJetski = getProductId("Aksi Bahari — Jetski (15 Menit)");
-    const pDeluxe = getProductId("Kamar Deluxe Ocean View (Kapasitas 2 Orang)");
+    // Berdasarkan dokumen WP-3.3.2, satu-satunya item yang eksplisit ditandai [Add-on] adalah Paket Spa / Sauna
+    // yang merupakan bagian dari layanan Akomodasi Homestay.
+    const pStandard = getProductId("Standard Garden View");
+    const pDeluxe = getProductId("Deluxe Ocean View");
+    const pBungalow = getProductId("Private Family Bungalow");
 
     const addonsData = [
-      [pIslandHopping, "Asuransi Perjalanan (1 Hari)", 25000],
-      [pIslandHopping, "Makan Siang di Kapal", 45000],
-      [pIslandHopping, "Tiket Masuk Spot Penyelaman", 15000],
-      [pFunDive, "Sertifikat Penyelaman Digital", 150000],
-      [pFunDive, "Asuransi Penyelaman DAN", 50000],
-      [pDsd, "Asuransi Penyelaman DAN", 50000],
-      [pJetski, "Tambahan Waktu Berkendara", 150000],
-      [pDeluxe, "Early Check-in", 100000],
-      [pDeluxe, "Late Check-out", 100000],
-      [pDeluxe, "Romantic Dinner Setup", 350000]
+      [pStandard, "Paket Spa / Sauna", 250000],
+      [pDeluxe, "Paket Spa / Sauna", 250000],
+      [pBungalow, "Paket Spa / Sauna", 250000]
     ];
 
     const addons = addonsData
@@ -52,5 +45,5 @@ module.exports = {
 
   async down(queryInterface) {
     await queryInterface.bulkDelete("ProductAddons", null, {});
-  }
+  },
 };
