@@ -191,9 +191,9 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
       { transaction },
     );
 
-    // 5.5 Update Nomor Telepon User jika dikirim dari checkout (Anti-Repot)
-    if (userInfo && userInfo.no_hp) {
-      let formattedPhone = userInfo.no_hp.toString().trim();
+    // 7. Update nomor telepon user (Auto-Format & Auto-Sync)
+    if (userInfo && userInfo.nomor_telepon) {
+      let formattedPhone = userInfo.nomor_telepon.toString().trim();
       
       // LOGIKA AUTO-ZERO: Pastikan diawali dengan 0
       if (!formattedPhone.startsWith('0')) {
@@ -201,6 +201,7 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
         if (formattedPhone.startsWith('62')) {
           formattedPhone = '0' + formattedPhone.substring(2);
         } else {
+          // Jika diawali 8xx, tambahkan 0 di depan
           formattedPhone = '0' + formattedPhone;
         }
       }
@@ -229,14 +230,6 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
       },
       { transaction },
     );
-
-    // 7. Update nomor telepon user jika belum ada atau berubah (Auto-Profile Sync)
-    if (userInfo?.nomor_telepon) {
-      await require("../models").User.update(
-        { nomor_telepon: userInfo.nomor_telepon },
-        { where: { id: userId }, transaction }
-      );
-    }
 
     // 8. Tentukan ID Midtrans sejak awal agar sinkronisasi tidak balapan (Race Condition)
     const midtransOrderId = `${newOrder.id}-${Date.now()}`;
