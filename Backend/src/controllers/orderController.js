@@ -11,6 +11,7 @@ const createOrderSchema = Joi.object({
         product_id: Joi.string().uuid().required(),
         qty: Joi.number().integer().min(1).required(),
         addon_ids: Joi.array().items(Joi.string().uuid()).optional(),
+        addon_nights: Joi.object().pattern(Joi.string().uuid(), Joi.number().integer().min(1)).optional(),
         // Sertakan tanggal agar divalidasi controller
         booking_date: Joi.string().optional().allow(null, ""),
         check_in: Joi.string().optional().allow(null, ""),
