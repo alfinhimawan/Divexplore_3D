@@ -315,12 +315,12 @@ const getWisatawanOrders = async (userId) => {
           {
             model: Product,
             as: "product",
-            attributes: ["nama_produk", "thumbnail_url", "lokasi"],
+            attributes: ["nama_produk", "thumbnail_url"],
           },
           {
             model: require("../models").Vendor,
             as: "vendor",
-            attributes: ["nama_toko", "kategori"],
+            attributes: ["nama_toko", "kategori", "alamat_lengkap"],
           },
         ],
       },
@@ -393,7 +393,7 @@ const getVendorOrders = async (vendorId) => {
           {
             model: Product,
             as: "product",
-            attributes: ["nama_produk", "thumbnail_url", "lokasi"],
+            attributes: ["nama_produk", "thumbnail_url"],
           },
         ],
       },
@@ -416,7 +416,7 @@ const getAdminOrders = async () => {
           {
             model: Product,
             as: "product",
-            attributes: ["nama_produk", "thumbnail_url", "lokasi"],
+            attributes: ["nama_produk", "thumbnail_url"],
           },
         ],
       },
