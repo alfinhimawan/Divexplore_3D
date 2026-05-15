@@ -114,7 +114,7 @@ const handleMidtransWebhook = async (payload) => {
     }
 
     // Hindari memproses ulang jika order sudah selesai/batal sebelumnya
-    if (order.status === "paid" || order.status === "canceled") {
+    if (order.status === "paid" || order.status === "cancelled") {
       await transaction.rollback();
       return order; // Tidak perlu throw error, cukup abaikan
     }
@@ -208,7 +208,7 @@ const handleMidtransWebhook = async (payload) => {
       transaction_status === "deny"
     ) {
       // PEMBAYARAN GAGAL / KADALUARSA
-      order.status = "canceled";
+      order.status = "cancelled";
       await order.save({ transaction });
 
       // Kembalikan stok (Release Inventory Lock)

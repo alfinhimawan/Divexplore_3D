@@ -646,11 +646,18 @@ const cancelOrder = async (orderId, userId) => {
     if (order.items && order.items.length > 0) {
       for (const item of order.items) {
         if (item.product_id) {
-          await ProductInventory.increment('available_qty', { 
-            by: item.qty, 
+          const inventory = await ProductInventory.findOne({
             where: { product_id: item.product_id },
-            transaction 
+            transaction,
+            lock: transaction.LOCK.UPDATE
           });
+
+          if (inventory) {
+            // Kembalikan ke available dan kurangi dari locked
+            inventory.available_qty += item.qty;
+            inventory.locked_qty = Math.max(0, inventory.locked_qty - item.qty);
+            await inventory.save({ transaction });
+          }
         }
       }
     }
