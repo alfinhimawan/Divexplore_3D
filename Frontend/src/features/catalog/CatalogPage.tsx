@@ -14,6 +14,7 @@ import {
   Utensils,
   Package,
   ChevronRight,
+  ChevronLeft,
   ShieldCheck,
   Clock,
   Tag,
@@ -89,6 +90,8 @@ export default function CatalogPage() {
   const [filterDate, setFilterDate] = useState<string>("");
   const [catalogData, setCatalogData] = useState<CatalogStructure>(DEFAULT_CATALOG);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
 
 
   const handleViewDetail = (productId: string) => {
@@ -126,11 +129,20 @@ export default function CatalogPage() {
             name: p.nama_produk,
             desc: p.deskripsi || p.vendor?.nama_toko,
             hargaJual: parseFloat(p.harga),
-            unit: "", // dari backend tidak ada satuan unit saat ini
+            unit: (() => {
+              if (catStr === "homestay") return "/malam";
+              if (catStr === "fotografi") return "/sesi";
+              if (catStr === "kuliner") return "/porsi";
+              if (catStr === "peralatan") return "/unit";
+              return "/orang";
+            })(),
             image:
               p.thumbnail_url ||
               "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=80",
-            addons: p.crossSellingAsMain || [],
+            addons: (p.crossSellingAsMain || []).filter((item: any) => {
+              const cat = item.addonProduct?.vendor?.kategori?.toLowerCase() || "";
+              return !cat.includes("homestay") && !cat.includes("akomodasi");
+            }),
             inventories: p.inventories || [],
           });
         });
@@ -152,6 +164,21 @@ export default function CatalogPage() {
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.desc.toLowerCase().includes(searchQuery.toLowerCase()),
   );
+
+  // Pagination Logic
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, searchQuery]);
+
+  const paginate = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 400, behavior: "smooth" });
+  };
 
   return (
     <div className={styles.container}>
@@ -324,8 +351,9 @@ export default function CatalogPage() {
             </div>
           ) : (
             <div className={styles.productGrid}>
-              {filtered.map((item: any) => (
+              {currentItems.map((item: any) => (
                 <div key={item.id} className={styles.productCard}>
+                  {/* ... same card content ... */}
                   <div
                     className={styles.cardImageWrapper}
                     onClick={() => handleViewDetail(item.id)}
@@ -371,16 +399,23 @@ export default function CatalogPage() {
                         
                         let label = 'slot';
                         if (activeCategory === 'akomodasi') {
-                          if (name.includes('spa') || name.includes('sauna') || name.includes('paket')) {
+                          if (name.includes('spa') || name.includes('massage') || name.includes('layanan')) {
                             label = 'layanan';
                           } else {
                             label = 'kamar';
                           }
-                        } else if (activeCategory === 'peralatan' || activeCategory === 'kuliner') {
+                        } else if (activeCategory === 'kuliner') {
+                          label = 'porsi';
+                        } else if (activeCategory === 'peralatan') {
                           label = 'unit';
+                        } else if (activeCategory === 'fotografi') {
+                          label = 'sesi';
+                        } else {
+                          // Default untuk Aktivitas / Tur
+                          label = 'pax';
                         }
                         
-                        return ` Tersisa ${totalStock} ${label} tersedia`;
+                        return ` Tersedia ${totalStock} ${label}`;
                       })()}
                     </div>
                     <div className={styles.cardFooter}>
@@ -475,6 +510,38 @@ export default function CatalogPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Pagination UI */}
+          {!isLoading && totalPages > 1 && (
+            <div className={styles.pagination}>
+              <button
+                className={styles.pageBtn}
+                onClick={() => paginate(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+                <button
+                  key={num}
+                  className={`${styles.pageBtn} ${currentPage === num ? styles.pageActive : ""}`}
+                  style={currentPage === num ? { background: currentCat.color, borderColor: currentCat.color } : {}}
+                  onClick={() => paginate(num)}
+                >
+                  {num}
+                </button>
+              ))}
+
+              <button
+                className={styles.pageBtn}
+                onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight size={16} />
+              </button>
             </div>
           )}
         </main>

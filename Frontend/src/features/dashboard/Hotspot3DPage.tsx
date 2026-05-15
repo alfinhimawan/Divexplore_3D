@@ -7,7 +7,11 @@ import {
   Box, 
   ShieldCheck, 
   Clock, 
-  Navigation
+  Ship,
+  Camera,
+  Utensils,
+  Waves,
+  Compass
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Hotspot3DPage.module.css';
@@ -44,16 +48,18 @@ function HotspotMarker({ data, onClick, isSelected }: { data: any, onClick: (dat
       {/* HTML Label */}
       <Html position={[0.3, 0.2, 0]} center zIndexRange={[100, 0]}>
         <div 
-          className={styles.hotspotLabel} 
+          className={`${styles.hotspotLabel} ${isSelected ? styles.hotspotSelected : ""}`} 
           onClick={(e) => { e.stopPropagation(); onClick(data); }}
-          style={{ border: isSelected ? '2px solid #f97316' : 'none' }}
         >
-          <div className={styles.hotspotIcon}>
-            {data.icon}
-          </div>
           <div className={styles.hotspotInfo}>
-            <span className={styles.hotspotTitle}>{data.title}</span>
-            <span className={styles.hotspotPrice}>{data.price} <span style={{fontSize: '10px', color: '#94a3b8', fontWeight: 'normal'}}>/orang</span></span>
+            <div className={styles.hotspotHeader}>
+              {data.icon}
+              <span className={styles.hotspotTitle}>{data.title}</span>
+            </div>
+            <span className={styles.hotspotPrice}>
+              {data.price}
+              <span className={styles.hotspotUnit}>/orang</span>
+            </span>
           </div>
         </div>
       </Html>
@@ -130,14 +136,28 @@ export default function Hotspot3DPage() {
             pos = [1.2, -1.2, 1];
           }
           
+          const nameL = p.nama_produk.toLowerCase();
+          let IconComp = Compass;
+          
+          if (nameL.includes('dive') || nameL.includes('scuba') || nameL.includes('snorkel')) {
+            IconComp = Waves;
+          } else if (nameL.includes('boat') || nameL.includes('hopping')) {
+            IconComp = Ship;
+          } else if (nameL.includes('foto') || nameL.includes('drone')) {
+            IconComp = Camera;
+          } else if (nameL.includes('makan') || nameL.includes('kuliner') || nameL.includes('seafood')) {
+            IconComp = Utensils;
+          }
+
           return {
             id: p.id,
             position: pos,
             title: p.nama_produk,
             price: `Rp ${Number(p.harga).toLocaleString('id-ID')}`,
+            rawPrice: Number(p.harga),
             desc: p.deskripsi || p.vendor?.nama_toko || 'Produk wisata terbaik dari vendor lokal.',
             image: p.thumbnail_url || 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-            icon: <Navigation className="w-5 h-5 text-sky-500" />,
+            icon: <IconComp size={16} className={styles.hotspotIcon} />,
             addons: p.crossSellingAsMain || [],
             location: p.lokasi || 'Lombok',
             category: p.vendor?.kategori || 'AKTIVITAS BAHARI'
@@ -153,9 +173,28 @@ export default function Hotspot3DPage() {
     fetchProducts();
   }, []);
 
+  // Reset bundle selection when switching to another product
+  useEffect(() => {
+    setIsBundled(false);
+  }, [selectedHotspot?.id]);
+
+  const getTotalPrice = () => {
+    if (!selectedHotspot) return 'Rp 0';
+    let total = selectedHotspot.rawPrice || 0;
+    if (isBundled && selectedHotspot.addons && selectedHotspot.addons.length > 0) {
+      total += Number(selectedHotspot.addons[0].addonProduct.harga);
+    }
+    return `Rp ${total.toLocaleString('id-ID')}`;
+  };
+
   const handleDetailClick = () => {
     if (selectedHotspot?.id) {
-      navigate('/product/' + selectedHotspot.id);
+      let destUrl = `/product/${selectedHotspot.id}`;
+      // If bundle active, pass selected addon product ID via query params
+      if (isBundled && selectedHotspot.addons && selectedHotspot.addons.length > 0) {
+        destUrl += `?addonId=${selectedHotspot.addons[0].addonProduct.id}`;
+      }
+      navigate(destUrl);
     }
   };
 
@@ -205,8 +244,8 @@ export default function Hotspot3DPage() {
             </p>
             
             <div className={styles.priceRow}>
-              <div className={styles.price}>
-                {selectedHotspot?.price}<span>/orang</span>
+              <div className={styles.price} style={isBundled ? { color: '#10b981', textShadow: '0 0 10px rgba(16,185,129,0.2)', transform: 'scale(1.05)', transformOrigin: 'left center', transition: 'all 0.3s' } : { transition: 'all 0.3s' }}>
+                {getTotalPrice()}<span>/orang</span>
               </div>
               <div className={styles.availability}>
                 <ShieldCheck size={16} />
@@ -257,7 +296,7 @@ export default function Hotspot3DPage() {
             </div>
             <div className={styles.footerItem}>
               <Clock size={14} color="#0ea5e9" />
-              Refund 24 jam
+              Refund 3-5 Hari Kerja
             </div>
           </div>
         </aside>

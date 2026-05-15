@@ -893,7 +893,7 @@
   margin-bottom: 12px;
 }
 
-.reviewerProfile {
+.reviewerProfile { display: flex; align-items: center; gap: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1270,3 +1270,870 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Quick Reviews in Description */
+.quickReviews {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.quickReviewsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.quickReviewsTitle { display: flex; align-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.viewAllReviewsLink {
+  font-size: 12px;
+  color: #0ea5e9;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+
+.viewAllReviewsLink:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.quickReviewsList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.quickReviewItem {
+  background: rgba(30, 41, 59, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.quickReviewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.quickReviewer {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.quickRating {
+  display: flex;
+  gap: 2px;
+}
+
+.quickReviewText {
+  font-size: 12.5px;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.noReviewsText {
+  font-size: 13px;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* Two-column layout for Deskripsi tab */
+.tabGrid {
+  display: flex;
+  gap: 48px;
+  width: 100%;
+}
+
+.reviewsSidebar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 300px;
+  background: rgba(30, 41, 59, 0.2);
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  height: fit-content;
+}
+
+@media (max-width: 1024px) {
+  .tabGrid {
+    flex-direction: column;
+  }
+  .reviewsSidebar {
+    min-width: 100%;
+  }
+}
+
+.quickReviewerInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.miniAvatar {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* Location Tab Styles (Restored) */
+.locationTab {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.locationHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.addressInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.locationToggle {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.toggleBtn {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggleBtn:hover {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(14, 165, 233, 0.4);
+}
+
+.toggleBtn.active {
+  background: #0ea5e9;
+  color: white;
+  border-color: #0ea5e9;
+}
+
+.mapWrapper {
+  width: 100%;
+  height: 500px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.panoramaWrapper {
+  position: relative;
+  width: 100%;
+  height: 500px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.panoramaOverlay {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(8px);
+  padding: 10px 20px;
+  border-radius: 30px;
+  color: white;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Tab Active Style (Elegant Underline) */
+.tabBtn.active {
+  color: #0ea5e9;
+}
+
+.tabBtn.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #0ea5e9;
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+}
+
+/* Toggle Active Style (Specific for Map/3D buttons) */
+.toggleActive {
+  background: #0ea5e9 !important;
+  color: white !important;
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.reviewerMeta {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Reviews Tab Enhancements */
+.reviewsTabContainer {
+  width: 100%;
+}
+
+.reviewsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+@media (max-width: 1024px) {
+  .reviewsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.noReviewsBox {
+  background: rgba(30, 41, 59, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  padding: 48px;
+  text-align: center;
+  margin-top: 24px;
+}
+
+/* Description Tab Polishing */
+.richDescription {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.mainDesc {
+  font-size: 15px;
+  line-height: 1.8;
+  color: #94a3b8;
+}
+
+.highlightsContainer {
+  background: rgba(14, 165, 233, 0.05);
+  border-left: 3px solid #0ea5e9;
+  padding: 20px 24px;
+  border-radius: 0 12px 12px 0;
+}
+
+.highlightTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0ea5e9;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.highlightList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.highlightList li {
+  font-size: 14px;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.highlightList li::before {
+  content: " \2713";
+  color: #10b981;
+  font-weight: bold;
+}
+
+/* View All Enhancements */
+.viewAllWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(14, 165, 233, 0.1);
+  transition: all 0.3s ease;
+}
+
+.viewAllWrapper:hover {
+  background: rgba(14, 165, 233, 0.2);
+  transform: translateX(5px);
+}
+
+.viewAllText {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0ea5e9;
+}
+
+.viewAllIcon {
+  width: 24px;
+  height: 24px;
+  background: #0ea5e9;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3);
+}
+
+.termsBullet {
+  min-width: 28px;
+  height: 28px;
+  background: rgba(14, 165, 233, 0.15);
+  color: #0ea5e9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+/* -- Addons Refined ------------------------------------ */
+.addonItemContainer {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.addonSelected {
+  background: rgba(14, 165, 233, 0.05);
+  border-color: rgba(14, 165, 233, 0.3);
+}
+
+.addonItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.addonLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #0ea5e9;
+}
+
+.addonTextInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.addonName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.addonPriceTag {
+  font-size: 12px;
+  color: #0ea5e9;
+  font-weight: 500;
+}
+
+.addonQtyControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.addonQtyBtn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  border-radius: 4px;
+  color: #f8fafc;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.addonQtyBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.addonQtyValue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 45px;
+}
+
+.qtyNum {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.qtyUnit {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+}
+
+.addonHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+
+/* ── Addons Grid Polished ────────────────────────────── */
+.addons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.addonItemContainer {
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.addonSelected {
+  background: rgba(14, 165, 233, 0.08);
+  border-color: rgba(14, 165, 233, 0.4);
+  box-shadow: 0 0 15px rgba(14, 165, 233, 0.1);
+}
+
+.addonItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.addonLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.addonTextInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.addonName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f1f5f9;
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+
+.addonPriceTag {
+  font-size: 11px;
+  color: #0ea5e9;
+  font-weight: 700;
+}
+
+.addonQtyControl {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 4px;
+  align-self: flex-end;
+}
+
+.addonQtyBtn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  border-radius: 4px;
+  color: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.addonQtyBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #0ea5e9;
+}
+
+.addonQtyValue {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  min-width: 40px;
+  justify-content: center;
+}
+
+.qtyNum {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.qtyUnit {
+  font-size: 8px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.addonHint {
+  font-size: 10px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 8px;
+  margin-top: 2px;
+}
+
+
+/* -- Addon Mini Catalog System ------------------------- */
+.addonTabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.addonTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.addonTabBtn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.addonTabActive {
+  background: #0ea5e9;
+  color: white;
+  border-color: #0ea5e9;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.addonsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.addonCard {
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.addonCard:hover {
+  border-color: rgba(14, 165, 233, 0.4);
+  transform: translateY(-2px);
+}
+
+.addonCardActive {
+  border-color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.08);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.addonImageWrapper {
+  position: relative;
+  aspect-ratio: 1/1;
+  width: 100%;
+  overflow: hidden;
+}
+
+.addonImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.addonCardActive .addonImg {
+  filter: brightness(0.4);
+}
+
+.addonOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.addonCard:hover .addonOverlay,
+.addonCardActive .addonOverlay {
+  opacity: 1;
+}
+
+.addonAddIcon {
+  background: #0ea5e9;
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
+}
+
+.addonActiveControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.9);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(14, 165, 233, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.miniQtyBtn {
+  width: 24px;
+  height: 24px;
+  background: #0ea5e9;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.miniQtyDisplay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 28px;
+}
+
+.miniQtyNum {
+  font-size: 13px;
+  font-weight: 800;
+  color: white;
+  line-height: 1;
+}
+
+.miniQtyUnit {
+  font-size: 8px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.addonDeselect {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.addonInfo {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.addonNameText {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.addonPriceText {
+  font-size: 10px;
+  color: #0ea5e9;
+  font-weight: 600;
+}
+
+/* -- Price Breakdown ----------------------------------- */
+.totalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.breakdownItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.breakdownItem span:first-child {
+  flex: 1;
+}
+
+.breakdownItem span:last-child {
+  font-weight: 700;
+  color: #f1f5f9;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+/* -- MapLibre Popup Global Override ------------------- */
+:global(.luxury-popup.maplibregl-popup) {
+  z-index: 100;
+}
+
+:global(.luxury-popup .maplibregl-popup-content) {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 16px !important;
+  border: none !important;
+}
+
+:global(.luxury-popup .maplibregl-popup-tip) {
+  border-top-color: rgba(15, 23, 42, 0.95) !important;
+  border-bottom-color: rgba(15, 23, 42, 0.95) !important;
+  border-left-color: transparent !important;
+  border-right-color: transparent !important;
+}
+
+

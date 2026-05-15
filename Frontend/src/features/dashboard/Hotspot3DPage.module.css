@@ -168,96 +168,81 @@
   z-index: 10;
 }
 
-/* 3D Undersea Glassmorphism Hotspot Label */
+/* 3D White Theme Hotspot Label */
 .hotspotLabel {
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  padding: 14px 18px;
-  border-radius: 16px;
-  color: white;
+  background: rgba(255, 255, 255, 0.85); /* Frosted glass white */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 12px 18px;
+  border-radius: 14px;
   display: flex;
-  align-items: center;
-  gap: 14px;
-  border: 1px solid rgba(14, 165, 233, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 
-              0 0 15px rgba(14, 165, 233, 0.3);
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18), 
+              0 0 15px rgba(14, 165, 233, 0.1); /* Soft marine shadow */
   cursor: pointer;
-  transform: translate3d(0,0,0);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
-  min-width: 240px;
+  min-width: 220px;
+  max-width: 280px;
   position: relative;
-  overflow: hidden;
-  animation: underseaFloat 4s ease-in-out infinite;
+  animation: subtleFloat 4s ease-in-out infinite;
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
-@keyframes underseaFloat {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  33% { transform: translateY(-5px) rotate(1deg); }
-  66% { transform: translateY(5px) rotate(-1deg); }
+.hotspotSelected {
+  border: 2.5px solid #f97316 !important;
+  box-shadow: 0 8px 24px rgba(249, 115, 22, 0.25), 0 0 15px rgba(249, 115, 22, 0.2) !important;
+  transform: scale(1.05);
 }
 
-.hotspotLabel::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent
-  );
-  transition: 0.5s;
-}
-
-.hotspotLabel:hover::before {
-  left: 200%;
+@keyframes subtleFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 .hotspotLabel:hover {
-  transform: scale(1.08) translateY(-10px);
-  border-color: rgba(14, 165, 233, 0.8);
-  box-shadow: 0 15px 45px rgba(14, 165, 233, 0.4),
-              0 0 25px rgba(14, 165, 233, 0.5);
-}
-
-.hotspotIcon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(14, 165, 233, 0.2);
-  border: 1px solid rgba(14, 165, 233, 0.4);
-  color: #0ea5e9;
-  box-shadow: 0 0 10px rgba(14, 165, 233, 0.3);
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
 }
 
 .hotspotInfo {
   display: flex;
   flex-direction: column;
+  gap: 4px;
+}
+
+.hotspotHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hotspotIcon {
+  color: #0284c7; /* Professional active blue icon */
+  flex-shrink: 0;
 }
 
 .hotspotTitle {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
-  color: #f1f5f9;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  letter-spacing: 0.5px;
+  color: #0f172a; /* Dark text */
+  letter-spacing: 0.2px;
+  line-height: 1.3;
 }
 
 .hotspotPrice {
-  font-size: 13px;
-  color: #38bdf8;
+  font-size: 14px;
+  color: #0284c7; /* Professional blue */
   font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  margin-top: 2px;
+}
+
+.hotspotUnit {
+  font-size: 10.5px;
+  color: #64748b; /* Slate unit text */
+  font-weight: normal;
+  margin-left: 2px;
 }
 
 /* Sidebar panel */

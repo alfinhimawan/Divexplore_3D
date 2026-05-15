@@ -4,7 +4,7 @@
  * File ini akan otomatis menambahkan Base URL dan JWT Token ke setiap request.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const BASE_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000';
 
 type FetchOptions = RequestInit & {
   data?: any;

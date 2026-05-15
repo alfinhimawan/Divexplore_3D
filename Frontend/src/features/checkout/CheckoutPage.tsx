@@ -99,15 +99,26 @@ export default function CheckoutPage() {
 
       // Siapkan payload sesuai spesifikasi Backend POST /api/orders
       const payload = {
-        items: cartItems.map((item: any) => ({
-          product_id: item.product_id,
-          qty: item.quantity,
-          addon_ids: (item.addon_ids && item.addon_ids.length > 0) ? item.addon_ids : undefined,
-          // Kirim metadata tanggal (booking_date, check_in, check_out)
-          booking_date: item.visitDate || item.booking_date,
-          check_in: item.checkIn || item.check_in,
-          check_out: item.checkOut || item.check_out
-        })),
+        items: cartItems.map((item: any) => {
+          // Construct addon_nights mapping (rule_id: qty)
+          const addon_nights: Record<string, number> = {};
+          if (item.addons) {
+            item.addons.forEach((a: any) => {
+              if (a.id) addon_nights[a.id] = a.qty || 1;
+            });
+          }
+
+          return {
+            product_id: item.product_id,
+            qty: item.quantity,
+            addon_ids: (item.addon_ids && item.addon_ids.length > 0) ? item.addon_ids : undefined,
+            addon_nights: Object.keys(addon_nights).length > 0 ? addon_nights : undefined,
+            // Kirim metadata tanggal (booking_date, check_in, check_out)
+            booking_date: item.visitDate || item.booking_date,
+            check_in: item.checkIn || item.check_in,
+            check_out: item.checkOut || item.check_out
+          };
+        }),
         kode_promo: form.promo,
         user_info: {
           nama: form.name,
@@ -180,11 +191,11 @@ export default function CheckoutPage() {
   const calculateCartTotal = () => {
     return cartItems.reduce((total: number, item: any) => {
       const isAkomodasi = item.type.toLowerCase().includes('akomodasi') || item.type.toLowerCase().includes('homestay');
-      const nights = isAkomodasi ? calculateNights(item.check_in, item.check_out) : 1;
+      const nights = isAkomodasi ? calculateNights(item.checkIn || item.check_in, item.checkOut || item.check_out) : 1;
       
       const itemSubtotal = item.price * item.quantity * nights;
       const addonsSubtotal = (item.addons || []).reduce(
-        (sum: number, a: any) => sum + (a.price * item.quantity), 0
+        (sum: number, a: any) => sum + (a.price * (a.qty || 1)), 0
       );
       return total + itemSubtotal + addonsSubtotal;
     }, 0);
@@ -267,7 +278,7 @@ export default function CheckoutPage() {
                     <div className={styles.addonTags} style={{ marginTop: '0.5rem' }}>
                       {item.addons.map((a: any, ai: number) => (
                         <span key={ai} className={styles.addonTag}>
-                          + {a.name} (Rp {a.price.toLocaleString('id-ID')})
+                          + {a.name} ({a.qty || 1} {a.vendor?.kategori?.toLowerCase() === 'homestay' ? 'Malam' : 'Unit'}) : Rp {(a.price * (a.qty || 1)).toLocaleString('id-ID')}
                         </span>
                       ))}
                     </div>
@@ -351,12 +362,16 @@ export default function CheckoutPage() {
             <div className={styles.costRows}>
               <div className={styles.summaryRow}>
                 <span>Total Harga ({cartItems.length} item)</span>
-                <span>Rp {cartItems.reduce((acc, item) => acc + (item.price * item.quantity * (item.type.toLowerCase().includes('akomodasi') ? calculateNights(item.check_in, item.check_out) : 1)), 0).toLocaleString('id-ID')}</span>
+                <span>Rp {cartItems.reduce((acc, item) => {
+                  const isAkomodasi = item.type.toLowerCase().includes('akomodasi') || item.type.toLowerCase().includes('homestay');
+                  const nights = isAkomodasi ? calculateNights(item.checkIn || item.check_in, item.checkOut || item.check_out) : 1;
+                  return acc + (item.price * item.quantity * nights);
+                }, 0).toLocaleString('id-ID')}</span>
               </div>
               
               <div className={styles.summaryRow}>
                 <span>Layanan Tambahan</span>
-                <span>Rp {cartItems.reduce((acc, item) => acc + (item.addons?.reduce((s: number, a: any) => s + a.price, 0) * item.quantity || 0), 0).toLocaleString('id-ID')}</span>
+                <span>Rp {cartItems.reduce((acc, item) => acc + (item.addons?.reduce((s: number, a: any) => s + (a.price * (a.qty || 1)), 0) || 0), 0).toLocaleString('id-ID')}</span>
               </div>
 
               <div className={styles.summaryRow}>

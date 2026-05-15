@@ -12,7 +12,6 @@ import {
   Clock,
   XCircle,
   ShoppingBag,
-  ArrowRight,
   MapPin,
   Star,
 } from "lucide-react";
@@ -22,7 +21,7 @@ import Footer from "../../components/common/Footer";
 import { api } from "../../utils/api";
 import ReviewModal from "./ReviewModal";
 
-type Tab = "semua" | "pending" | "paid" | "canceled";
+type Tab = "semua" | "pending" | "paid" | "canceled" | "cancelled" | "expired";
 
 interface OrderItem {
   id: string;
@@ -31,12 +30,13 @@ interface OrderItem {
   harga_satuan: number;
   subtotal: number;
   product?: { nama_produk: string; thumbnail_url?: string; lokasi?: string };
-  vendor?: { nama_toko: string; kategori?: string };
+  vendor?: { nama_toko: string; kategori?: string; alamat_lengkap?: string };
+  metadata?: any;
 }
 
 interface Order {
   id: string;
-  status: "pending" | "paid" | "canceled" | "expired";
+  status: "pending" | "paid" | "canceled" | "cancelled" | "expired";
   total_pembayaran: number;
   createdAt: string;
   items: OrderItem[];
@@ -75,12 +75,19 @@ const STATUS_CONFIG: Record<
     bg: "rgba(239,68,68,0.1)",
     border: "rgba(239,68,68,0.25)",
   },
-  expired: {
-    label: "Kedaluwarsa",
+  cancelled: {
+    label: "Dibatalkan",
     icon: XCircle,
-    color: "#6b7280",
-    bg: "rgba(107,114,128,0.1)",
-    border: "rgba(107,114,128,0.25)",
+    color: "#ef4444",
+    bg: "rgba(239,68,68,0.1)",
+    border: "rgba(239,68,68,0.25)",
+  },
+  expired: {
+    label: "Dibatalkan (Expired)",
+    icon: XCircle,
+    color: "#64748b",
+    bg: "rgba(100,116,139,0.1)",
+    border: "rgba(100,116,139,0.25)",
   },
 };
 
@@ -120,47 +127,63 @@ export default function OrderHistoryPage() {
     fetchOrders();
   }, [navigate]);
 
-  const filteredOrders = orders.filter(
-    (order) => activeTab === "semua" || order.status === activeTab,
-  );
+  const filteredOrders = orders.filter((order) => {
+    if (activeTab === "semua") return true;
+    if (activeTab === "canceled") {
+      return order.status === "canceled" || order.status === "cancelled";
+    }
+    return order.status === activeTab;
+  });
 
-  const getProductImage = (order: Order): string =>
-    order.items?.[0]?.product?.thumbnail_url ||
-    "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=80";
-
-  const getProductName = (order: Order): string => {
-    if (!order.items?.length) return "Paket Wisata";
-    const names = order.items
-      .map((i) => i.product?.nama_produk || "Produk")
-      .join(", ");
-    return names.length > 60 ? names.slice(0, 57) + "..." : names;
+  const getPrimaryItem = (order: Order) => {
+    if (!order.items?.length) return null;
+    // Cari item yang metadata-nya TIDAK punya parent_product
+    const primary = order.items.find(i => !i.metadata?.parent_product);
+    return primary || order.items[0];
   };
 
-  const getVendorName = (order: Order): string =>
-    order.items?.[0]?.vendor?.nama_toko || "Divexplore Vendor";
+  const getProductImage = (order: Order): string => {
+    const primary = getPrimaryItem(order);
+    return primary?.product?.thumbnail_url || "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=80";
+  };
 
-  const getLocation = (order: Order): string =>
-    order.items?.[0]?.product?.lokasi || "Indonesia";
+  const getProductName = (order: Order): string => {
+    const primary = getPrimaryItem(order);
+    if (!primary) return "Paket Wisata";
+    return primary.product?.nama_produk || "Produk";
+  };
 
-  const getTotalPax = (order: Order): number =>
-    order.items?.reduce((sum, item) => sum + (item.qty || 1), 0) || 1;
+  const getVendorName = (order: Order): string => {
+    const primary = getPrimaryItem(order);
+    return primary?.vendor?.nama_toko || "Divexplore Vendor";
+  };
+
+  const getLocation = (order: Order): string => {
+    const primary = getPrimaryItem(order);
+    // Gunakan alamat vendor sebagai lokasi
+    return primary?.vendor?.alamat_lengkap || "Indonesia";
+  };
+
+  const getTotalPax = (order: Order): number => {
+    const primary = getPrimaryItem(order);
+    return primary?.qty || 1;
+  };
 
   const getQuantityLabel = (order: Order): string => {
-    const firstItem = order.items?.[0];
-    if (!firstItem) return "Item";
+    const primary = getPrimaryItem(order);
+    if (!primary) return "Item";
     
-    const cat = firstItem.vendor?.kategori?.toLowerCase() || "";
-    const name = firstItem.product?.nama_produk?.toLowerCase() || "";
+    const cat = primary.vendor?.kategori?.toLowerCase() || "";
+    const name = primary.product?.nama_produk?.toLowerCase() || "";
 
     if (cat.includes("homestay")) {
       if (name.includes("spa") || name.includes("massage")) return "Layanan";
-      return "Unit";
+      return "Kamar";
     }
     if (cat.includes("kuliner")) return "Porsi";
     if (cat.includes("peralatan")) return "Unit";
     
-    // Default untuk Aktivitas / Tur
-    return "Peserta";
+    return "Pax";
   };
 
   const formatDate = (dateStr: string) =>
@@ -259,13 +282,17 @@ export default function OrderHistoryPage() {
     { key: "pending", label: "Menunggu Bayar" },
     { key: "paid", label: "Lunas" },
     { key: "canceled", label: "Dibatalkan" },
+    { key: "expired", label: "Kedaluwarsa" },
   ];
 
   const stats = {
     total: orders.length,
     paid: orders.filter((o) => o.status === "paid").length,
     pending: orders.filter((o) => o.status === "pending").length,
-    canceled: orders.filter((o) => o.status === "canceled").length,
+    canceled: orders.filter(
+      (o) => o.status === "canceled" || o.status === "cancelled",
+    ).length,
+    expired: orders.filter((o) => o.status === "expired").length,
   };
 
   return (
@@ -353,6 +380,20 @@ export default function OrderHistoryPage() {
               <div className={styles.statLabel}>Dibatalkan</div>
             </div>
           </div>
+          <div className={styles.statCard}>
+            <div
+              className={styles.statIcon}
+              style={{ background: "rgba(100,116,139,0.15)" }}
+            >
+              <XCircle size={20} color="#64748b" />
+            </div>
+            <div>
+              <div className={styles.statValue} style={{ color: "#64748b" }}>
+                {stats.expired}
+              </div>
+              <div className={styles.statLabel}>Kedaluwarsa</div>
+            </div>
+          </div>
         </div>
 
         {/* ── Tabs ── */}
@@ -368,7 +409,14 @@ export default function OrderHistoryPage() {
                 <span
                   className={`${styles.tabBadge} ${activeTab === tab.key ? styles.tabBadgeActive : ""}`}
                 >
-                  {orders.filter((o) => o.status === tab.key).length}
+                  {tab.key === "canceled"
+                    ? orders.filter(
+                        (o) =>
+                          o.status === "canceled" ||
+                          o.status === "cancelled" ||
+                          o.status === "expired",
+                      ).length
+                    : orders.filter((o) => o.status === tab.key).length}
                 </span>
               )}
             </button>
@@ -489,6 +537,18 @@ export default function OrderHistoryPage() {
                     </h3>
                     <p className={styles.orderVendor}>{getVendorName(order)}</p>
 
+                    {/* Mini Addon List */}
+                    {order.items.length > 1 && (
+                      <div className={styles.miniAddonList}>
+                        <div className={styles.miniAddonTitle}>Tambahan :</div>
+                        {order.items.filter(i => i.metadata?.parent_product).map((addon, idx) => (
+                          <div key={idx} className={styles.miniAddonItem}>
+                            <span>+ {addon.product?.nama_produk} ({addon.qty} {addon.vendor?.kategori?.toLowerCase() === 'homestay' ? 'Malam' : 'Unit'})</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div className={styles.orderTags}>
                       <span className={styles.tag}>
                         <MapPin size={11} /> {getLocation(order)}
@@ -545,7 +605,7 @@ export default function OrderHistoryPage() {
                           <CreditCard size={13} /> Bayar Sekarang
                         </button>
                       )}
-                      {(order.status === "canceled" || order.status === "expired") && (
+                      {(order.status === "canceled" || order.status === "cancelled" || order.status === "expired") && (
                         <button
                           className={styles.btnReorder}
                           onClick={() => {
@@ -557,7 +617,7 @@ export default function OrderHistoryPage() {
                             }
                           }}
                         >
-                          Pesan Lagi <ArrowRight size={13} />
+                          Pesan Lagi
                         </button>
                       )}
                     </div>
