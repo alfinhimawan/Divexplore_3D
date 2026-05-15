@@ -299,9 +299,21 @@
   color: #f59e0b;
 }
 
-.ratingText {
-  font-size: 14px;
+.durationHint {
+  font-size: 0.9rem;
+  color: #0ea5e9;
   font-weight: 600;
+  margin-left: 8px;
+}
+
+.priceBreakdown {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: -12px;
+  margin-bottom: 16px;
 }
 
 .reviewCount {
@@ -396,17 +408,43 @@
   letter-spacing: 1px;
 }
 
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.inputIconLeft {
+  position: absolute;
+  left: 14px;
+  color: #0ea5e9;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .dateField input {
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  padding: 14px;
+  padding: 14px 14px 14px 40px;
   color: #f8fafc;
   font-size: 14px;
   outline: none;
   transition: all 0.2s;
   cursor: pointer;
   width: 100%;
+}
+
+.dateField input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(1);
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.dateField input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
 
 .dateField input:hover {
@@ -533,6 +571,46 @@
   gap: 12px;
 }
 
+.addonItemContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(30, 41, 59, 0.3);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.addonItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.addonAutoInfo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.1);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.inputGroup {
+  margin-bottom: 24px;
+}
+
+.inputLabel {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-bottom: 12px;
+}
+
 .checkbox {
   width: 18px;
   height: 18px;
@@ -582,6 +660,44 @@
 .finalPrice {
   font-size: 20px;
   font-weight: 700;
+}
+
+.priceBreakdown {
+  margin-top: 12px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.breakdownMain {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.breakdownItem {
+  display: grid;
+  grid-template-columns: 1fr 15px auto;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.breakdownLabel {
+  color: #94a3b8;
+}
+
+.breakdownColon {
+  color: #64748b;
+  text-align: center;
+}
+
+.breakdownCalc {
+  color: #cbd5e1;
+  font-weight: 700;
+  white-space: nowrap;
+  text-align: right;
+  min-width: 100px;
 }
 
 .actionButtons {
@@ -1038,4 +1154,119 @@
 .bottomIcons {
   display: flex;
   gap: 16px;
+}
+
+/* ── New Enhanced Sections ────────────────────────── */
+.inclusionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.includedBox, .excludedBox {
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 24px;
+  height: 100%;
+}
+
+.includedTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #f8fafc;
+}
+
+.includedList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.includedItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13.5px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.policyCard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.policyItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.policyTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 4px;
+}
+
+.policyDesc {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.termsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.termsItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: rgba(30, 41, 59, 0.3);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.termsBullet {
+  background: #0ea5e9;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.termsItem p {
+  font-size: 13.5px;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .inclusionGrid {
+    grid-template-columns: 1fr;
+  }
 }

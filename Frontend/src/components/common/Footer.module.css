@@ -28,8 +28,10 @@
   color: #fff;
 }
 
-.logoIcon {
-  color: #0ea5e9;
+.logoImage {
+  width: 48px;
+  height: auto;
+  object-fit: contain;
 }
 
 .footerBrand p {

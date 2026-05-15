@@ -106,7 +106,7 @@
   z-index: 10;
 }
 
-.breadcrumb span.active {
+.active {
   color: var(--text-main);
   font-weight: 500;
 }

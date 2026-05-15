@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useLayoutEffect } from 'react';
+import { useState, useEffect, useMemo, useLayoutEffect, useRef } from 'react';
+import Swal from 'sweetalert2';
 // import emailjs from '@emailjs/browser';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthContext';
@@ -10,7 +11,6 @@ import {
   Download,
   ChevronRight,
   RefreshCw,
-  Home,
   ShoppingBag,
   Star,
   MapPin,
@@ -23,7 +23,7 @@ import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
 import { api } from '../../utils/api';
 
-type StatusType = 'pending' | 'success' | 'expired';
+type StatusType = 'pending' | 'success' | 'expired' | 'cancelled';
 
 type CartItem = {
   name: string;
@@ -47,26 +47,43 @@ export default function PaymentStatusPage() {
   const [isSnapOpen, setIsSnapOpen] = useState(autoPay);
   const [isStatusFetched, setIsStatusFetched] = useState(false);
   const [liveResult, setLiveResult] = useState<any>(null);
+  const [isChecking, setIsChecking] = useState(false);
+  const pollingRef = useRef<any>(null);
   
   // Ambil dari state atau fallback ke localStorage dengan pengaman
   const paymentResult = useMemo(() => {
     try {
       if (location.state?.paymentResult) return location.state.paymentResult;
-      // Gunakan data live jika tersedia
-      if (liveResult?.payment_type) return liveResult;
       
+      // PRIORITAS 1: Data Live dari Server (Tampilkan secepat mungkin!)
+      if (liveResult) {
+        return liveResult;
+      }
+      
+      // PRIORITAS 2: Data tersimpan di browser (Cache)
       const saved = localStorage.getItem('divexplore_last_payment');
-      if (!saved) return null;
-      return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const lastOrderStr = localStorage.getItem('divexplore_last_order_data');
+        
+        if (lastOrderStr) {
+          const lastOrder = JSON.parse(lastOrderStr);
+          // Hanya gunakan cache JIKA ID-nya benar-benar cocok (UUID-nya sama)
+          if (parsed.order_id && parsed.order_id.startsWith(lastOrder.id)) {
+            return parsed;
+          }
+        }
+      }
+
+      return null;
     } catch (e) {
-      console.error("Gagal parse paymentResult:", e);
       return null;
     }
   }, [location.state, liveResult]);
 
   const lastSnapToken = localStorage.getItem('divexplore_last_snap_token');
 
-  // Helper to extract VA and Bank Name
+  // Helper to extract VA and Bank Name - SUPER AGGRESSIVE DETECTION
   const paymentDetails = useMemo(() => {
     if (!paymentResult) return null;
     
@@ -74,21 +91,36 @@ export default function PaymentStatusPage() {
     let vaNo = '';
     let qrUrl = '';
     
+    // DETEKSI JENIS BANK
     if (paymentResult.va_numbers && paymentResult.va_numbers.length > 0) {
-      bankName = `BANK ${paymentResult.va_numbers[0].bank.toUpperCase()}`;
-      vaNo = paymentResult.va_numbers[0].va_number;
-    } else if (paymentResult.permata_va_number) {
+      const va = paymentResult.va_numbers[0];
+      bankName = `BANK ${va.bank.toUpperCase()}`;
+      vaNo = va.va_number;
+    } 
+    else if (paymentResult.permata_va_number) {
       bankName = 'BANK PERMATA';
       vaNo = paymentResult.permata_va_number;
-    } else if (paymentResult.bill_key) {
+    } 
+    else if (paymentResult.bill_key) {
       bankName = 'BANK MANDIRI';
-      vaNo = `${paymentResult.biller_code} ${paymentResult.bill_key}`;
-    } else if (paymentResult.payment_type === 'gopay' || paymentResult.payment_type === 'qris') {
+      const biller = paymentResult.biller_code || '70012';
+      vaNo = `${biller} - ${paymentResult.bill_key}`;
+    }
+    else if (paymentResult.payment_type === 'gopay' || paymentResult.payment_type === 'qris') {
       bankName = 'GOPAY / QRIS';
-      // Cari URL QR Code di array actions
       const qrAction = paymentResult.actions?.find((a: any) => a.name === 'generate-qr-code');
       qrUrl = qrAction?.url || '';
       vaNo = 'Silakan Scan QR Code';
+    }
+    else if (paymentResult.payment_code) {
+      bankName = 'KODE PEMBAYARAN';
+      vaNo = paymentResult.payment_code;
+    }
+
+    // SEARCHING AGRESSIVE (Jika vaNo masih kosong)
+    if (!vaNo) {
+      vaNo = paymentResult.va_number || paymentResult.va_no || paymentResult.bill_key || paymentResult.payment_code || '';
+      if (paymentResult.bank) bankName = `BANK ${paymentResult.bank.toUpperCase()}`;
     }
 
     return { bankName, vaNo, qrUrl };
@@ -96,7 +128,7 @@ export default function PaymentStatusPage() {
 
   const { user } = useAuth();
   const rawStatus = searchParams.get('status') ?? 'pending';
-  const status: StatusType = ['pending', 'success', 'expired'].includes(rawStatus)
+  const status: StatusType = ['pending', 'success', 'expired', 'cancelled'].includes(rawStatus)
     ? (rawStatus as StatusType)
     : 'pending';
 
@@ -110,16 +142,32 @@ export default function PaymentStatusPage() {
 
   useEffect(() => {
     const calculateDiff = () => {
+      // Cari waktu kedaluwarsa dari berbagai sumber
+      let expiryMs = 0;
+
       if (paymentResult?.expiry_time) {
         const expiryStr = paymentResult.expiry_time.replace(' ', 'T');
-        const expiry = new Date(expiryStr).getTime();
-        const now = new Date().getTime();
-        const diff = Math.max(0, Math.floor((expiry - now) / 1000));
+        expiryMs = new Date(expiryStr).getTime();
+      } else {
+        // Fallback: ambil timeout_at dari data pesanan di localStorage
+        try {
+          const orderStr = localStorage.getItem('divexplore_last_order_data');
+          if (orderStr) {
+            const order = JSON.parse(orderStr);
+            if (order.timeout_at) {
+              expiryMs = new Date(order.timeout_at).getTime();
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (expiryMs > 0) {
+        const diff = Math.max(0, Math.floor((expiryMs - Date.now()) / 1000));
         setVaSeconds(diff);
         if (diff <= 0) setPreviewStatus('expired');
       } else {
-        // Jika tidak ada expiry_time, hitung mundur dari 24 jam dummy
-        setVaSeconds(s => (s > 0 ? s - 1 : 86400));
+        // Hanya jika benar-benar tidak ada data, hitung mundur 1 detik
+        setVaSeconds(s => (s > 0 ? s - 1 : 0));
       }
     };
 
@@ -127,88 +175,101 @@ export default function PaymentStatusPage() {
     return () => clearInterval(t);
   }, [paymentResult]);
 
-  // Ambil data pembayaran terbaru dari server
+  // Ambil data pembayaran terbaru dari server (dengan Polling)
   useEffect(() => {
     const fetchStatus = async () => {
       const lastOrderStr = localStorage.getItem('divexplore_last_order_data');
-      if (!lastOrderStr) return;
+      if (!lastOrderStr) {
+        setIsStatusFetched(true);
+        return;
+      }
+
       try {
         const order = JSON.parse(lastOrderStr);
         
-        // 1. Ambil detail pesanan lengkap (untuk cek paymentLogs di DB kita)
-        const orderRes = await api.get(`/api/orders/${order.id}`);
-        const dbOrder = orderRes.data?.data;
-        
-        if (dbOrder?.paymentLogs?.length > 0) {
-          const lastLog = dbOrder.paymentLogs[0];
-          if (lastLog.raw_response) {
-            const parsed = JSON.parse(lastLog.raw_response);
-            setLiveResult(parsed);
-            setIsStatusFetched(true);
-            return; // STOP jika sudah ada log di DB, jangan buka popup
-          }
-        }
-
-        // 2. Jika tidak ada di DB, barulah cek ke Midtrans (fallback)
+        // Cek ke Midtrans via Backend
         const res = await api.get(`/api/orders/${order.id}/payment-status`);
         const midtransData = res.data?.data;
-        if (midtransData) {
-          setLiveResult(midtransData);
-          // Jika sudah ada payment_type, berarti user sudah pilih metode
-          if (midtransData.payment_type) {
-            localStorage.setItem('divexplore_last_payment', JSON.stringify(midtransData));
+        
+        if (midtransData && midtransData.payment_type && midtransData.payment_type !== 'null') {
+          console.log('[Payment] Server has payment data:', midtransData.payment_type);
+          setLiveResult({ ...midtransData, internal_order_id: order.id });
+          localStorage.setItem('divexplore_last_payment', JSON.stringify(midtransData));
+          // Data ditemukan, hentikan polling
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
           }
         }
       } catch (e) {
-        console.error("Gagal sinkron status Midtrans:", e);
+        console.warn('[Payment] Polling error:', e);
       } finally {
         setIsStatusFetched(true);
       }
     };
+
     fetchStatus();
+    pollingRef.current = setInterval(fetchStatus, 5000);
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
   }, []);
 
   // LOGIKA AUTO-TRIGGER SNAP MIDTRANS
   useEffect(() => {
-    // Hanya jalankan auto-pay jika:
-    // 1. Parameter auto_pay=true
-    // 2. Ada token
-    // 3. Status sudah dicek (isStatusFetched)
-    // 4. USER BELUM PILIH METODE (liveResult.payment_type belum ada)
+    // Tunggu sampai status benar-benar terambil (isStatusFetched)
     if (autoPay && lastSnapToken && window.snap && isStatusFetched) {
-      if (liveResult?.payment_type) {
-        console.log("User already chose payment method, skipping auto-popup");
+      
+      // Jika hasil fetch menunjukkan sudah ada metode (VA/QRIS), JANGAN buka popup
+      const hasPaymentMethod = liveResult?.payment_type || 
+                               (liveResult?.va_numbers && liveResult.va_numbers.length > 0) ||
+                               liveResult?.permata_va_number ||
+                               liveResult?.bill_key;
+
+      if (hasPaymentMethod && hasPaymentMethod !== 'null') {
+        console.log("[Payment] Skipping popup - method already exists:", hasPaymentMethod);
         setIsSnapOpen(false);
         return;
       }
-      
+
+      console.log("[Payment] Opening Midtrans Snap Popup...");
       setIsSnapOpen(true);
       window.snap.pay(lastSnapToken, {
-        onSuccess: function(result: any) {
-          setIsSnapOpen(false);
+        onSuccess: (result: any) => {
+          console.log('[Payment] Success:', result);
+          // HENTIKAN polling agar tidak menimpa data
+          if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
           localStorage.setItem('divexplore_last_payment', JSON.stringify(result));
+          localStorage.removeItem('divexplore_last_snap_token');
+          setLiveResult(result);
+          setIsSnapOpen(false);
           setPreviewStatus('success');
-          localStorage.removeItem('divexplore_last_snap_token');
-          navigate('/payment-status?status=success', { replace: true });
         },
-        onPending: function(result: any) {
-          setIsSnapOpen(false);
+        onPending: (result: any) => {
+          console.log('[Payment] Pending (user picked method):', result);
+          if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
           localStorage.setItem('divexplore_last_payment', JSON.stringify(result));
-          setPreviewStatus('pending');
           localStorage.removeItem('divexplore_last_snap_token');
+          setLiveResult(result);
+          setIsSnapOpen(false);
+          setPreviewStatus('pending');
+          // Hapus auto_pay dari URL agar refresh tidak buka popup lagi
           navigate('/payment-status?status=pending', { replace: true });
         },
-        onError: function() {
+        onError: (result: any) => {
+          console.log('[Payment] Error:', result);
           setIsSnapOpen(false);
+          localStorage.removeItem('divexplore_last_snap_token');
           alert("Pembayaran gagal!");
-          localStorage.removeItem('divexplore_last_snap_token');
-          navigate('/payment-status?status=pending', { replace: true });
         },
-        onClose: function() {
+        onClose: () => {
+          console.log('[Payment] Popup closed by user');
           setIsSnapOpen(false);
           setPreviewStatus('pending');
-          // Refresh status untuk melihat apakah user sempat pilih metode sebelum tutup
-          window.location.reload();
         }
       });
     }
@@ -219,9 +280,20 @@ export default function PaymentStatusPage() {
   const vaSec = String(vaSeconds % 60).padStart(2, '0');
 
   const [copied, setCopied] = useState(false);
-  const vaNumber = paymentDetails?.vaNo || '8801 2345 6789 0042';
-  const bankLabel = paymentDetails?.bankName || 'VIRTUAL ACCOUNT BANK MANDIRI';
-  const orderId = paymentResult?.order_id || '#ORD-20250112-0042';
+  const vaNumber = paymentDetails?.vaNo || (isChecking ? 'Menyinkronkan...' : 'Menunggu pilihan bank...');
+  const bankLabel = paymentDetails?.bankName || (isChecking ? 'Mengecek...' : 'Memuat metode...');
+  
+  // Ambil ID pesanan dengan fallback super teliti
+  const orderId = useMemo(() => {
+    if (paymentResult?.order_id) return paymentResult.order_id;
+    if (liveResult?.order_id) return liveResult.order_id;
+    if (liveResult?.internal_order_id) return liveResult.internal_order_id;
+    
+    const saved = localStorage.getItem('divexplore_last_order_data');
+    if (saved) return JSON.parse(saved).id;
+    
+    return 'Memuat ID Pesanan...';
+  }, [paymentResult, liveResult]);
 
   // Read cart data
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -283,6 +355,16 @@ export default function PaymentStatusPage() {
   const taxes = useMemo(() => subtotal * 0.11, [subtotal]);
   const total = useMemo(() => subtotal + taxes, [subtotal, taxes]);
 
+  // DATA ORDER ASLI DARI DATABASE (DITERIMA SETELAH CHECKOUT)
+  const actualOrder = useMemo(() => {
+    try {
+      const orderStr = localStorage.getItem('divexplore_last_order_data');
+      return orderStr ? JSON.parse(orderStr) : null;
+    } catch (e) {
+      return null;
+    }
+  }, []);
+
   // Email Notification State
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [showEmailPopup, setShowEmailPopup] = useState(false);
@@ -337,15 +419,121 @@ export default function PaymentStatusPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const [isChecking, setIsChecking] = useState(false);
+  const handleCheckStatus = async () => {
+    Swal.fire({
+      title: 'Menyinkronkan...',
+      text: 'Mengecek status pembayaran Anda ke Midtrans',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
 
-  const handleCheckStatus = () => {
     setIsChecking(true);
-    // Simulasi pengecekan ke payment gateway (misal 2 detik)
-    setTimeout(() => {
+    
+    try {
+      const lastOrderStr = localStorage.getItem('divexplore_last_order_data');
+      if (!lastOrderStr) {
+        Swal.fire('Error', 'Data pesanan tidak ditemukan di browser.', 'error');
+        setIsChecking(false);
+        return;
+      }
+
+      const order = JSON.parse(lastOrderStr);
+      
+      // Panggil API status pembayaran asli (Sinkronisasi Midtrans -> Supabase)
+      const res = await api.get(`/api/orders/${order.id}/payment-status`);
+      
+      // Deteksi struktur data secara cerdas (Axios interceptor friendly)
+      const midtransData = res.data?.data || res.data;
+      
+      // Jika benar-benar tidak ada data atau status_code 404 asli dari Midtrans tanpa fallback
+      if (!midtransData || (midtransData.status_code === '404' && !midtransData.is_fallback)) {
+        Swal.fire('Info', 'Transaksi belum terdaftar di Midtrans. Silakan selesaikan pembayaran di pop-up.', 'info');
+        setIsChecking(false);
+        return;
+      }
+
+      // Update state live dengan data VALID dari server
+      setLiveResult({ ...midtransData, internal_order_id: order.id });
+      const currentStatus = midtransData.transaction_status;
+      
+      if (currentStatus === 'settlement' || currentStatus === 'capture') {
+        setPreviewStatus('success');
+        Swal.fire({
+          title: 'Berhasil!',
+          text: 'Pembayaran Anda telah kami terima.',
+          icon: 'success',
+          confirmButtonText: 'Lanjutkan',
+          confirmButtonColor: '#10b981'
+        });
+      } else if (currentStatus === 'pending') {
+        setPreviewStatus('pending');
+        Swal.fire({
+          title: 'Menunggu Pembayaran',
+          text: 'Kami belum menerima pembayaran Anda. Silakan selesaikan transaksi sesuai instruksi.',
+          icon: 'warning',
+          confirmButtonText: 'Mengerti',
+          confirmButtonColor: '#f59e0b'
+        });
+      } else if (currentStatus === 'expire' || currentStatus === 'cancel' || currentStatus === 'deny' || currentStatus === 'cancelled') {
+        setPreviewStatus('expired');
+        Swal.fire('Transaksi Gagal', `Status: ${currentStatus.toUpperCase()}`, 'error');
+      } else {
+        Swal.fire('Info', `Status Pembayaran: ${currentStatus.toUpperCase()}`, 'info');
+      }
+    } catch (e: any) {
+      console.error("[Payment] Sync Error:", e);
+      const errorMsg = e.response?.data?.message || e.message || "Gagal menghubungi server";
+      Swal.fire('Gagal Sinkron', errorMsg, 'error');
+    } finally {
       setIsChecking(false);
-      setPreviewStatus('success'); // selalu sukses untuk demo ini
-    }, 2000);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    const result = await Swal.fire({
+      title: 'Batalkan Pesanan?',
+      text: "Tindakan ini tidak dapat dibatalkan.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Ya, Batalkan!',
+      cancelButtonText: 'Kembali'
+    });
+
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: 'Membatalkan...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      try {
+        const lastOrderStr = localStorage.getItem('divexplore_last_order_data');
+        if (!lastOrderStr) throw new Error("Data pesanan tidak ditemukan.");
+        
+        const order = JSON.parse(lastOrderStr);
+        await api.post(`/api/orders/${order.id}/cancel`);
+
+        // Bersihkan cache agar tidak muncul pop-up lagi
+        localStorage.removeItem('divexplore_last_payment');
+        localStorage.removeItem('divexplore_last_order_data');
+        localStorage.removeItem('divexplore_last_snap_token');
+
+        await Swal.fire({
+          title: 'Dibatalkan',
+          text: 'Pesanan Anda telah berhasil dibatalkan.',
+          icon: 'success'
+        });
+
+        navigate('/orders');
+      } catch (e: any) {
+        console.error("[Payment] Cancel Error:", e);
+        Swal.fire('Gagal', e.response?.data?.message || 'Gagal membatalkan pesanan.', 'error');
+      }
+    }
   };
 
   return (
@@ -399,8 +587,8 @@ export default function PaymentStatusPage() {
           </div>
         )}
 
-        {/* Konten Utama - Hanya muncul jika snap sudah tertutup */}
-        {!isSnapOpen && (
+        {/* Konten Utama - Hanya muncul jika snap sudah tertutup DAN status sudah siap */}
+        {(!isSnapOpen && isStatusFetched) ? (
           <>
             {/* ── PENDING ── */}
         {previewStatus === 'pending' && (
@@ -444,7 +632,7 @@ export default function PaymentStatusPage() {
               <RefreshCw size={16} className={isChecking ? styles.spin : ''} />
               {isChecking ? 'Mengecek Status...' : 'Cek Status Pembayaran'}
             </button>
-            <button className={styles.ghostBtn} onClick={() => navigate('/')}>
+            <button className={styles.ghostBtn} onClick={handleCancelOrder}>
               Batalkan Pesanan
             </button>
 
@@ -477,17 +665,19 @@ export default function PaymentStatusPage() {
                   className={styles.successOrderImg}
                 />
                 <div>
-                  <p className={styles.successOrderName}>{firstItem.name}</p>
+                  <p className={styles.successOrderName}>{actualOrder?.orderItems?.[0]?.product?.nama_produk || actualOrder?.items?.[0]?.name || firstItem.name}</p>
                   <div className={styles.successOrderMeta}>
                     <MapPin size={12} />
-                    <span>14 Jun 2026 • {firstItem.quantity} Orang</span>
+                    <span>{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} • {actualOrder?.orderItems?.[0]?.qty || actualOrder?.items?.[0]?.quantity || 1} Orang</span>
                   </div>
                 </div>
-                <div className={styles.successOrderPrice}>Rp {total.toLocaleString('id-ID')}</div>
+                <div className={styles.successOrderPrice}>
+                  Rp {Math.round(Number(actualOrder?.total_pembayaran || total)).toLocaleString('id-ID')}
+                </div>
               </div>
               <div className={styles.successPayMethod}>
                 <span>Metode Pembayaran</span>
-                <span>BCA Virtual Account</span>
+                <span>{paymentDetails?.bankName || 'Terdeteksi Otomatis'}</span>
               </div>
             </div>
 
@@ -504,8 +694,8 @@ export default function PaymentStatusPage() {
           </div>
         )}
 
-            {/* ── EXPIRED ── */}
-            {previewStatus === 'expired' && (
+            {/* ── EXPIRED / CANCELLED ── */}
+            {(previewStatus === 'expired' || previewStatus === 'cancelled') && (
               <div className={`${styles.statusCard} ${styles.expiredCard}`}>
                 <div className={styles.statusIcon}>
                   <div className={styles.expiredIconCircle}>
@@ -524,16 +714,21 @@ export default function PaymentStatusPage() {
                   </div>
                 </div>
 
-                <button className={styles.primaryBtn} onClick={() => navigate('/checkout')}>
+                <button className={styles.primaryBtn} onClick={() => navigate('/catalog')}>
                   Pesan Kembali
                 </button>
-                <button className={styles.ghostBtn} onClick={() => navigate('/')}>
-                  <Home size={15} />
-                  Kembali ke Beranda
+                <button className={styles.ghostBtn} onClick={() => navigate('/orders')}>
+                  <ShoppingBag size={15} />
+                  Lihat Pesanan Saya
                 </button>
               </div>
             )}
           </>
+        ) : !isSnapOpen && (
+          <div className={styles.loadingOverlay}>
+             <RefreshCw size={30} className={styles.spinIcon} color="#0ea5e9" />
+             <p>Sinkronisasi data pembayaran...</p>
+          </div>
         )}
       </main>
 

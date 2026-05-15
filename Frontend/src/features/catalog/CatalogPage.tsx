@@ -17,7 +17,6 @@ import {
   ShieldCheck,
   Clock,
   Tag,
-  Lock,
 } from "lucide-react";
 import styles from "./CatalogPage.module.css";
 import Header from "../../components/common/Header";
@@ -87,16 +86,10 @@ export default function CatalogPage() {
   const [activeCategory, setActiveCategory] =
     useState<CategoryKey>("aktivitas");
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterDate, setFilterDate] = useState<string>(() => {
-    return sessionStorage.getItem('divexplore_filter_date') || "";
-  });
+  const [filterDate, setFilterDate] = useState<string>("");
   const [catalogData, setCatalogData] = useState<CatalogStructure>(DEFAULT_CATALOG);
   const [isLoading, setIsLoading] = useState(true);
 
-  const handleDateChange = (date: string) => {
-    setFilterDate(date);
-    sessionStorage.setItem('divexplore_filter_date', date);
-  };
 
   const handleViewDetail = (productId: string) => {
     if (!isAuthenticated) {
@@ -302,11 +295,15 @@ export default function CatalogPage() {
                 </div>
                 <div className={styles.dateFilter}>
                   <Clock className={styles.filterIcon} size={18} />
-                  <input 
-                    type="date" 
-                    min={new Date().toISOString().split('T')[0]}
+                  <input
+                    type="date"
+                    min={(() => {
+                      const now = new Date();
+                      const offset = now.getTimezoneOffset() * 60000;
+                      return new Date(now.getTime() - offset).toISOString().split('T')[0];
+                    })()}
                     value={filterDate}
-                    onChange={(e) => handleDateChange(e.target.value)}
+                    onChange={(e) => setFilterDate(e.target.value)}
                     className={styles.dateInput}
                   />
                 </div>
@@ -410,12 +407,6 @@ export default function CatalogPage() {
                       className={styles.addToCartBtn}
                       style={{ background: currentCat.color }}
                       onClick={() => {
-                        // PROTEKSI: Cek apakah sudah login
-                        if (!isAuthenticated) {
-                          navigate('/login');
-                          return;
-                        }
-
                         // Ambil keranjang yang sudah ada
                         const existingCart = JSON.parse(localStorage.getItem('divexplore_cart') || '[]');
                         
@@ -430,7 +421,7 @@ export default function CatalogPage() {
                             product_id: item.id, // Untuk Backend
                             name: item.name,
                             type: currentCat.label,
-                            location: item.desc,
+                            location: '', // Dikosongkan agar tidak muncul ikon pin di deskripsi
                             price: item.hargaJual,
                             quantity: 1,
                             image: item.image,
@@ -443,29 +434,37 @@ export default function CatalogPage() {
                         // Trigger custom event agar Header terupdate
                         window.dispatchEvent(new Event('cartUpdated'));
                         
-                        Swal.fire({
-                          title: 'Berhasil!',
-                          text: 'Pesanan berhasil dimasukkan ke keranjang',
-                          icon: 'success',
-                          toast: true,
-                          position: 'top-end',
-                          showConfirmButton: false,
-                          timer: 3000,
-                          background: '#1e293b',
-                          color: '#f8fafc',
-                          iconColor: '#0ea5e9'
-                        });
+                        if (!isAuthenticated) {
+                          Swal.fire({
+                            title: 'Masuk ke Keranjang Tamu',
+                            text: 'Produk ditambahkan ke keranjang tamu. Silakan login untuk memproses pesanan.',
+                            icon: 'info',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 4000,
+                            background: '#1e293b',
+                            color: '#f8fafc',
+                            iconColor: '#f59e0b'
+                          });
+                        } else {
+                          Swal.fire({
+                            title: 'Berhasil!',
+                            text: 'Pesanan berhasil dimasukkan ke keranjang',
+                            icon: 'success',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            background: '#1e293b',
+                            color: '#f8fafc',
+                            iconColor: '#0ea5e9'
+                          });
+                        }
                       }}
                     >
                       <ShoppingCart size={15} />
-                      {isAuthenticated ? (
-                        "Pesan"
-                      ) : (
-                        <>
-                          <Lock size={14} style={{ marginRight: "6px" }} />{" "}
-                          Masuk
-                        </>
-                      )}
+                      Tambah ke Keranjang
                     </button>
                     <button
                       className={styles.detailBtn}

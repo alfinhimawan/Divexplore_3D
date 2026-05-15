@@ -237,6 +237,12 @@
   transform: translateY(-50%);
   color: #64748b;
 }
+
+.textareaIco {
+  position: absolute;
+  left: 12px; top: 16px;
+  color: #64748b;
+}
 .input {
   width: 100%;
   background: #1e293b;
@@ -280,13 +286,14 @@
   background: #1e293b;
   border: 1px solid #334155;
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 12px 12px 12px 36px;
   color: #e2e8f0;
   font-size: 14px;
   outline: none;
   resize: vertical;
   box-sizing: border-box;
   transition: border-color .2s;
+  min-height: 100px;
 }
 .textarea:focus { border-color: #0ea5e9; }
 .errMsg { font-size: 12px; color: #ef4444; margin: 0; }
@@ -340,7 +347,21 @@
 .costRows { margin-bottom: 20px; display: flex; flex-direction: column; gap: 16px; }
 .costGroup { display: flex; flex-direction: column; gap: 8px; }
 .costRow { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.itemName { font-size: 14px; font-weight: 600; color: #e2e8f0; line-height: 1.5; flex: 1; }
+.itemName { 
+  font-size: 14px; 
+  font-weight: 600; 
+  color: #e2e8f0; 
+  line-height: 1.5; 
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.nightsBadge {
+  font-size: 11px;
+  color: #0ea5e9;
+  font-weight: 700;
+}
 .itemPrice { font-size: 14px; font-weight: 700; color: #f8fafc; white-space: nowrap; }
 
 .costRowAddon { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-left: 16px; position: relative; }
@@ -355,18 +376,59 @@
 .addonName { font-size: 12.5px; color: #94a3b8; line-height: 1.5; flex: 1; }
 .addonPrice { font-size: 12.5px; font-weight: 500; color: #94a3b8; white-space: nowrap; }
 
-.totalRow {
+.summaryRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
   color: #94a3b8;
-  padding-top: 18px;
-  border-top: 1px solid #1e293b;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
-.totalVal { color: #f59e0b; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+
+.taxIncluded {
+  font-weight: 700;
+  color: #10b981;
+}
+
+.discountValue {
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
+  margin: 16px 0;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 12px 0 20px;
+}
+
+.totalLabelGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.totalMainLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.finalTotal {
+  font-size: 28px;
+  font-weight: 900;
+  color: #f59e0b;
+  line-height: 1;
+  text-shadow: 0 0 15px rgba(245, 158, 11, 0.15);
+}
 
 .agreeRow {
   display: flex;
@@ -433,6 +495,7 @@
   display: flex;
   justify-content: center;
   gap: 16px;
+  margin-top: 10px;
 }
 .badge {
   display: flex;
@@ -442,6 +505,94 @@
   color: #64748b;
 }
 .badge:first-child { color: #10b981; }
+
+.vendorNotice {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 6px 12px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.policyCard {
+  background: rgba(14, 165, 233, 0.05);
+  border: 1px solid rgba(14, 165, 233, 0.1);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.policyTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+}
+
+.policyText {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.promoGroup {
+  margin-top: 8px;
+}
+
+.labelSmall {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.promoInputWrapper {
+  display: flex;
+  gap: 10px;
+  position: relative;
+}
+
+.promoIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+}
+
+.promoInput {
+  flex: 1;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 12px 10px 36px;
+  color: #e2e8f0;
+  font-size: 13px;
+  outline: none;
+}
+
+.promoBtn {
+  background: #334155;
+  color: #e2e8f0;
+  border: none;
+  padding: 0 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.promoBtn:hover {
+  background: #475569;
+  color: #fff;
+}
 
 /* ── Footer ─────────────────────────────────────────── */
 .footer { background: #0d1526; margin-top: auto; }

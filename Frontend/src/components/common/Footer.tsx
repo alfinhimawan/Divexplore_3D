@@ -1,4 +1,4 @@
-import { Box, Camera, MessageCircle, Globe } from 'lucide-react';
+import { Camera, MessageCircle, Globe } from 'lucide-react';
 import styles from './Footer.module.css';
 
 export default function Footer() {
@@ -7,7 +7,7 @@ export default function Footer() {
       <div className={styles.footerContent}>
         <div className={styles.footerBrand}>
           <div className={styles.footerLogo}>
-            <Box size={24} className={styles.logoIcon} />
+            <img src="/logo.png" alt="Divexplore-3D Logo" className={styles.logoImage} />
             <span>DIVEXPLORE-3D</span>
           </div>
           <p>Platform Wisata Bahari 3D #1 di Indonesia. Jelajahi keindahan bawah laut Nusantara dari genggaman Anda.</p>

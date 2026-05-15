@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthContext';
-import { Box, ShoppingCart } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import styles from './Header.module.css';
 import Swal from 'sweetalert2';
 
@@ -69,7 +69,7 @@ export default function Header() {
   return (
     <header className={styles.header}>
       <div className={styles.logo} onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-        <Box className={styles.logoIcon} size={24} />
+        <img src="/logo.png" alt="Divexplore-3D Logo" className={styles.logoImage} />
         <span>DIVEXPLORE-3D</span>
       </div>
       <nav className={styles.navLinks}>
@@ -90,7 +90,7 @@ export default function Header() {
             className={`${styles.navLink} ${isActive('/orders') ? styles.activeLink : ''}`}
             onClick={() => navigate('/orders')}
           >
-            Pesanan Saya
+            Riwayat Pesanan
           </span>
         )}
         <div 
@@ -107,11 +107,11 @@ export default function Header() {
           <>
             <div className={styles.userInfo}>
               <img 
-                src={user.foto_profil_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama_lengkap || user.name)}&background=0ea5e9&color=fff`} 
+                src={user.foto_profil_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama_lengkap)}&background=0ea5e9&color=fff`} 
                 alt="User" 
                 className={styles.avatar} 
               />
-              <span>{user.nama_lengkap || user.name}</span>
+              <span>{user.nama_lengkap}</span>
             </div>
             <button className={styles.logoutBtn} onClick={handleLogout}>Keluar</button>
           </>

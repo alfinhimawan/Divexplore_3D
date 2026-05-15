@@ -10,20 +10,23 @@ declare global {
   }
 }
 import {
-  ShoppingCart, Mail, CreditCard,
+  CheckCircle2,
+  Tag,
+  Calendar,
+  ShoppingCart,
   MapPin,
   Users,
+  Mail,
   ChevronRight,
-  AlertTriangle,
   Shield,
-  Zap,
-  CheckCircle2
+  Zap
 } from 'lucide-react';
 import styles from './CheckoutPage.module.css';
 import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
+import Swal from 'sweetalert2';
 
-const TOTAL_SECONDS = 15 * 60; // 15 minutes
+
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -34,33 +37,29 @@ export default function CheckoutPage() {
     if (!isAuthenticated) navigate('/login');
   }, [isAuthenticated, navigate]);
 
-  // Countdown timer
-  const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
-  useEffect(() => {
-    if (secondsLeft <= 0) {
-      navigate('/payment-status?status=expired');
-      return;
-    }
-    const t = setInterval(() => setSecondsLeft(s => s - 1), 1000);
-    return () => clearInterval(t);
-  }, [secondsLeft, navigate]);
 
-  const minutes = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
-  const seconds = String(secondsLeft % 60).padStart(2, '0');
-  const progressPct = ((TOTAL_SECONDS - secondsLeft) / TOTAL_SECONDS) * 100;
 
   // Customer form
   const [form, setForm] = useState({ 
     name: user?.nama_lengkap ?? '', 
-    phone: (user as any)?.no_hp ?? '', 
-    email: user?.email ?? '', 
+    phone: user?.nomor_telepon ?? '', 
+    email: user?.email ?? '',
+    promo: ''
   });
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
-    setErrors(er => ({ ...er, [e.target.name]: '' }));
+    const { name, value } = e.target;
+    
+    // Filter khusus nomor HP: hanya boleh angka
+    let cleanValue = value;
+    if (name === 'phone') {
+      cleanValue = value.replace(/\D/g, '');
+    }
+
+    setForm(f => ({ ...f, [name]: cleanValue }));
+    setErrors(er => ({ ...er, [name]: '' }));
   }, []);
 
   const validate = () => {
@@ -75,7 +74,10 @@ export default function CheckoutPage() {
 
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleSubmit = async () => {
+  const handleConfirm = async () => {
+    // PENGAMAN KRUSIAL: Tolak jika sedang proses (Cegah Error 429)
+    if (isProcessing) return;
+    
     if (!validate()) return;
     
     // Pastikan ada produk di keranjang
@@ -84,7 +86,13 @@ export default function CheckoutPage() {
       return;
     }
 
-    localStorage.setItem('divexplore_customer', JSON.stringify(form));
+    // Update data customer di localStorage TANPA menghapus data profil asli (seperti foto)
+    const existingCustomer = JSON.parse(localStorage.getItem('divexplore_customer') || '{}');
+    const updatedCustomer = { ...existingCustomer, ...form, nomor_telepon: form.phone };
+    localStorage.setItem('divexplore_customer', JSON.stringify(updatedCustomer));
+
+    // BERSIHKAN cache pembayaran lama agar tidak tertukar (BNI/BCA)
+    localStorage.removeItem('divexplore_last_payment');
 
     try {
       setIsProcessing(true);
@@ -96,13 +104,14 @@ export default function CheckoutPage() {
           qty: item.quantity,
           addon_ids: (item.addon_ids && item.addon_ids.length > 0) ? item.addon_ids : undefined,
           // Kirim metadata tanggal (booking_date, check_in, check_out)
-          booking_date: item.booking_date,
-          check_in: item.check_in,
-          check_out: item.check_out
+          booking_date: item.visitDate || item.booking_date,
+          check_in: item.checkIn || item.check_in,
+          check_out: item.checkOut || item.check_out
         })),
+        kode_promo: form.promo,
         user_info: {
           nama: form.name,
-          no_hp: form.phone,
+          nomor_telepon: form.phone,
           email: form.email
         }
       };
@@ -131,7 +140,14 @@ export default function CheckoutPage() {
       navigate('/payment-status?status=pending&auto_pay=true');
 
     } catch (error: any) {
-      alert("Gagal memproses pesanan: " + error.message);
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal memproses pesanan',
+        text: error.response?.data?.message || error.message,
+        confirmButtonColor: '#ef4444',
+        background: '#1e293b',
+        color: '#f8fafc'
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -151,10 +167,22 @@ export default function CheckoutPage() {
     }
   }, []);
 
+  const calculateNights = (checkIn?: string, checkOut?: string) => {
+    if (!checkIn || !checkOut) return 1;
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 1;
+  };
+
   // Hitung total dari SEMUA item di keranjang (bukan hanya firstItem)
   const calculateCartTotal = () => {
     return cartItems.reduce((total: number, item: any) => {
-      const itemSubtotal = item.price * item.quantity;
+      const isAkomodasi = item.type.toLowerCase().includes('akomodasi') || item.type.toLowerCase().includes('homestay');
+      const nights = isAkomodasi ? calculateNights(item.check_in, item.check_out) : 1;
+      
+      const itemSubtotal = item.price * item.quantity * nights;
       const addonsSubtotal = (item.addons || []).reduce(
         (sum: number, a: any) => sum + (a.price * item.quantity), 0
       );
@@ -166,20 +194,7 @@ export default function CheckoutPage() {
 
   return (
     <div className={styles.container}>
-      {/* Timer Bar */}
-      <div className={styles.timerBar}>
-        <div className={styles.timerLeft}>
-          <AlertTriangle size={14} className={styles.timerIcon} />
-          Selesaikan pembayaran dalam
-        </div>
-        <div className={`${styles.timerCount} ${secondsLeft < 120 ? styles.timerUrgent : ''}`}>
-          {minutes}:{seconds}
-        </div>
-        <div className={styles.timerRight}>
-          Pesanan akan dibatalkan jika waktu habis
-        </div>
-        <div className={styles.timerProgress} style={{ width: `${progressPct}%` }} />
-      </div>
+
 
       {/* Header */}
       <Header />
@@ -232,18 +247,21 @@ export default function CheckoutPage() {
                     <span>{item.location}</span>
                   </div>
                   <div className={styles.orderDetails}>
-                    <span><Users size={12} /> {item.quantity} Orang</span>
-                    {item.check_in ? (
+                    <span><Users size={12} /> {item.quantity} {item.type.toLowerCase().includes('akomodasi') ? 'Kamar' : 'Orang'}</span>
+                    {(item.checkIn || item.check_in) ? (
                       <span className={styles.dateInfo}>
-                        <CreditCard size={12} style={{ transform: 'rotate(-90deg)' }} /> 
-                        {new Date(item.check_in).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - {new Date(item.check_out).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        <Calendar size={12} /> 
+                        {new Date(item.checkIn || item.check_in).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - {new Date(item.checkOut || item.check_out).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
-                    ) : item.booking_date ? (
+                    ) : (item.visitDate || item.booking_date) ? (
                       <span className={styles.dateInfo}>
-                        <CreditCard size={12} style={{ transform: 'rotate(-90deg)' }} /> 
-                        {new Date(item.booking_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        <Calendar size={12} /> 
+                        {new Date(item.visitDate || item.booking_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </span>
                     ) : null}
+                  </div>
+                  <div className={styles.vendorNotice}>
+                    Disediakan oleh: <strong>{item.vendor_name || 'Vendor Terverifikasi'}</strong>
                   </div>
                   {(item.addons || []).length > 0 && (
                     <div className={styles.addonTags} style={{ marginTop: '0.5rem' }}>
@@ -291,6 +309,9 @@ export default function CheckoutPage() {
                   <span className={styles.phonePrefix}>+62</span>
                   <input
                     name="phone"
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className={`${styles.inputPhone} ${errors.phone ? styles.inputErr : ''}`}
                     placeholder="81234567890"
                     value={form.phone}
@@ -316,6 +337,7 @@ export default function CheckoutPage() {
               {errors.email && <p className={styles.errMsg}>{errors.email}</p>}
             </div>
           </div>
+
         </div>
 
         {/* Right Column */}
@@ -327,27 +349,49 @@ export default function CheckoutPage() {
               Ringkasan Biaya
             </div>
             <div className={styles.costRows}>
-              {cartItems.map((item: any, idx: number) => {
-                const itemBase = item.price * item.quantity;
-                return (
-                  <div key={`group-${idx}`} className={styles.costGroup}>
-                    <div className={styles.costRow}>
-                      <span className={styles.itemName}>{item.name} ({item.quantity}×)</span>
-                      <span className={styles.itemPrice}>Rp {itemBase.toLocaleString('id-ID')}</span>
-                    </div>
-                    {(item.addons || []).map((a: any, ai: number) => (
-                      <div key={`addon-${idx}-${ai}`} className={styles.costRowAddon}>
-                        <span className={styles.addonName}>{a.name} ({item.quantity}×)</span>
-                        <span className={styles.addonPrice}>Rp {(a.price * item.quantity).toLocaleString('id-ID')}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
+              <div className={styles.summaryRow}>
+                <span>Total Harga ({cartItems.length} item)</span>
+                <span>Rp {cartItems.reduce((acc, item) => acc + (item.price * item.quantity * (item.type.toLowerCase().includes('akomodasi') ? calculateNights(item.check_in, item.check_out) : 1)), 0).toLocaleString('id-ID')}</span>
+              </div>
+              
+              <div className={styles.summaryRow}>
+                <span>Layanan Tambahan</span>
+                <span>Rp {cartItems.reduce((acc, item) => acc + (item.addons?.reduce((s: number, a: any) => s + a.price, 0) * item.quantity || 0), 0).toLocaleString('id-ID')}</span>
+              </div>
+
+              <div className={styles.summaryRow}>
+                <span>Diskon / Promo</span>
+                <span className={styles.discountValue}>- Rp 0</span>
+              </div>
+
+              <div className={styles.summaryRow}>
+                <span>Pajak & Biaya Layanan</span>
+                <span className={styles.taxIncluded}>Termasuk</span>
+              </div>
+              
+              <div className={styles.divider} />
+
+              <div className={styles.promoGroup}>
+                <label className={styles.labelSmall}>Punya Kode Promo?</label>
+                <div className={styles.promoInputWrapper}>
+                  <Tag size={14} className={styles.promoIcon} />
+                  <input 
+                    name="promo"
+                    className={styles.promoInput} 
+                    placeholder="Masukkan kode"
+                    value={form.promo}
+                    onChange={handleInput}
+                  />
+                  <button className={styles.promoBtn}>Pakai</button>
+                </div>
+              </div>
             </div>
+
             <div className={styles.totalRow}>
-              <span>TOTAL</span>
-              <span className={styles.totalVal}>Rp {total.toLocaleString('id-ID')}</span>
+              <div className={styles.totalLabelGroup}>
+                <span className={styles.totalMainLabel}>Total Pembayaran</span>
+              </div>
+              <div className={styles.finalTotal}>Rp {total.toLocaleString('id-ID')}</div>
             </div>
 
             <label className={styles.agreeRow}>
@@ -365,8 +409,8 @@ export default function CheckoutPage() {
 
             <button 
               className={styles.confirmBtn} 
-              onClick={handleSubmit}
-              disabled={isProcessing}
+              onClick={handleConfirm}
+              disabled={isProcessing || cartItems.length === 0}
             >
               {isProcessing ? 'Memproses Midtrans...' : 'Konfirmasi & Bayar'}
             </button>

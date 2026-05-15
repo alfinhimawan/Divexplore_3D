@@ -166,13 +166,9 @@ export default function Hotspot3DPage() {
 
       {/* Breadcrumb */}
       <div className={styles.breadcrumb}>
-        <span>Beranda</span>
+        <span onClick={() => navigate('/')}>Beranda</span>
         <span>&gt;</span>
-        <span>Destinasi</span>
-        <span>&gt;</span>
-        <span>Lombok</span>
-        <span>&gt;</span>
-        <span className="active">Scene 3D</span>
+        <span className={styles.active}>Scene 3D</span>
       </div>
 
       {/* Main Content Area */}

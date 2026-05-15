@@ -312,7 +312,7 @@ const getWisatawanOrders = async (userId) => {
           {
             model: require("../models").Vendor,
             as: "vendor",
-            attributes: ["nama_toko"],
+            attributes: ["nama_toko", "kategori"],
           },
         ],
       },

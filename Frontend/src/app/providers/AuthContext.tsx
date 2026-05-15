@@ -5,6 +5,7 @@ import { api } from '../../utils/api';
 interface User {
   nama_lengkap: string;
   email: string;
+  nomor_telepon?: string;
   foto_profil_url?: string;
 }
 
@@ -19,19 +20,40 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [user, setUser] = useState<User | null>(null);
-
-  // Cek token saat pertama kali web dibuka
-  useEffect(() => {
-    const token = localStorage.getItem('divexplore_token');
+  // Inisialisasi state LANGSUNG dari localStorage agar tidak ada jeda saat refresh
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return !!localStorage.getItem('divexplore_token');
+  });
+  
+  const [user, setUser] = useState<User | null>(() => {
     const customer = localStorage.getItem('divexplore_customer');
-    if (token) {
-      setIsAuthenticated(true);
-      if (customer) {
-        setUser(JSON.parse(customer));
+    return customer ? JSON.parse(customer) : null;
+  });
+
+  // Verifikasi Sesi ke Backend saat pertama kali aplikasi dibuka (Ghost Hunter Logic)
+  useEffect(() => {
+    const verifySession = async () => {
+      const token = localStorage.getItem('divexplore_token');
+      if (token) {
+        try {
+          // Panggil API profil untuk cek apakah user masih ada di DB
+          const res = await api.get('/api/auth/me');
+          const userData = res.user || res.data?.user;
+          if (userData) {
+            setUser(userData);
+            setIsAuthenticated(true);
+            // Update cache profil di localStorage agar selalu fresh
+            localStorage.setItem('divexplore_customer', JSON.stringify(userData));
+          }
+        } catch (err: any) {
+          console.warn("[AuthContext] Sesi tidak valid atau User sudah dihapus dari DB.");
+          // Jika gagal (401), langsung bersihkan semuanya
+          logout();
+        }
       }
-    }
+    };
+    
+    verifySession();
   }, []);
 
   const login = async (email: string, pass: string) => {
@@ -76,8 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('divexplore_token');
+    localStorage.removeItem('divexplore_customer');
     setIsAuthenticated(false);
     setUser(null);
+    // Redirect ke home agar bersih
+    window.location.href = '/';
   };
 
   return (

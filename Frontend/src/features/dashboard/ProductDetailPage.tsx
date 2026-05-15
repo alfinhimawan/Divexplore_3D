@@ -16,7 +16,14 @@ import {
   FileText,
   Package,
   Minus,
-  Plus, ArrowRight } from 'lucide-react';
+  Plus, 
+  ArrowRight,
+  Calendar,
+  AlertCircle,
+  XCircle,
+  History,
+  Scale
+} from 'lucide-react';
 import styles from './ProductDetailPage.module.css';
 import Header from '../../components/common/Header';
 import Footer from '../../components/common/Footer';
@@ -27,11 +34,12 @@ export default function ProductDetailPage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-    }
-  }, [isAuthenticated, navigate]);
+  // Redirect otomatis dihapus agar Tamu bisa melihat detail produk
+  // useEffect(() => {
+  //   if (!isAuthenticated) {
+  //     navigate('/login');
+  //   }
+  // }, [isAuthenticated, navigate]);
 
   const [product, setProduct] = useState<any>(null);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
@@ -39,7 +47,7 @@ export default function ProductDetailPage() {
   
   const [quantity, setQuantity] = useState(1);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState('deskripsi');
+  const [activeTab, setActiveTab] = useState<'deskripsi' | 'lokasi' | 'ulasan' | 'kebijakan' | 'syarat'>('deskripsi');
 
   // Inisialisasi state tanggal dari URL atau SessionStorage (Bulletproof)
   const queryParams = new URLSearchParams(window.location.search);
@@ -103,8 +111,34 @@ export default function ProductDetailPage() {
     ? (product.reviews.reduce((acc: number, rev: any) => acc + (rev.rating || 5), 0) / reviewCount)
     : 0;
 
+  const calculateNights = (checkIn?: string, checkOut?: string) => {
+    if (!checkIn || !checkOut) return 1;
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 1;
+  };
+
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return null;
+    try {
+      return new Date(dateStr).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   const calculateTotal = () => {
     let perPerson = basePrice;
+    
+    // Hitung nights jika akomodasi
+    const nights = isAkomodasi ? calculateNights(checkInDate, checkOutDate) : 1;
+    
     if (product?.crossSellingAsMain) {
       product.crossSellingAsMain.forEach((addonObj: any) => {
         if (selectedAddons.includes(addonObj.addonProduct.id)) {
@@ -112,7 +146,8 @@ export default function ProductDetailPage() {
         }
       });
     }
-    return perPerson * quantity;
+    
+    return perPerson * quantity * nights;
   };
 
   const getSelectedAddonsData = () => {
@@ -142,11 +177,15 @@ export default function ProductDetailPage() {
       };
     }
     const category = product?.vendor?.kategori?.toLowerCase() || '';
+    const name = product?.nama_produk?.toLowerCase() || '';
     
+    // Prioritaskan data kapasitas dari database jika ada
+    const kapasitasDb = product.kapasitas ? `${product.kapasitas} ${category === 'homestay' ? 'Kamar' : 'Pax'}` : null;
+
     if (category === 'homestay') {
       return {
-        durasi: '1 Malam',
-        kapasitas: product?.kapasitas ? `${product.kapasitas} Orang` : '2 Orang/Kamar',
+        durasi: 'Per Malam',
+        kapasitas: kapasitasDb || '2 Orang/Kamar',
         level: 'Semua Umur',
         included: [
           'Kamar bersih dan nyaman (AC/Kipas)',
@@ -157,8 +196,8 @@ export default function ProductDetailPage() {
       };
     } else if (category === 'kuliner') {
       return {
-        durasi: 'Bebas',
-        kapasitas: product?.kapasitas ? `${product.kapasitas} Porsi` : '1 Porsi',
+        durasi: 'Instan',
+        kapasitas: kapasitasDb || '1 Porsi',
         level: 'Semua Kalangan',
         included: [
           'Bahan makanan segar tangkapan lokal',
@@ -170,7 +209,7 @@ export default function ProductDetailPage() {
     } else if (category === 'fotografi') {
       return {
         durasi: '1-2 Jam',
-        kapasitas: 'Hingga 5 Orang',
+        kapasitas: kapasitasDb || 'Hingga 5 Orang',
         level: 'Fleksibel',
         included: [
           'Sesi foto outdoor (Pantai/Darat)',
@@ -179,12 +218,24 @@ export default function ProductDetailPage() {
           'Properti foto standar'
         ]
       };
-    } else {
-      // Default / Aktivitas Tur / Peralatan
+    } else if (category === 'peralatan') {
       return {
-        durasi: '4-6 Jam',
-        kapasitas: product?.kapasitas ? `${product.kapasitas} Orang` : 'Grup/Pribadi',
-        level: 'Pemula - Lanjut',
+        durasi: 'Per Hari',
+        kapasitas: kapasitasDb || '1 Unit',
+        level: 'Sesuai Standar',
+        included: [
+          'Peralatan dalam kondisi prima',
+          'Pembersihan & Sterilisasi rutin',
+          'Panduan penggunaan dasar',
+          'Jaminan penggantian jika rusak'
+        ]
+      };
+    } else {
+      // Default / Aktivitas Tur / Bahari
+      return {
+        durasi: name.includes('discovery') || name.includes('fun') ? '2-3 Jam' : '4-6 Jam',
+        kapasitas: kapasitasDb || 'Grup/Pribadi',
+        level: name.includes('discovery') ? 'Pemula (No License)' : 'Berlisensi (Pro)',
         included: [
           'Pelayanan terbaik dari vendor lokal terverifikasi',
           'Peralatan keselamatan sesuai standar',
@@ -240,10 +291,10 @@ export default function ProductDetailPage() {
       image: product.thumbnail_url || PRODUCT_IMAGES[0],
       addons: getSelectedAddonsData(),
       addon_ids: getSelectedAddonsData().map((a: any) => a.id).filter(Boolean),
-      // Sertakan data tanggal ke keranjang
-      booking_date: bookingDate,
-      check_in: checkInDate,
-      check_out: checkOutDate
+      // Sertakan data tanggal ke keranjang (Sync dengan CartPage)
+      visitDate: bookingDate,
+      checkIn: checkInDate,
+      checkOut: checkOutDate
     };
     
     const existingCart = JSON.parse(localStorage.getItem('divexplore_cart') || '[]');
@@ -258,18 +309,33 @@ export default function ProductDetailPage() {
     localStorage.setItem('divexplore_cart', JSON.stringify(existingCart));
     window.dispatchEvent(new Event('cartUpdated'));
 
-    Swal.fire({
-      title: 'Berhasil!',
-      text: 'Pesanan berhasil dimasukkan ke keranjang',
-      icon: 'success',
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 3000,
-      background: '#1e293b',
-      color: '#f8fafc',
-      iconColor: '#0ea5e9'
-    });
+    if (!isAuthenticated) {
+      Swal.fire({
+        title: 'Masuk ke Keranjang Tamu',
+        text: 'Produk ditambahkan ke keranjang tamu. Silakan login untuk memproses pesanan.',
+        icon: 'info',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 4000,
+        background: '#1e293b',
+        color: '#f8fafc',
+        iconColor: '#f59e0b'
+      });
+    } else {
+      Swal.fire({
+        title: 'Berhasil!',
+        text: 'Pesanan berhasil dimasukkan ke keranjang',
+        icon: 'success',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        background: '#1e293b',
+        color: '#f8fafc',
+        iconColor: '#0ea5e9'
+      });
+    }
   };
 
   const handleBook = () => {
@@ -300,9 +366,9 @@ export default function ProductDetailPage() {
       image: product.thumbnail_url || PRODUCT_IMAGES[0],
       addons: getSelectedAddonsData(),
       addon_ids: getSelectedAddonsData().map((a: any) => a.id).filter(Boolean),
-      booking_date: bookingDate,
-      check_in: checkInDate,
-      check_out: checkOutDate
+      visitDate: bookingDate,
+      checkIn: checkInDate,
+      checkOut: checkOutDate
     };
     
     localStorage.setItem('divexplore_cart_direct', JSON.stringify([directItem]));
@@ -345,7 +411,18 @@ export default function ProductDetailPage() {
         <span>&gt;</span>
         <span onClick={() => navigate('/catalog')} style={{ cursor: 'pointer' }}>Katalog</span>
         <span>&gt;</span>
-        <span>{product.vendor?.kategori || 'Kategori'}</span>
+        <span>{(() => {
+          const cat = product.vendor?.kategori?.toLowerCase() || '';
+          const map: Record<string, string> = {
+            'aktivitas_tur': 'Aktivitas Tur',
+            'homestay': 'Akomodasi',
+            'kuliner': 'Kuliner',
+            'fotografi': 'Fotografi',
+            'peralatan': 'Peralatan',
+            'bahari': 'Aktivitas Bahari'
+          };
+          return map[cat] || (cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, ' '));
+        })()}</span>
         <span>&gt;</span>
         <span className={styles.active}>{product.nama_produk}</span>
       </div>
@@ -419,52 +496,6 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-            {/* BAGIAN BARU: PEMILIHAN TANGGAL (PREMIUM UI) */}
-            <div className={styles.dateSelectionCard}>
-              <div className={styles.dateHeader}>
-                <Clock className={styles.dateIcon} size={20} />
-                <span>{isAkomodasi ? 'Tentukan Waktu Menginap' : 'Pilih Tanggal Kunjungan'}</span>
-              </div>
-              
-              <div className={styles.dateGrid}>
-                {isAkomodasi ? (
-                  <>
-                    <div className={styles.dateField}>
-                      <label>Check-in</label>
-                      <input 
-                        type="date" 
-                        min={new Date().toISOString().split('T')[0]}
-                        value={checkInDate}
-                        onChange={(e) => setCheckInDate(e.target.value)}
-                      />
-                    </div>
-                    <div className={styles.dateField}>
-                      <label>Check-out</label>
-                      <input 
-                        type="date" 
-                        min={checkInDate || new Date().toISOString().split('T')[0]}
-                        value={checkOutDate}
-                        onChange={(e) => setCheckOutDate(e.target.value)}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div className={styles.dateField}>
-                    <label>Tanggal Rencana Kunjungan</label>
-                    <input 
-                      type="date" 
-                      min={new Date().toISOString().split('T')[0]}
-                      value={bookingDate}
-                      onChange={(e) => setBookingDate(e.target.value)}
-                    />
-                  </div>
-                )}
-              </div>
-              <p className={styles.dateHint}>
-                * Ketersediaan slot akan dikonfirmasi otomatis saat pembayaran
-              </p>
-            </div>
-
           <div className={styles.infoCards}>
             <div className={styles.infoCard}>
               <Clock className={styles.infoIcon} size={24} />
@@ -483,9 +514,76 @@ export default function ProductDetailPage() {
             </div>
             <div className={styles.infoCard}>
               <MapPin className={styles.infoIcon} size={24} />
-              <span className={styles.infoValue}>{product.lokasi || 'Gili Trawangan'}</span>
+              <span className={styles.infoValue}>{product.lokasi || product.vendor?.nama_toko || 'Gili Trawangan'}</span>
               <span className={styles.infoLabel}>Lokasi</span>
             </div>
+          </div>
+
+          {/* BAGIAN BARU: PEMILIHAN TANGGAL (PREMIUM UI) */}
+          <div className={styles.dateSelectionCard}>
+            <div className={styles.dateHeader}>
+              <Calendar className={styles.dateIcon} size={20} />
+              <span>{isAkomodasi ? 'Tentukan Waktu Menginap' : 'Pilih Tanggal Kunjungan'}</span>
+            </div>
+            
+            <div className={styles.dateGrid}>
+              {isAkomodasi ? (
+                <>
+                  <div className={styles.dateField}>
+                    <label>Check-in</label>
+                    <div className={styles.inputWrapper}>
+                      <Clock className={styles.inputIconLeft} size={14} />
+                      <input 
+                        type="date" 
+                        min={(() => {
+                          const now = new Date();
+                          const offset = now.getTimezoneOffset() * 60000;
+                          return new Date(now.getTime() - offset).toISOString().split('T')[0];
+                        })()}
+                        value={checkInDate}
+                        onChange={(e) => setCheckInDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className={styles.dateField}>
+                    <label>Check-out</label>
+                    <div className={styles.inputWrapper}>
+                      <Clock className={styles.inputIconLeft} size={14} />
+                      <input 
+                        type="date" 
+                        min={checkInDate || (() => {
+                          const now = new Date();
+                          const offset = now.getTimezoneOffset() * 60000;
+                          return new Date(now.getTime() - offset).toISOString().split('T')[0];
+                        })()}
+                        value={checkOutDate}
+                        onChange={(e) => setCheckOutDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className={styles.dateField}>
+                  <label>Tanggal Kunjungan</label>
+                  <div className={styles.inputWrapper}>
+                    <Clock className={styles.inputIconLeft} size={14} />
+                    <input 
+                      type="date" 
+                      min={(() => {
+                        const now = new Date();
+                        const offset = now.getTimezoneOffset() * 60000;
+                        return new Date(now.getTime() - offset).toISOString().split('T')[0];
+                      })()}
+                      value={bookingDate}
+                      onChange={(e) => setBookingDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+            <p className={styles.dateHint}>
+              * Ketersediaan slot akan dikonfirmasi otomatis saat pembayaran
+            </p>
           </div>
         </div>
 
@@ -516,7 +614,7 @@ export default function ProductDetailPage() {
               
               <div className={styles.priceContainer}>
                 <span className={styles.mainPrice}>Rp {basePrice.toLocaleString('id-ID')}</span>
-                <span className={styles.priceUnit}>/orang</span>
+                <span className={styles.priceUnit}>/{isAkomodasi ? 'malam' : 'orang'}</span>
               </div>
             </div>
 
@@ -541,21 +639,42 @@ export default function ProductDetailPage() {
                     {product.crossSellingAsMain.map((addonObj: any) => {
                       const addon = addonObj.addonProduct;
                       const isChecked = selectedAddons.includes(addon.id);
+                      const isAkomodasiAddon = addon.vendor?.kategori?.toLowerCase().includes('homestay') || addon.nama_produk.toLowerCase().includes('kamar') || addon.nama_produk.toLowerCase().includes('hotel');
+                      
                       return (
-                        <div className={styles.addonItem} key={addon.id}>
-                          <div className={styles.addonLeft}>
-                            <input 
-                              type="checkbox" 
-                              className={styles.checkbox} 
-                              checked={isChecked} 
-                              onChange={() => {
-                                if (isChecked) setSelectedAddons(prev => prev.filter(a => a !== addon.id));
-                                else setSelectedAddons(prev => [...prev, addon.id]);
-                              }} 
-                            />
-                            <span className={styles.addonName}><Plus size={14} style={{marginRight: '6px'}} /> {addon.nama_produk}</span>
+                        <div className={styles.addonItemContainer} key={addon.id}>
+                          <div className={styles.addonItem}>
+                            <div className={styles.addonLeft}>
+                              <input 
+                                type="date" 
+                                style={{display: 'none'}} 
+                                readOnly 
+                              />
+                              <input 
+                                type="checkbox" 
+                                className={styles.checkbox} 
+                                checked={isChecked} 
+                                onChange={() => {
+                                  if (isChecked) setSelectedAddons(prev => prev.filter(a => a !== addon.id));
+                                  else setSelectedAddons(prev => [...prev, addon.id]);
+                                }} 
+                              />
+                              <span className={styles.addonName}><Plus size={14} style={{marginRight: '6px'}} /> {addon.nama_produk}</span>
+                            </div>
+                            <span className={styles.addonPrice}>+Rp {Number(addon.harga).toLocaleString('id-ID')}</span>
                           </div>
-                          <span className={styles.addonPrice}>+Rp {Number(addon.harga).toLocaleString('id-ID')}</span>
+                          
+                          {/* Info Otomatis untuk Tambahan Hotel pada Produk Aktivitas */}
+                          {isChecked && isAkomodasiAddon && !isAkomodasi && (
+                            <div className={styles.addonAutoInfo}>
+                              <Calendar size={12} />
+                              <span>
+                                {bookingDate 
+                                  ? `Otomatis menginap 1 malam (Check-in: ${formatDisplayDate(bookingDate)})`
+                                  : 'Silakan tentukan tanggal kunjungan di atas'}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -564,9 +683,36 @@ export default function ProductDetailPage() {
               )}
 
               <div className={styles.totalRow}>
-                <span className={styles.totalLabel}>Total:</span>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span className={styles.totalLabel}>Total:</span>
+                </div>
                 <div className={styles.totalPriceWrapper}>
                   <span className={styles.finalPrice}>Rp {calculateTotal().toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+              <div className={styles.priceBreakdown}>
+                <div className={styles.breakdownMain}>
+                  <div className={styles.breakdownItem}>
+                    <span className={styles.breakdownLabel}>{product.nama_produk}</span>
+                    <span className={styles.breakdownColon}>:</span>
+                    <span className={styles.breakdownCalc}>
+                      Rp {basePrice.toLocaleString('id-ID')} 
+                      {quantity > 1 && ` (x${quantity} ${isAkomodasi ? 'kamar' : 'pax'})`}
+                      {isAkomodasi && calculateNights(checkInDate, checkOutDate) > 1 && ` (x${calculateNights(checkInDate, checkOutDate)} malam)`}
+                    </span>
+                  </div>
+                  
+                  {getSelectedAddonsData().map((addon: any) => (
+                    <div key={addon.id} className={styles.breakdownItem}>
+                      <span className={styles.breakdownLabel}>{addon.name}</span>
+                      <span className={styles.breakdownColon}>:</span>
+                      <span className={styles.breakdownCalc}>
+                        Rp {addon.price.toLocaleString('id-ID')}
+                        {quantity > 1 && ` (x${quantity})`}
+                        {isAkomodasi && calculateNights(checkInDate, checkOutDate) > 1 && ` (x${calculateNights(checkInDate, checkOutDate)} malam)`}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -583,7 +729,7 @@ export default function ProductDetailPage() {
                   }
                 }}>
                   <Zap size={18} />
-                  Beli Sekarang
+                  Pesan Sekarang
                 </button>
               </div>
 
@@ -618,10 +764,16 @@ export default function ProductDetailPage() {
           <button className={`${styles.tabBtn} ${activeTab === 'ulasan' ? styles.active : ''}`} onClick={() => setActiveTab('ulasan')}>
             <Star size={16} /> Ulasan
           </button>
+          <button className={`${styles.tabBtn} ${activeTab === 'kebijakan' ? styles.active : ''}`} onClick={() => setActiveTab('kebijakan')}>
+            <Scale size={16} /> Kebijakan
+          </button>
+          <button className={`${styles.tabBtn} ${activeTab === 'syarat' ? styles.active : ''}`} onClick={() => setActiveTab('syarat')}>
+            <AlertCircle size={16} /> Syarat & Ketentuan
+          </button>
         </div>
 
         <div className={styles.tabContent}>
-          {(activeTab === 'deskripsi' || activeTab === 'ulasan') && (
+          {(activeTab === 'deskripsi' || activeTab === 'ulasan' || activeTab === 'kebijakan' || activeTab === 'syarat') && (
             <>
               {activeTab === 'deskripsi' && (
                 <div className={styles.descriptionCol}>
@@ -630,22 +782,91 @@ export default function ProductDetailPage() {
                     {product.deskripsi || "Jelajahi keindahan tersembunyi dengan paket wisata dari Divexplore 3D. Kami bekerjasama dengan vendor lokal terpercaya untuk memberikan pengalaman yang tak terlupakan. Fasilitas terbaik telah kami siapkan khusus untuk Anda."}
                   </p>
 
-                  <div className={styles.whatsIncluded}>
-                    <div className={styles.includedTitle}>
-                      <CheckCircle2 size={20} color="#10b981" />
-                      Apa yang Termasuk
-                    </div>
-                    <div className={styles.includedList}>
-                      {dynamicData.included.map((item, idx) => (
-                        <div key={idx} className={styles.includedItem}>
-                          <CheckCircle2 size={16} color="#10b981" />
-                          <span>{item}</span>
+                    <div className={styles.inclusionGrid}>
+                      <div className={styles.includedBox}>
+                        <div className={styles.includedTitle}>
+                          <CheckCircle2 size={20} color="#10b981" />
+                          Apa yang Termasuk
                         </div>
-                      ))}
+                        <div className={styles.includedList}>
+                          {dynamicData.included.map((item, idx) => (
+                            <div key={idx} className={styles.includedItem}>
+                              <CheckCircle2 size={14} color="#10b981" />
+                              <span>{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className={styles.excludedBox}>
+                        <div className={styles.includedTitle}>
+                          <XCircle size={20} color="#ef4444" />
+                          Tidak Termasuk
+                        </div>
+                        <div className={styles.includedList}>
+                          <div className={styles.includedItem}>
+                            <XCircle size={14} color="#ef4444" />
+                            <span>Pengeluaran Pribadi</span>
+                          </div>
+                          <div className={styles.includedItem}>
+                            <XCircle size={14} color="#ef4444" />
+                            <span>Transportasi ke Titik Kumpul</span>
+                          </div>
+                          <div className={styles.includedItem}>
+                            <XCircle size={14} color="#ef4444" />
+                            <span>Asuransi Tambahan</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+
+                {activeTab === 'kebijakan' && (
+                  <div className={styles.descriptionCol}>
+                    <h2 className={styles.sectionTitle}>Kebijakan & Refund</h2>
+                    <div className={styles.policyCard}>
+                      <div className={styles.policyItem}>
+                        <History size={20} color="#0ea5e9" />
+                        <div>
+                          <div className={styles.policyTitle}>Pembatalan Gratis</div>
+                          <p className={styles.policyDesc}>Batal hingga 24 jam sebelum jadwal keberangkatan untuk pengembalian dana penuh. Dana akan dikembalikan melalui sistem Midtrans atau transfer bank dalam 3-5 hari kerja.</p>
+                        </div>
+                      </div>
+                      <div className={styles.policyItem}>
+                        <ShieldCheck size={20} color="#10b981" />
+                        <div>
+                          <div className={styles.policyTitle}>Jaminan Keamanan</div>
+                          <p className={styles.policyDesc}>Setiap transaksi dienkripsi secara aman dan diproses melalui gerbang pembayaran resmi untuk menjamin keamanan data Anda.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'syarat' && (
+                  <div className={styles.descriptionCol}>
+                    <h2 className={styles.sectionTitle}>Syarat & Ketentuan</h2>
+                    <div className={styles.termsList}>
+                      <div className={styles.termsItem}>
+                        <div className={styles.termsBullet}>1</div>
+                        <p>Peserta wajib dalam kondisi sehat jasmani dan rohani.</p>
+                      </div>
+                      <div className={styles.termsItem}>
+                        <div className={styles.termsBullet}>2</div>
+                        <p>Membawa kartu identitas (KTP/Passport) asli saat registrasi.</p>
+                      </div>
+                      <div className={styles.termsItem}>
+                        <div className={styles.termsBullet}>3</div>
+                        <p>Anak-anak di bawah 12 tahun wajib didampingi orang tua.</p>
+                      </div>
+                      <div className={styles.termsItem}>
+                        <div className={styles.termsBullet}>4</div>
+                        <p>Vendor berhak membatalkan aktivitas jika cuaca tidak memungkinkan demi keselamatan.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
               <div className={styles.reviewsCol} style={activeTab === 'ulasan' ? { flex: 1, maxWidth: '100%' } : {}}>
                 <div className={styles.reviewsHeader}>
