@@ -124,8 +124,15 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
             const addon = rule.addonProduct;
             const hargaAddon = parseFloat(addon.harga);
             
-            // Addon juga dikalikan nights jika produk utamanya akomodasi (opsional, tapi biasanya addon ikut durasi)
-            const subtotalAddon = hargaAddon * item.qty * nights;
+            // TENTUKAN DURASI ADDON: 
+            // 1. Ambil dari 'addon_nights' yang dikirim FE (id_rule: nights)
+            // 2. Jika tidak ada, fallback ke 'nights' produk utama (sinkronisasi lama)
+            let addonStayNights = nights;
+            if (item.addon_nights && item.addon_nights[rule.id]) {
+              addonStayNights = parseInt(item.addon_nights[rule.id]);
+            }
+            
+            const subtotalAddon = hargaAddon * item.qty * addonStayNights;
             totalNominal += subtotalAddon;
 
             // Masukkan add-on sebagai baris terpisah dengan VENDOR ID aslinya
@@ -139,7 +146,8 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
                 parent_product: product.nama_produk,
                 booking_date: item.booking_date || null,
                 check_in: item.check_in || null,
-                check_out: item.check_out || null
+                check_out: item.check_out || null,
+                nights: addonStayNights // Simpan durasi addon di metadata
               },
             });
 
