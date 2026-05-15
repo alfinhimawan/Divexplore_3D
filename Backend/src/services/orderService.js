@@ -500,16 +500,21 @@ const getPaymentStatus = async (orderId, userId) => {
     // SINKRONISASI KRUSIAL: Simpan ke PaymentLog agar DB tidak kosong
     const { PaymentLog } = require("../models");
     if (statusResponse.transaction_status && statusResponse.transaction_status !== 'null') {
+      let normalizedStatus = statusResponse.transaction_status;
+      // SERAGAMKAN: Ubah 'cancel' dari Midtrans menjadi 'cancelled' agar konsisten dengan DB internal
+      if (normalizedStatus === 'cancel') normalizedStatus = 'cancelled';
+      
       const normalizedType = statusResponse.payment_type;
 
       // Cari log terakhir untuk order ini
       const [log, created] = await PaymentLog.findOrCreate({
         where: { 
           order_id: order.id,
-          external_id: queryId
+          status_pembayaran: normalizedStatus
         },
         defaults: {
-          status_pembayaran: statusResponse.transaction_status,
+          external_id: queryId,
+          status_pembayaran: normalizedStatus,
           payment_type: normalizedType,
           transaction_id_midtrans: statusResponse.transaction_id,
           raw_response: JSON.stringify(statusResponse)
@@ -528,16 +533,16 @@ const getPaymentStatus = async (orderId, userId) => {
     }
 
     // 1. Update status di tabel Order berdasarkan hasil Midtrans (kecuali jika sudah cancel manual)
-    let displayStatus = statusResponse.transaction_status;
+    let displayStatus = normalizedStatus; // Gunakan yang sudah dinormalisasi
     
     if (order.status === 'cancelled' && displayStatus === 'pending') {
-      displayStatus = 'cancel';
+      displayStatus = 'cancelled';
     } else if (displayStatus === 'settlement' || displayStatus === 'capture') {
       if (order.status !== 'paid') {
         await order.update({ status: 'paid' });
       }
       displayStatus = 'success';
-    } else if (displayStatus === 'expire' || displayStatus === 'cancel') {
+    } else if (displayStatus === 'expire' || displayStatus === 'cancelled') {
       if (order.status !== 'expired' && order.status !== 'cancelled') {
         await order.update({ status: displayStatus === 'expire' ? 'expired' : 'cancelled' });
       }
@@ -617,21 +622,22 @@ const cancelOrder = async (orderId, userId) => {
     // 2. Update status jadi cancelled di Database Utama
     await order.update({ status: 'cancelled' }, { transaction });
 
-    // 3. Ambil tipe pembayaran terakhir agar tidak hilang (Anti-Echannel Bug)
+    // 3. Ambil data terakhir agar log pembatalan lengkap (Anti-NULL)
     const lastLog = await PaymentLog.findOne({
       where: { order_id: order.id },
       order: [['createdAt', 'DESC']]
     });
-
-    // 4. Catat di PaymentLogs agar riwayatnya Jelas
+    
+    // 4. Catat di PaymentLogs agar riwayatnya Jelas & Tidak NULL
     await PaymentLog.create({
       order_id: order.id,
       external_id: order.last_midtrans_id,
       status_pembayaran: 'cancelled',
       payment_type: lastLog ? lastLog.payment_type : null,
+      transaction_id_midtrans: lastLog ? lastLog.transaction_id_midtrans : null, // Ambil dari log sebelumnya
       raw_response: JSON.stringify({ 
         message: "Cancelled by user via Frontend", 
-        previous_type: lastLog ? lastLog.payment_type : 'unknown',
+        previous_status: lastLog ? lastLog.status_pembayaran : 'unknown',
         timestamp: new Date() 
       })
     }, { transaction });
