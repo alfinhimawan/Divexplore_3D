@@ -315,7 +315,7 @@ const getWisatawanOrders = async (userId) => {
           {
             model: Product,
             as: "product",
-            attributes: ["nama_produk", "thumbnail_url"],
+            attributes: ["nama_produk", "thumbnail_url", "lokasi"],
           },
           {
             model: require("../models").Vendor,
@@ -393,7 +393,7 @@ const getVendorOrders = async (vendorId) => {
           {
             model: Product,
             as: "product",
-            attributes: ["nama_produk", "thumbnail_url"],
+            attributes: ["nama_produk", "thumbnail_url", "lokasi"],
           },
         ],
       },
@@ -416,7 +416,7 @@ const getAdminOrders = async () => {
           {
             model: Product,
             as: "product",
-            attributes: ["nama_produk", "thumbnail_url"],
+            attributes: ["nama_produk", "thumbnail_url", "lokasi"],
           },
         ],
       },
