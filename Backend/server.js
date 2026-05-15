@@ -38,7 +38,7 @@ const ALLOWED_ORIGINS = [
 // Security & Performance Middleware
 app.use(
   cors({
-    origin: true,
+    origin: ALLOWED_ORIGINS,
     credentials: true,
   }),
 );

@@ -593,7 +593,7 @@ module.exports = {
       id: uuidv4(),
       product_id: p.id,
       tanggal_ketersediaan: tanggalKetersediaan,
-      available_qty: 100,
+      available_qty: p.vendor_id === v5 ? 5 : 100,
       locked_qty: 0,
       createdAt: now,
       updatedAt: now,
