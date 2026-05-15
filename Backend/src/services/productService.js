@@ -96,7 +96,7 @@ const getProductById = async (productId) => {
               {
                 model: Vendor,
                 as: "vendor",
-                attributes: ["id", "nama_toko"],
+                attributes: ["id", "nama_toko", "kategori"],
               },
             ],
           },
