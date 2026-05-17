@@ -132,7 +132,7 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
               addonStayNights = parseInt(item.addon_nights[rule.id]);
             }
             
-            const subtotalAddon = hargaAddon * item.qty * addonStayNights;
+            const subtotalAddon = hargaAddon * addonStayNights;
             totalNominal += subtotalAddon;
 
             // Masukkan add-on sebagai baris terpisah dengan VENDOR ID aslinya
