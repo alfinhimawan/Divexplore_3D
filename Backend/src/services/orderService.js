@@ -550,9 +550,15 @@ const getPaymentStatus = async (orderId, userId) => {
         await order.update({ status: 'paid' });
       }
       displayStatus = 'success';
-    } else if (displayStatus === 'expire' || displayStatus === 'cancelled') {
-      if (order.status !== 'expired' && order.status !== 'cancelled') {
-        await order.update({ status: displayStatus === 'expire' ? 'expired' : 'cancelled' });
+    } else if (displayStatus === 'expire' || displayStatus === 'cancelled' || displayStatus === 'deny') {
+      // PENTING: Jangan update status saja! Gunakan cancelOrder internal agar stok benar-benar direstore!
+      if (order.status === 'pending') {
+        try {
+          // Panggil cancelOrder dari module yang sama untuk menjalankan flow refund stock & ubah status
+          await module.exports.cancelOrder(order.id, userId);
+        } catch (e) {
+          console.error(`[PaymentStatus] Auto-cancel gagal untuk ${order.id}:`, e.message);
+        }
       }
     }
     
@@ -607,16 +613,19 @@ const getPaymentStatus = async (orderId, userId) => {
  * Batalkan Pesanan (Kembalikan Stok)
  */
 const cancelOrder = async (orderId, userId) => {
-  const order = await Order.findOne({ 
-    where: { id: orderId, user_id: userId },
-    include: [{ model: OrderItem, as: "items" }]
-  });
-
-  if (!order) throw new Error("Pesanan tidak ditemukan.");
-  if (order.status !== 'pending') throw new Error("Hanya pesanan pending yang bisa dibatalkan.");
-
   const transaction = await sequelize.transaction();
   try {
+    // 0. Ambil order DI DALAM transaksi dengan LOCK UPDATE untuk cegah Race Condition
+    const order = await Order.findOne({ 
+      where: { id: orderId, user_id: userId },
+      include: [{ model: OrderItem, as: "items" }],
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    });
+
+    if (!order) throw new Error("Pesanan tidak ditemukan.");
+    if (order.status !== 'pending') throw new Error("Pesanan sudah diproses atau dibatalkan.");
+
     // 1. Beritahu Midtrans untuk membatalkan transaksi (Agar tidak bisa dibayar lagi)
     try {
       const midtransQueryId = order.last_midtrans_id || order.id;

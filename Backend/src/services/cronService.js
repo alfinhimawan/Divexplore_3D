@@ -41,6 +41,18 @@ const initCronJobs = () => {
 
       for (const order of expiredOrders) {
         await sequelize.transaction(async (t) => {
+          // Kunci order DI DALAM transaksi untuk memastikan statusnya masih pending
+          const lockedOrder = await Order.findOne({
+            where: { id: order.id },
+            transaction: t,
+            lock: t.LOCK.UPDATE,
+          });
+
+          if (!lockedOrder || lockedOrder.status !== "pending") {
+            // Jika sudah diurus oleh webhook atau manual cancel, lewati
+            return;
+          }
+
           // Release semua stok yang terkunci untuk order ini
           for (const item of order.items) {
             const inventory = await ProductInventory.findOne({
@@ -58,7 +70,7 @@ const initCronJobs = () => {
             }
           }
           // Ubah status order menjadi cancelled
-          await order.update({ status: "cancelled" }, { transaction: t });
+          await lockedOrder.update({ status: "cancelled" }, { transaction: t });
         });
       }
       logger.info(
