@@ -208,7 +208,7 @@ const handleMidtransWebhook = async (payload) => {
       transaction_status === "deny"
     ) {
       // PEMBAYARAN GAGAL / KADALUARSA
-      order.status = "cancelled";
+      order.status = transaction_status === "expire" ? "expired" : "cancelled";
       await order.save({ transaction });
 
       // Kembalikan stok (Release Inventory Lock)

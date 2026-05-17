@@ -69,8 +69,8 @@ const initCronJobs = () => {
               await inventory.save({ transaction: t });
             }
           }
-          // Ubah status order menjadi cancelled
-          await lockedOrder.update({ status: "cancelled" }, { transaction: t });
+          // Ubah status order menjadi expired
+          await lockedOrder.update({ status: "expired" }, { transaction: t });
         });
       }
       logger.info(

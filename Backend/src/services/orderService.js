@@ -555,7 +555,7 @@ const getPaymentStatus = async (orderId, userId) => {
       if (order.status === 'pending') {
         try {
           // Panggil cancelOrder dari module yang sama untuk menjalankan flow refund stock & ubah status
-          await module.exports.cancelOrder(order.id, userId);
+          await module.exports.cancelOrder(order.id, userId, displayStatus === 'expire' ? 'expired' : 'cancelled');
         } catch (e) {
           console.error(`[PaymentStatus] Auto-cancel gagal untuk ${order.id}:`, e.message);
         }
@@ -612,7 +612,7 @@ const getPaymentStatus = async (orderId, userId) => {
 /**
  * Batalkan Pesanan (Kembalikan Stok)
  */
-const cancelOrder = async (orderId, userId) => {
+const cancelOrder = async (orderId, userId, newStatus = 'cancelled') => {
   const transaction = await sequelize.transaction();
   try {
     // 0. Ambil order DI DALAM transaksi dengan LOCK UPDATE untuk cegah Race Condition
@@ -643,8 +643,8 @@ const cancelOrder = async (orderId, userId) => {
       console.warn(`[CancelOrder] Midtrans cancel failed/ignored: ${midtransErr.message}`);
     }
 
-    // 2. Update status jadi cancelled di Database Utama
-    await order.update({ status: 'cancelled' }, { transaction });
+    // 2. Update status jadi cancelled/expired di Database Utama
+    await order.update({ status: newStatus }, { transaction });
 
     // 3. Ambil data terakhir agar log pembatalan lengkap (Anti-NULL)
     const lastLog = await PaymentLog.findOne({
@@ -656,7 +656,7 @@ const cancelOrder = async (orderId, userId) => {
     await PaymentLog.create({
       order_id: order.id,
       external_id: order.last_midtrans_id,
-      status_pembayaran: 'cancelled',
+      status_pembayaran: newStatus,
       payment_type: lastLog ? lastLog.payment_type : null,
       transaction_id_midtrans: lastLog ? lastLog.transaction_id_midtrans : null, // Ambil dari log sebelumnya
       raw_response: JSON.stringify({ 
