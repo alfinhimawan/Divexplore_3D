@@ -616,15 +616,22 @@ const cancelOrder = async (orderId, userId) => {
   const transaction = await sequelize.transaction();
   try {
     // 0. Ambil order DI DALAM transaksi dengan LOCK UPDATE untuk cegah Race Condition
+    // PENTING: Jangan gunakan include saat lock: UPDATE di PostgreSQL agar tidak error "FOR UPDATE cannot be applied to outer join"
     const order = await Order.findOne({ 
       where: { id: orderId, user_id: userId },
-      include: [{ model: OrderItem, as: "items" }],
       transaction,
       lock: transaction.LOCK.UPDATE
     });
 
     if (!order) throw new Error("Pesanan tidak ditemukan.");
     if (order.status !== 'pending') throw new Error("Pesanan sudah diproses atau dibatalkan.");
+
+    // Ambil items secara terpisah
+    const items = await OrderItem.findAll({
+      where: { order_id: order.id },
+      transaction
+    });
+    order.items = items;
 
     // 1. Beritahu Midtrans untuk membatalkan transaksi (Agar tidak bisa dibayar lagi)
     try {
