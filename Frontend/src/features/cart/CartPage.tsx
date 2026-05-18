@@ -93,7 +93,7 @@ export default function CartPage() {
       const isAkomodasi = item.type.toLowerCase().includes('akomodasi');
       const multiplier = isAkomodasi ? calculateNights(item.checkIn, item.checkOut) : 1;
       const itemTotal = item.price * item.quantity * multiplier;
-      const addonsTotal = item.addons.reduce((sum, addon) => sum + addon.price, 0) * item.quantity;
+      const addonsTotal = item.addons.reduce((sum, addon: any) => sum + (addon.price * (addon.qty || 1)), 0);
       return total + itemTotal + addonsTotal;
     }, 0);
   };
@@ -297,9 +297,8 @@ export default function CartPage() {
                       </div>
                       <div className={styles.totalVal}>
                         Rp {(
-                          (item.price * (item.type.toLowerCase().includes('akomodasi') ? calculateNights(item.checkIn, item.checkOut) : 1) + 
-                           item.addons.reduce((s, a) => s + a.price, 0)
-                          ) * item.quantity
+                          item.price * item.quantity * (item.type.toLowerCase().includes('akomodasi') ? calculateNights(item.checkIn, item.checkOut) : 1) + 
+                          item.addons.reduce((s, a: any) => s + (a.price * (a.qty || 1)), 0)
                         ).toLocaleString('id-ID')}
                       </div>
                     </div>
@@ -323,7 +322,7 @@ export default function CartPage() {
             
             <div className={styles.summaryRow}>
               <span>Layanan Tambahan</span>
-              <span>Rp {cartItems.reduce((acc, item) => acc + (item.addons.reduce((s, a) => s + a.price, 0) * item.quantity), 0).toLocaleString('id-ID')}</span>
+              <span>Rp {cartItems.reduce((acc, item) => acc + (item.addons.reduce((s, a: any) => s + (a.price * (a.qty || 1)), 0)), 0).toLocaleString('id-ID')}</span>
             </div>
 
             <div className={styles.summaryRow}>

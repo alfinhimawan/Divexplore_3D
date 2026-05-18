@@ -39,10 +39,19 @@ export default function CheckoutPage() {
 
 
 
+  // Helper untuk membersihkan awalan 0 atau 62 karena UI sudah ada +62
+  const cleanPhone = (phone?: string) => {
+    if (!phone) return '';
+    let cleaned = phone.replace(/\D/g, '');
+    if (cleaned.startsWith('62')) cleaned = cleaned.substring(2);
+    else if (cleaned.startsWith('0')) cleaned = cleaned.substring(1);
+    return cleaned;
+  };
+
   // Customer form
   const [form, setForm] = useState({ 
     name: user?.nama_lengkap ?? '', 
-    phone: user?.nomor_telepon ?? '', 
+    phone: cleanPhone(user?.nomor_telepon), 
     email: user?.email ?? '',
     promo: ''
   });
@@ -52,10 +61,15 @@ export default function CheckoutPage() {
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
-    // Filter khusus nomor HP: hanya boleh angka
+    // Filter khusus nomor HP: hanya boleh angka dan hapus awalan 0/62
     let cleanValue = value;
     if (name === 'phone') {
       cleanValue = value.replace(/\D/g, '');
+      if (cleanValue.startsWith('62')) {
+        cleanValue = cleanValue.substring(2);
+      } else if (cleanValue.startsWith('0')) {
+        cleanValue = cleanValue.substring(1);
+      }
     }
 
     setForm(f => ({ ...f, [name]: cleanValue }));
@@ -65,7 +79,13 @@ export default function CheckoutPage() {
   const validate = () => {
     const newErr: Record<string, string> = {};
     if (!form.name.trim()) newErr.name = 'Nama wajib diisi';
-    if (!form.phone.trim()) newErr.phone = 'No. HP wajib diisi';
+    if (!form.phone.trim()) {
+      newErr.phone = 'No. HP wajib diisi';
+    } else if (!form.phone.startsWith('8')) {
+      newErr.phone = 'Format tidak valid (harus diawali angka 8)';
+    } else if (form.phone.length < 9 || form.phone.length > 13) {
+      newErr.phone = 'No. HP harus terdiri dari 9 - 13 angka';
+    }
     if (!form.email.trim() || !form.email.includes('@')) newErr.email = 'Email tidak valid';
     if (!agreed) newErr.agreed = 'Harap setujui syarat & ketentuan';
     setErrors(newErr);
@@ -138,6 +158,7 @@ export default function CheckoutPage() {
       // 2. Simpan data penting ke localStorage agar bisa diakses di halaman pembayaran
       localStorage.setItem('divexplore_last_snap_token', snapToken);
       if (orderData) {
+        orderData.items = cartItems; // Simpan items agar terbaca di halaman status
         localStorage.setItem('divexplore_last_order_data', JSON.stringify(orderData));
       }
 
@@ -216,7 +237,7 @@ export default function CheckoutPage() {
           <div className={`${styles.stepCircle} ${styles.stepDone}`}>
             <CheckCircle2 size={16} />
           </div>
-          <span className={styles.stepLabel}>Keranjang</span>
+          <span className={styles.stepLabel}>Rencana Perjalanan</span>
         </div>
         <div className={`${styles.stepLine} ${styles.stepLineDone}`} />
         <div className={styles.step}>

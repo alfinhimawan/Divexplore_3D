@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import ReactPaginatePkg from "react-paginate";
+const ReactPaginate: any = (ReactPaginatePkg as any).default || ReactPaginatePkg;
 import {
   Calendar,
   Users,
@@ -98,6 +100,10 @@ export default function OrderHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   // Review Modal State
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [selectedOrderForReview, setSelectedOrderForReview] = useState<{
@@ -134,6 +140,16 @@ export default function OrderHistoryPage() {
     }
     return order.status === activeTab;
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const currentOrders = filteredOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const getPrimaryItem = (order: Order) => {
     if (!order.items?.length) return null;
@@ -471,7 +487,7 @@ export default function OrderHistoryPage() {
               </button>
             </div>
           ) : (
-            filteredOrders.map((order) => {
+            currentOrders.map((order) => {
               const cfg =
                 STATUS_CONFIG[order.status] || {
                   label: order.status.toUpperCase(),
@@ -605,7 +621,7 @@ export default function OrderHistoryPage() {
                           <CreditCard size={13} /> Bayar Sekarang
                         </button>
                       )}
-                      {(order.status === "canceled" || order.status === "cancelled" || order.status === "expired") && (
+                      {order.status !== "pending" && (
                         <button
                           className={styles.btnReorder}
                           onClick={() => {
@@ -629,18 +645,32 @@ export default function OrderHistoryPage() {
         </div>
 
         {/* ── Pagination ── */}
-        {filteredOrders.length > 10 && (
-          <div className={styles.pagination}>
-            <button className={styles.pageBtn}>
-              <ChevronLeft size={15} /> Prev
-            </button>
-            <button className={`${styles.pageBtn} ${styles.pageActive}`}>
-              1
-            </button>
-            <button className={styles.pageBtn}>
-              Next <ChevronRight size={15} />
-            </button>
-          </div>
+        {!loading && totalPages > 1 && (
+          <ReactPaginate
+            breakLabel="..."
+            nextLabel={<ChevronRight size={16} />}
+            onPageChange={(e: { selected: number }) => {
+              setCurrentPage(e.selected + 1);
+              window.scrollTo({ top: 300, behavior: "smooth" });
+            }}
+            pageRangeDisplayed={3}
+            marginPagesDisplayed={1}
+            pageCount={totalPages}
+            previousLabel={<ChevronLeft size={16} />}
+            renderOnZeroPageCount={null}
+            containerClassName={styles.pagination}
+            pageClassName={styles.pageItem}
+            pageLinkClassName={styles.pageBtn}
+            activeLinkClassName={styles.pageActive}
+            previousClassName={styles.pageItem}
+            nextClassName={styles.pageItem}
+            previousLinkClassName={styles.pageBtn}
+            nextLinkClassName={styles.pageBtn}
+            breakClassName={styles.pageItem}
+            breakLinkClassName={styles.pageBtn}
+            disabledClassName={styles.pageDisabled}
+            forcePage={currentPage - 1}
+          />
         )}
       </main>
 

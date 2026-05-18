@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import ReactPaginatePkg from "react-paginate";
+const ReactPaginate: any = (ReactPaginatePkg as any).default || ReactPaginatePkg;
 import { api } from "../../utils/api";
 import { useAuth } from "../../app/providers/AuthContext";
 import {
   ShoppingCart,
-  MapPin,
   Star,
   Filter,
   Search,
@@ -18,6 +19,7 @@ import {
   ShieldCheck,
   Clock,
   Tag,
+  Users,
 } from "lucide-react";
 import styles from "./CatalogPage.module.css";
 import Header from "../../components/common/Header";
@@ -382,7 +384,7 @@ export default function CatalogPage() {
                     <p className={styles.cardDesc}>{item.desc}</p>
                     {"kapasitas" in item && (
                       <div className={styles.cardMeta}>
-                        <MapPin size={12} /> {(item as any).kapasitas}
+                        <Users size={12} /> {(item as any).kapasitas} Orang
                       </div>
                     )}
                     {item.addons && item.addons.length > 0 && (
@@ -515,33 +517,29 @@ export default function CatalogPage() {
 
           {/* Pagination UI */}
           {!isLoading && totalPages > 1 && (
-            <div className={styles.pagination}>
-              <button
-                className={styles.pageBtn}
-                onClick={() => paginate(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft size={16} />
-              </button>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
-                <button
-                  key={num}
-                  className={`${styles.pageBtn} ${currentPage === num ? styles.pageActive : ""}`}
-                  style={currentPage === num ? { background: currentCat.color, borderColor: currentCat.color } : {}}
-                  onClick={() => paginate(num)}
-                >
-                  {num}
-                </button>
-              ))}
-
-              <button
-                className={styles.pageBtn}
-                onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight size={16} />
-              </button>
+            <div style={{ "--active-color": currentCat.color } as React.CSSProperties}>
+              <ReactPaginate
+                breakLabel="..."
+                nextLabel={<ChevronRight size={16} />}
+                onPageChange={(e: { selected: number }) => paginate(e.selected + 1)}
+                pageRangeDisplayed={3}
+                marginPagesDisplayed={1}
+                pageCount={totalPages}
+                previousLabel={<ChevronLeft size={16} />}
+                renderOnZeroPageCount={null}
+                containerClassName={styles.pagination}
+                pageClassName={styles.pageItem}
+                pageLinkClassName={styles.pageBtn}
+                activeLinkClassName={styles.pageActive}
+                previousClassName={styles.pageItem}
+                nextClassName={styles.pageItem}
+                previousLinkClassName={styles.pageBtn}
+                nextLinkClassName={styles.pageBtn}
+                breakClassName={styles.pageItem}
+                breakLinkClassName={styles.pageBtn}
+                disabledClassName={styles.pageDisabled}
+                forcePage={currentPage - 1}
+              />
             </div>
           )}
         </main>
