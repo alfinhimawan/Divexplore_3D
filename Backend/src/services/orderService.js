@@ -429,7 +429,7 @@ const getAdminOrders = async () => {
 /**
  * Ambil Snap Token untuk Order yang sudah ada (untuk bayar ulang dari riwayat)
  */
-const getSnapToken = async (orderId, userId, origin) => {
+const getSnapToken = async (orderId, userId, origin, forceNew = false) => {
   const order = await Order.findOne({
     where: { id: orderId, user_id: userId },
     include: [{ association: "user", attributes: ["nama_lengkap", "email", "nomor_telepon"] }]
@@ -447,9 +447,9 @@ const getSnapToken = async (orderId, userId, origin) => {
 
   // Generate Midtrans Snap Token
   try {
-    // JANGAN buat ID baru jika sudah ada ID Midtrans terakhir yang tersimpan di DB
+    // JANGAN buat ID baru jika sudah ada ID Midtrans terakhir yang tersimpan di DB (kecuali dipaksa untuk ganti metode)
     // Ini kunci agar Midtrans tidak memunculkan pop-up pilihan metode lagi jika sudah dipilih
-    const midtransOrderId = order.last_midtrans_id || `${order.id}-${Date.now()}`;
+    const midtransOrderId = (forceNew ? null : order.last_midtrans_id) || `${order.id}-${Date.now()}`;
     
     const now = new Date();
     const timeoutAt = new Date(order.timeout_at);
