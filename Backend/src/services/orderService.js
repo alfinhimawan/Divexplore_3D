@@ -262,7 +262,7 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
           email: userInfo?.email || ""
         },
         expiry: {
-          unit: "minutes",
+          unit: "minute",
           duration: 15
         },
       };
@@ -451,6 +451,11 @@ const getSnapToken = async (orderId, userId, origin) => {
     // Ini kunci agar Midtrans tidak memunculkan pop-up pilihan metode lagi jika sudah dipilih
     const midtransOrderId = order.last_midtrans_id || `${order.id}-${Date.now()}`;
     
+    const now = new Date();
+    const timeoutAt = new Date(order.timeout_at);
+    // Hitung sisa waktu bayar dalam menit (minimal 1 menit)
+    const remainingMinutes = Math.max(1, Math.ceil((timeoutAt.getTime() - now.getTime()) / 60000));
+
     const parameter = {
       transaction_details: {
         order_id: midtransOrderId,
@@ -462,7 +467,11 @@ const getSnapToken = async (orderId, userId, origin) => {
         email: order.user?.email || "",
         phone: order.user?.nomor_telepon || "",
       },
-      };
+      expiry: {
+        unit: "minute",
+        duration: remainingMinutes
+      }
+    };
 
       // Hanya tambahkan callback jika origin terdeteksi (Cara paling bersih & efisien)
       if (origin) {
