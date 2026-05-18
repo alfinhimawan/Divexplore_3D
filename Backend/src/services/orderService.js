@@ -23,6 +23,28 @@ const calculateNights = (checkIn, checkOut) => {
   return diffDays > 0 ? diffDays : 1;
 };
 
+/**
+ * Helper to format date for Midtrans expiry start_time
+ */
+const formatDateForMidtrans = (dateInput) => {
+  const d = new Date(dateInput);
+  const pad = (n) => String(n).padStart(2, "0");
+  
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const date = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  const seconds = pad(d.getSeconds());
+  
+  const offset = -d.getTimezoneOffset();
+  const offsetSign = offset >= 0 ? "+" : "-";
+  const offsetHours = pad(Math.floor(Math.abs(offset) / 60));
+  const offsetMinutes = pad(Math.abs(offset) % 60);
+  
+  return `${year}-${month}-${date} ${hours}:${minutes}:${seconds} ${offsetSign}${offsetHours}${offsetMinutes}`;
+};
+
 // Konfigurasi Midtrans (Memaksa Sandbox mode untuk keperluan presentasi)
 const snap = new midtransClient.Snap({
   isProduction: false, // <-- DIUBAH PAKSA KE FALSE AGAR KUNCI SIMULASI BISA BERJALAN
@@ -262,6 +284,7 @@ const createOrder = async (userId, items, promoCode = null, userInfo = null, ori
           email: userInfo?.email || ""
         },
         expiry: {
+          start_time: formatDateForMidtrans(newOrder.createdAt),
           unit: "minute",
           duration: 15
         },
@@ -468,8 +491,9 @@ const getSnapToken = async (orderId, userId, origin, forceNew = false) => {
         phone: order.user?.nomor_telepon || "",
       },
       expiry: {
+        start_time: formatDateForMidtrans(order.createdAt),
         unit: "minute",
-        duration: remainingMinutes
+        duration: 15
       }
     };
 
