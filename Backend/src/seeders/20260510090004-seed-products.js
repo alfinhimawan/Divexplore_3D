@@ -205,7 +205,7 @@ module.exports = {
         id: uuidv4(),
         vendor_id: v3,
         nama_produk: "Standard Garden View",
-        deskripsi: "—",
+        deskripsi: "Kamar nyaman dengan pemandangan taman tropis yang asri, dilengkapi fasilitas AC dan kamar mandi dalam (Kapasitas 2 Orang).",
         harga: 400000,
         thumbnail_url:
           "https://res.cloudinary.com/dzyz0m1iz/image/upload/v1778805028/divexplore/products/Standart_Garden_View.jpg",
