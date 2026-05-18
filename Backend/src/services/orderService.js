@@ -489,7 +489,9 @@ const getSnapToken = async (orderId, userId, origin, forceNew = false) => {
 
     return { 
       snap_token: snapResponse.token,
-      midtrans_order_id: midtransOrderId 
+      midtrans_order_id: midtransOrderId,
+      server_time: new Date().toISOString(),
+      timeout_at: order.timeout_at
     };
   } catch (midtransErr) {
     throw new Error("Gagal menghubungi Midtrans: " + midtransErr.message);
@@ -584,7 +586,9 @@ const getPaymentStatus = async (orderId, userId) => {
       ...statusResponse,
       transaction_status: displayStatus,
       order_id: order.id,
-      gross_amount: order.total_pembayaran
+      gross_amount: order.total_pembayaran,
+      server_time: new Date().toISOString(),
+      timeout_at: order.timeout_at
     };
   } catch (err) {
     console.warn(`[PaymentStatus] Midtrans Error for ${order.id}: ${err.message}`);
@@ -610,7 +614,9 @@ const getPaymentStatus = async (orderId, userId) => {
       permata_va_number: lastLogData?.permata_va_number || null,
       gross_amount: order.total_pembayaran,
       is_fallback: true,
-      error_debug: err.message // Kirim pesan error asli ke FE untuk debug
+      error_debug: err.message, // Kirim pesan error asli ke FE untuk debug
+      server_time: new Date().toISOString(),
+      timeout_at: order.timeout_at
     };
     
     console.log(`[PaymentStatus] Returning Fallback Data for ${order.id}:`, JSON.stringify(fallbackData, null, 2));
