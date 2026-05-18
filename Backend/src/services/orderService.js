@@ -636,6 +636,11 @@ const getPaymentStatus = async (orderId, userId) => {
       bill_key: lastLogData?.bill_key || null,
       biller_code: lastLogData?.biller_code || null,
       permata_va_number: lastLogData?.permata_va_number || null,
+      payment_code: lastLogData?.payment_code || null,
+      store: lastLogData?.store || null,
+      card_type: lastLogData?.card_type || null,
+      masked_card: lastLogData?.masked_card || null,
+      bank: lastLogData?.bank || null,
       gross_amount: order.total_pembayaran,
       is_fallback: true,
       error_debug: err.message, // Kirim pesan error asli ke FE untuk debug
