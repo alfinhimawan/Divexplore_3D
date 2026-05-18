@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../app/providers/AuthContext";
 import { api } from "../../utils/api";
 import {
-  Box,
   Clock,
   Users,
   Award,
@@ -26,6 +25,7 @@ import {
   X,
   CreditCard,
   CloudRain,
+  Building,
 } from "lucide-react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -52,6 +52,9 @@ export default function ProductDetailPage() {
   const [activeAddonTab, setActiveAddonTab] = useState<string>("");
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
+  
+  // Dapatkan tanggal hari ini sesuai zona waktu lokal (WIB/WITA/WIT), bukan UTC
+  const todayString = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
   // Inisialisasi state tanggal dari URL atau SessionStorage (Bulletproof)
   const queryParams = new URLSearchParams(window.location.search);
@@ -122,9 +125,9 @@ export default function ProductDetailPage() {
 
         const relRes = await api.get("/api/products");
         const allProds = relRes.data?.products || [];
-        setRelatedProducts(
-          allProds.filter((p: any) => p.id !== id).slice(0, 5),
-        );
+        const filteredProds = allProds.filter((p: any) => p.id !== id);
+        const shuffledProds = filteredProds.sort(() => 0.5 - Math.random());
+        setRelatedProducts(shuffledProds.slice(0, 5));
       } catch (err) {
         console.error("Gagal load detail:", err);
       } finally {
@@ -906,8 +909,16 @@ export default function ProductDetailPage() {
       id: product.id,
       product_id: product.id,
       name: product.nama_produk,
-      type: product.vendor?.kategori || "AKTIVITAS",
-      location: product.lokasi || "Indonesia",
+      type: (() => {
+        const cat = product.vendor?.kategori?.toLowerCase() || "";
+        const map: Record<string, string> = {
+          aktivitas_tur: "Aktivitas Tur", homestay: "Akomodasi", kuliner: "Kuliner", 
+          fotografi: "Fotografi", peralatan: "Peralatan", bahari: "Aktivitas Bahari",
+        };
+        return map[cat] || (cat ? cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, " ") : "Paket Wisata");
+      })(),
+      location: product.vendor?.alamat_lengkap || "Gili Trawangan, Lombok",
+      vendor_name: product.vendor?.nama_toko || "",
       price: basePrice,
       quantity: quantity,
       image: product.thumbnail_url || PRODUCT_IMAGES[0],
@@ -977,8 +988,16 @@ export default function ProductDetailPage() {
       id: product.id,
       product_id: product.id,
       name: product.nama_produk,
-      type: product.vendor?.kategori || "AKTIVITAS",
-      location: product.lokasi || "Indonesia",
+      type: (() => {
+        const cat = product.vendor?.kategori?.toLowerCase() || "";
+        const map: Record<string, string> = {
+          aktivitas_tur: "Aktivitas Tur", homestay: "Akomodasi", kuliner: "Kuliner", 
+          fotografi: "Fotografi", peralatan: "Peralatan", bahari: "Aktivitas Bahari",
+        };
+        return map[cat] || (cat ? cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, " ") : "Paket Wisata");
+      })(),
+      location: product.vendor?.alamat_lengkap || "Gili Trawangan, Lombok",
+      vendor_name: product.vendor?.nama_toko || "",
       price: basePrice,
       quantity: quantity,
       image: product.thumbnail_url || PRODUCT_IMAGES[0],
@@ -1133,15 +1152,7 @@ export default function ProductDetailPage() {
                 </span>
                 <span className={styles.tagOrange}>TERVERIFIKASI</span>
               </div>
-              {product.hotspots && product.hotspots.length > 0 && (
-                <button
-                  className={styles.view360Btn}
-                  onClick={() => navigate(`/hotspot-3d/${product.id}`)}
-                >
-                  <Box size={16} />
-                  Lihat 360°
-                </button>
-              )}
+
             </div>
 
             <div className={styles.thumbnails}>
@@ -1235,7 +1246,7 @@ export default function ProductDetailPage() {
                       <Clock className={styles.inputIconLeft} size={14} />
                       <input
                         type="date"
-                        min={new Date().toISOString().split("T")[0]}
+                        min={todayString}
                         value={checkInDate}
                         onChange={(e) => setCheckInDate(e.target.value)}
                       />
@@ -1248,7 +1259,7 @@ export default function ProductDetailPage() {
                       <input
                         type="date"
                         min={
-                          checkInDate || new Date().toISOString().split("T")[0]
+                          checkInDate || todayString
                         }
                         value={checkOutDate}
                         onChange={(e) => setCheckOutDate(e.target.value)}
@@ -1263,7 +1274,7 @@ export default function ProductDetailPage() {
                     <Clock className={styles.inputIconLeft} size={14} />
                     <input
                       type="date"
-                      min={new Date().toISOString().split("T")[0]}
+                      min={todayString}
                       value={bookingDate}
                       onChange={(e) => setBookingDate(e.target.value)}
                     />
@@ -1819,7 +1830,7 @@ export default function ProductDetailPage() {
                     {rel.nama_produk}
                   </h3>
                   <div className={styles.relatedLocation}>
-                    <MapPin size={10} /> {rel.vendor?.nama_toko || 'Vendor Terverifikasi'}
+                    <Building size={10} /> {rel.vendor?.nama_toko || 'Vendor Terverifikasi'}
                   </div>
                   <div className={styles.relatedFooter}>
                     <div className={styles.relatedPrice}>

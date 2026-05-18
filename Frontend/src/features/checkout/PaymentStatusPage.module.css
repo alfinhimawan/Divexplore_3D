@@ -230,14 +230,75 @@
 .primaryBtn {
   width: 100%;
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  background: linear-gradient(135deg, #0ea5e9, #0284c7);
-  color: white; font-size: 15px; font-weight: 700;
-  padding: 15px; border: none; border-radius: 12px; cursor: pointer;
-  margin-bottom: 10px;
-  transition: all .25s;
-  box-shadow: 0 4px 20px rgba(14,165,233,.3);
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white; font-size: 14px; font-weight: 700;
+  padding: 14px; border: none; border-radius: 12px; cursor: pointer;
+  margin-bottom: 12px;
+  transition: all .25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
 }
-.primaryBtn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(14,165,233,.4); }
+.primaryBtn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.45); }
+.primaryBtn:active { transform: translateY(0); }
+
+/* Premium Solid Blue Button */
+.instructionBtn {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  border: none;
+  color: white; font-size: 14px; font-weight: 700;
+  padding: 14px; border-radius: 12px; cursor: pointer;
+  margin-bottom: 12px;
+  transition: all .25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.25);
+}
+.instructionBtn:hover {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+}
+.instructionBtn:active { transform: translateY(0); }
+
+/* Premium Solid Amber Button */
+.changeMethodBtn {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  color: white; font-size: 14px; font-weight: 700;
+  padding: 14px; border-radius: 12px; cursor: pointer;
+  margin-bottom: 12px;
+  transition: all .25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25);
+}
+.changeMethodBtn:hover {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+}
+.changeMethodBtn:active { transform: translateY(0); }
+
+/* Premium Solid Red Button */
+.cancelBtn {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border: none;
+  color: white; font-size: 14px; font-weight: 700;
+  padding: 14px; border-radius: 12px; cursor: pointer;
+  margin-bottom: 12px;
+  transition: all .25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+}
+.cancelBtn:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.35);
+}
+.cancelBtn:active { transform: translateY(0); }
 
 .ghostBtn {
   width: 100%;
@@ -297,8 +358,7 @@
   display: flex; align-items: center; justify-content: center; gap: 10px;
   background: linear-gradient(135deg, #f59e0b, #ef4444);
   color: white; font-size: 15px; font-weight: 700;
-  padding: 15px; border: none; border-radius: 12px; cursor: pointer;
-  margin-bottom: 10px;
+  padding: 15px; border: 1px solid transparent; border-radius: 12px; cursor: pointer;
   transition: all .25s;
   box-shadow: 0 4px 20px rgba(239,68,68,.25);
 }
@@ -307,12 +367,12 @@
 .ghostBtnSuccess {
   width: 100%;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  background: transparent; border: 1px solid #334155;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid #334155;
   color: #94a3b8; font-size: 14px;
   padding: 12px; border-radius: 12px; cursor: pointer;
   transition: all .2s;
 }
-.ghostBtnSuccess:hover { border-color: #64748b; color: #e2e8f0; }
+.ghostBtnSuccess:hover { background: rgba(255, 255, 255, 0.1); border-color: #64748b; color: #e2e8f0; }
 
 /* ── Expired ────────────────────────────────────────── */
 .expiredDesc { font-size: 13px; color: #94a3b8; margin: 0 0 20px; line-height: 1.6; }

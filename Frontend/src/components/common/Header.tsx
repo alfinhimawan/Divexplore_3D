@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../app/providers/AuthContext';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Map, Grid, History, LogOut, LogIn } from 'lucide-react';
 import styles from './Header.module.css';
 import Swal from 'sweetalert2';
 
@@ -77,12 +77,14 @@ export default function Header() {
           className={`${styles.navLink} ${isActive('/') ? styles.activeLink : ''}`}
           onClick={() => navigate('/')}
         >
+          <Map size={16} />
           Destinasi
         </span>
         <span
           className={`${styles.navLink} ${isActive('/catalog') || isActive('/product') ? styles.activeLink : ''}`}
           onClick={() => navigate('/catalog')}
         >
+          <Grid size={16} />
           Katalog
         </span>
         {isAuthenticated && (
@@ -90,6 +92,7 @@ export default function Header() {
             className={`${styles.navLink} ${isActive('/orders') ? styles.activeLink : ''}`}
             onClick={() => navigate('/orders')}
           >
+            <History size={16} />
             Riwayat Pesanan
           </span>
         )}
@@ -113,10 +116,14 @@ export default function Header() {
               />
               <span>{user.nama_lengkap}</span>
             </div>
-            <button className={styles.logoutBtn} onClick={handleLogout}>Keluar</button>
+            <button className={styles.logoutBtn} onClick={handleLogout}>
+              <LogOut size={14} /> Keluar
+            </button>
           </>
         ) : (
-          <button className={styles.logoutBtn} onClick={() => navigate('/login')}>Masuk</button>
+          <button className={styles.logoutBtn} onClick={() => navigate('/login')}>
+            <LogIn size={14} /> Masuk
+          </button>
         )}
       </div>
     </header>
