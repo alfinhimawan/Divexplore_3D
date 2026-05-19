@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { api } from '../../utils/api';
-import { OrbitControls, Html, Float, Sparkles } from '@react-three/drei';
+import { OrbitControls, Html, Float, Sparkles, useGLTF, Center, Environment, ContactShadows, MeshTransmissionMaterial, SpotLight } from '@react-three/drei';
 import * as THREE from 'three';
-import { 
-  Box, 
-  ShieldCheck, 
-  Clock, 
+import {
+  Box,
+  ShieldCheck,
+  Clock,
   Ship,
   Camera,
   Utensils,
@@ -22,7 +22,7 @@ import Header from '../../components/common/Header';
 // Reusable Hotspot Component
 function HotspotMarker({ data, onClick, isSelected }: { data: any, onClick: (data: any) => void, isSelected: boolean }) {
   const meshRef = useRef<THREE.Group>(null);
-  
+
   // Simple floating animation (Gunakan angka tetap agar tidak NaN)
   useFrame((state) => {
     if (meshRef.current) {
@@ -38,17 +38,24 @@ function HotspotMarker({ data, onClick, isSelected }: { data: any, onClick: (dat
         <meshBasicMaterial color={isSelected ? "#f97316" : "#0ea5e9"} />
         <pointLight color={isSelected ? "#f97316" : "#0ea5e9"} intensity={2} distance={2} />
       </mesh>
-      
+
       {/* Outer Ring */}
       <mesh>
         <ringGeometry args={[0.2, 0.22, 32]} />
         <meshBasicMaterial color={isSelected ? "#f97316" : "#0ea5e9"} transparent opacity={0.5} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* HTML Label */}
-      <Html position={[0.3, 0.2, 0]} center zIndexRange={[100, 0]}>
-        <div 
-          className={`${styles.hotspotLabel} ${isSelected ? styles.hotspotSelected : ""}`} 
+      {/* HTML Label - Menggunakan Spatial Anchoring (Transform & Sprite) */}
+      <Html
+        position={[0, 0.8, 0]}
+        center
+        transform
+        sprite
+        distanceFactor={12}
+        zIndexRange={[100, 0]}
+      >
+        <div
+          className={`${styles.hotspotLabel} ${isSelected ? styles.hotspotSelected : ""}`}
           onClick={(e) => { e.stopPropagation(); onClick(data); }}
         >
           <div className={styles.hotspotInfo}>
@@ -67,40 +74,221 @@ function HotspotMarker({ data, onClick, isSelected }: { data: any, onClick: (dat
   );
 }
 
+// Komponen 3D Model Ocean v5 (dengan Animasi & Material Custom)
+function OceanModel() {
+  const { scene } = useGLTF('/ocean_v5.glb');
+
+  // Referensi untuk menyimpan objek agar bisa dianimasikan
+  const ikanRefs = useRef<THREE.Object3D[]>([]);
+  const diverRefs = useRef<THREE.Object3D[]>([]);
+
+  useLayoutEffect(() => {
+    ikanRefs.current = [];
+    diverRefs.current = [];
+
+    // Auto-Scale
+    const box = new THREE.Box3().setFromObject(scene);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const scale = 20 / maxDim;
+    scene.scale.setScalar(scale);
+
+    scene.traverse((obj) => {
+      const name = obj.name.toLowerCase().trim();
+
+      // --- TANGKAP OBJEK PENYELAM ---
+      if (
+        name === 'sketchfab_model002' ||
+        name === 'sketchfab_model003' ||
+        name === 'sketchfab_model004'
+      ) {
+        if (obj.userData.initialY === undefined) {
+          obj.userData.initialY = obj.position.y;
+          obj.userData.initialRotX = obj.rotation.x;
+        }
+        diverRefs.current.push(obj);
+      }
+
+      // --- LOGIKA PEWARNAAN MATERIAL ---
+      if ((obj as THREE.Mesh).isMesh) {
+        const mesh = obj as THREE.Mesh;
+        const meshName = mesh.name.toLowerCase().trim();
+        const material = mesh.material as THREE.MeshStandardMaterial;
+
+        if (material) {
+          if (meshName.includes('ikan') || meshName.includes('fish') || meshName === 'ikan_ungu') {
+            material.color = new THREE.Color('#9CA3AF'); // Abu-abu ikan
+            material.roughness = 0.4;
+            material.metalness = 0.6;
+            if (material.emissive) material.emissive.setHex(0x000000);
+            ikanRefs.current.push(obj);
+          } else if (meshName.includes('karang') || meshName.includes('coral')) {
+            material.color = new THREE.Color('#CD5C5C'); // Merah karang
+            material.roughness = 0.9;
+            material.metalness = 0.1;
+          } else if (meshName.includes('plant') || meshName.includes('rumput')) {
+            material.color = new THREE.Color('#2E8B57'); // Hijau laut
+          } else if (meshName.includes('terrain') || meshName.includes('ground') || meshName.includes('plane') || meshName.includes('sand') || meshName.includes('dataran') || meshName.includes('pasir')) {
+            material.color = new THREE.Color('#E2D0A5'); // Warna pasir
+          } else {
+            // Ubah magenta error jadi pasir (hanya jika bukan bagian dari penyelam)
+            if (
+              !meshName.includes('object_') &&
+              material.color && material.color.r > 0.8 && material.color.b > 0.8 && material.color.g < 0.2
+            ) {
+              material.color = new THREE.Color('#E2D0A5');
+              if (material.emissive) material.emissive.setHex(0x000000);
+            }
+          }
+          material.needsUpdate = true;
+        }
+      }
+    });
+  }, [scene]);
+
+  useFrame((state) => {
+    const t = state.clock.getElapsedTime();
+
+    // Animasi putaran ikan
+    ikanRefs.current.forEach((ikan) => {
+      ikan.rotation.y -= 0.001;
+    });
+
+    // Animasi mengambang untuk penyelam (Buoyancy)
+    diverRefs.current.forEach((diver, i) => {
+      diver.position.y = diver.userData.initialY + Math.sin(t * 1.5 + i) * 0.4;
+      diver.rotation.x = diver.userData.initialRotX + Math.cos(t * 1.0 + i) * 0.1;
+    });
+  });
+
+  return (
+    <Center position={[0, -1.5, -4]}>
+      <primitive object={scene} />
+    </Center>
+  );
+}
+
+// Komponen Gelembung Air (Procedural)
+function GelembungAir() {
+  const groupRef = useRef<THREE.Group>(null)
+
+  const bubbles = useMemo(() => {
+    return Array.from({ length: 150 }).map(() => ({
+      x: (Math.random() - 0.5) * 60,
+      y: (Math.random() - 0.5) * 30,
+      z: (Math.random() - 0.5) * 60,
+      scale: Math.random() * 0.15 + 0.05,
+      speed: Math.random() * 0.03 + 0.01,
+    }))
+  }, [])
+
+  useFrame(() => {
+    if (groupRef.current) {
+      groupRef.current.children.forEach((bubble, i) => {
+        bubble.position.y += bubbles[i].speed
+        if (bubble.position.y > 20) bubble.position.y = -5
+      })
+    }
+  })
+
+  return (
+    <group ref={groupRef}>
+      {bubbles.map((b, i) => (
+        <mesh key={i} position={[b.x, b.y, b.z]} scale={b.scale}>
+          <sphereGeometry args={[1, 16, 16]} />
+          <meshStandardMaterial color="#ffffff" transparent opacity={0.3} roughness={0} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+// Lakukan preload agar model di-download di background secepat mungkin
+useGLTF.preload('/ocean_v5.glb');
+
 // The 3D Scene Wrapper
 function OceanScene({ hotspots, selectedId, onSelect }: { hotspots: any[], selectedId: any, onSelect: (data: any) => void }) {
   return (
     <>
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[10, 10, 5]} intensity={1} />
-      
-      {/* Particles/Bubbles */}
-      <Sparkles count={100} scale={10} size={4} speed={0.4} opacity={0.2} color="#0ea5e9" />
-      
-      {/* Background elements to give depth */}
-      <Float speed={1.5} rotationIntensity={0.5} floatIntensity={1}>
-        <mesh position={[0, -5, -5]}>
-          <cylinderGeometry args={[5, 5, 2, 32]} />
-          <meshStandardMaterial color="#0b1e36" transparent opacity={0.8} />
-        </mesh>
-      </Float>
+      {/* Latar Belakang & Kabut Laut Dalam Pekat */}
+      <color attach="background" args={['#031021']} />
+      <fog attach="fog" args={['#031021', 15, 75]} />
+
+      {/* Pencahayaan Bawah Laut Dramatis */}
+      <ambientLight intensity={0.4} color="#2b5b84" />
+      <directionalLight position={[10, 30, 10]} intensity={1.5} color="#88ccff" />
+
+      {/* Efek Cahaya Matahari Menyudut (God Rays) */}
+      <SpotLight
+        distance={150}
+        angle={0.6}
+        penumbra={0.8}
+        attenuation={2}
+        anglePower={5}
+        intensity={150}
+        color="#aaffee"
+        position={[20, 100, 20]}
+        volumetric={true}
+        opacity={0.6}
+      />
+
+      {/* Efek Marine Snow / Plankton Besar & Terang */}
+      <Sparkles
+        count={3000}
+        scale={[120, 80, 120]}
+        size={8}
+        speed={0.3}
+        opacity={0.8}
+        color="#aaddff"
+      />
+
+      {/* Permukaan Air (Langit-langit Laut) */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 100, 0]}>
+        <planeGeometry args={[2000, 2000]} />
+        <MeshTransmissionMaterial
+          color="#1a4d5c"
+          transmission={0.9}
+          opacity={0.5}
+          transparent={true}
+          roughness={0.2}
+          ior={1.33}
+          thickness={5}
+        />
+      </mesh>
+
+      {/* Efek Gelembung Udara Buatan */}
+      <GelembungAir />
+
+      <Environment preset="night" />
+      <ContactShadows opacity={0.8} scale={50} blur={3} far={10} color="#000000" />
+
+      {/* 3D Model Ocean_v5 */}
+      <Suspense fallback={
+        <Html center>
+          <div style={{ color: 'white', background: 'rgba(0,0,0,0.7)', padding: '12px 20px', borderRadius: '8px', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
+            Memuat Model 3D...
+          </div>
+        </Html>
+      }>
+        <OceanModel />
+      </Suspense>
 
       {/* Hotspots */}
       {hotspots.map((spot: any) => (
-        <HotspotMarker 
-          key={spot.id} 
-          data={spot} 
+        <HotspotMarker
+          key={spot.id}
+          data={spot}
           onClick={onSelect}
           isSelected={selectedId === spot.id}
         />
       ))}
-      
-      <OrbitControls 
-        enablePan={true} 
-        enableZoom={true} 
+
+      <OrbitControls
+        enablePan={true}
+        enableZoom={true}
         enableRotate={true}
-        minDistance={2}
-        maxDistance={10}
+        minDistance={1}
+        maxDistance={100}
       />
     </>
   );
@@ -109,7 +297,7 @@ function OceanScene({ hotspots, selectedId, onSelect }: { hotspots: any[], selec
 export default function Hotspot3DPage() {
   const navigate = useNavigate();
   const [hotspots, setHotspots] = useState<any[]>([]);
-  const [selectedHotspot, setSelectedHotspot] = useState<any>(null); 
+  const [selectedHotspot, setSelectedHotspot] = useState<any>(null);
   const [isBundled, setIsBundled] = useState(false);
 
   useEffect(() => {
@@ -117,28 +305,28 @@ export default function Hotspot3DPage() {
       try {
         const res = await api.get('/api/products');
         const products = res.data?.products || [];
-        
+
         // Batasi hanya 3 produk utama
         const mainProducts = products.slice(0, 3);
-        
+
         const spots = mainProducts.map((p: any, i: number) => {
           // KOORDINAT TETAP (FIXED) - Dijamin tidak akan lari ke pojok
           let pos: [number, number, number] = [0, 0, 0];
-          
+
           if (i === 0) {
-            // Sharing Boat (Kiri)
-            pos = [-2.2, -0.3, 0];
+            // Sharing Boat (Kiri - Area Karang/Pasir)
+            pos = [-7, -2, -2];
           } else if (i === 1) {
-            // Private Boat (Atas Tengah)
-            pos = [0, 1.5, -1];
+            // Discovery Scuba (Tengah Atas - Area Kumpulan Ikan)
+            pos = [0, 3, -4];
           } else if (i === 2) {
-            // Discovery Scuba (Kanan - Digeser ke tengah agar tidak tertutup sidebar)
-            pos = [1.2, -1.2, 1];
+            // Drone (Kanan - Area Kapal Karam)
+            pos = [6, -1, -3];
           }
-          
+
           const nameL = p.nama_produk.toLowerCase();
           let IconComp = Compass;
-          
+
           if (nameL.includes('dive') || nameL.includes('scuba') || nameL.includes('snorkel')) {
             IconComp = Waves;
           } else if (nameL.includes('boat') || nameL.includes('hopping')) {
@@ -163,7 +351,7 @@ export default function Hotspot3DPage() {
             category: p.vendor?.kategori || 'AKTIVITAS BAHARI'
           };
         });
-        
+
         setHotspots(spots);
         if (spots.length > 0) setSelectedHotspot(spots[0]);
       } catch (err) {
@@ -214,10 +402,10 @@ export default function Hotspot3DPage() {
       <main className={styles.mainArea}>
         {/* 3D Canvas Column */}
         <div className={styles.canvasContainer}>
-          <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
+          <Canvas camera={{ position: [0, 2, 15], fov: 50 }}>
             <OceanScene hotspots={hotspots} selectedId={selectedHotspot?.id} onSelect={setSelectedHotspot} />
           </Canvas>
-          
+
           {/* Bottom Badge */}
           <div className={styles.locationBadge}>
             Gili Trawangan
@@ -227,22 +415,22 @@ export default function Hotspot3DPage() {
         {/* Product Detail Sidebar */}
         <aside className={styles.sidePanel}>
           <h2 className={styles.panelTitle}>Detail Produk</h2>
-          
+
           <div className={styles.productCard}>
-            <img 
-              src={selectedHotspot?.image} 
-              alt={selectedHotspot?.title} 
+            <img
+              src={selectedHotspot?.image}
+              alt={selectedHotspot?.title}
               className={styles.productImage}
             />
-            
+
             <div className={styles.tag}>{selectedHotspot?.category?.toUpperCase()}</div>
-            
+
             <h3 className={styles.productName}>{selectedHotspot?.title.toUpperCase()}</h3>
-            
+
             <p className={styles.productDesc}>
               {selectedHotspot?.desc}
             </p>
-            
+
             <div className={styles.priceRow}>
               <div className={styles.price} style={isBundled ? { color: '#10b981', textShadow: '0 0 10px rgba(16,185,129,0.2)', transform: 'scale(1.05)', transformOrigin: 'left center', transition: 'all 0.3s' } : { transition: 'all 0.3s' }}>
                 {getTotalPrice()}<span>/orang</span>
@@ -252,7 +440,7 @@ export default function Hotspot3DPage() {
                 Tersedia
               </div>
             </div>
-            
+
             {selectedHotspot?.addons && selectedHotspot.addons.length > 0 ? (
               <div className={styles.bundleBox}>
                 <div className={styles.bundleInfo}>
@@ -265,10 +453,10 @@ export default function Hotspot3DPage() {
                   </div>
                 </div>
                 <label className={styles.switch}>
-                  <input 
-                    type="checkbox" 
-                    checked={isBundled} 
-                    onChange={() => setIsBundled(!isBundled)} 
+                  <input
+                    type="checkbox"
+                    checked={isBundled}
+                    onChange={() => setIsBundled(!isBundled)}
                   />
                   <span className={styles.slider}></span>
                 </label>
@@ -282,12 +470,12 @@ export default function Hotspot3DPage() {
                 </div>
               </div>
             )}
-            
+
             <div className={styles.actions}>
               <button className={styles.btnPrimary} onClick={handleDetailClick}>Lihat Detail</button>
             </div>
           </div>
-          
+
           {/* Sidebar Footer */}
           <div className={styles.footer}>
             <div className={styles.footerItem}>
