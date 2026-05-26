@@ -2,26 +2,28 @@
 const PDFDocument = require("pdfkit");
 const QRCode = require("qrcode");
 
-// --- MODERN COLOR PALETTE ---
+// --- MODERN UI COLOR PALETTE ---
 const colors = {
-  primary: "#0f172a", // Slate 900 (Dark Navy)
-  accent: "#0ea5e9", // Light Blue
-  warning: "#f59e0b", // Orange
-  success: "#10b981", // Emerald
-  textDark: "#1e293b", // Slate 800
+  bgApp: "#f1f5f9", // Slate 100 (Background A4)
+  primary: "#0284c7", // Light Blue (Sky 600)
+  primaryDark: "#0c4a6e", // Sky 900
+  accent: "#f59e0b", // Amber 500
+  success: "#10b981", // Emerald 500
+  textDark: "#0f172a", // Slate 900
   textMuted: "#64748b", // Slate 500
-  lightBg: "#f8fafc", // Slate 50
-  border: "#e2e8f0", // Slate 200
-  white: "#ffffff"
+  border: "#cbd5e1", // Slate 300
+  white: "#ffffff",
+  shadow: "#94a3b8"
 };
 
 /**
- * Generate E-Tiket PDF Buffer (Boarding Pass Style)
+ * Generate E-Tiket PDF Buffer (Card-Based UI)
  */
 const generateEtiketBuffer = (order) => {
   return new Promise(async (resolve, reject) => {
     try {
-      const doc = new PDFDocument({ margin: 40, size: "A4", info: { Title: `E-Tiket - ${order.id}`, Author: "Divexplore 3D" }});
+      // Setup A4 Portrait
+      const doc = new PDFDocument({ margin: 0, size: "A4", info: { Title: `E-Tiket - ${order.id}`, Author: "Divexplore 3D" }});
       const buffers = [];
       doc.on("data", (chunk) => buffers.push(chunk));
       doc.on("end", () => resolve(Buffer.concat(buffers)));
@@ -30,89 +32,106 @@ const generateEtiketBuffer = (order) => {
       const bookingCode = order.id.substring(0, 8).toUpperCase();
       const buyerName = order.user && order.user.nama_lengkap ? order.user.nama_lengkap : "Wisatawan";
       
-      // BACKGROUND
-      doc.rect(0, 0, 595, 842).fill(colors.lightBg);
+      // 1. BACKGROUND KERTAS (Abu terang seperti layar App)
+      doc.rect(0, 0, 595, 842).fill(colors.bgApp);
 
-      // MAIN TICKET WRAPPER (TICKET SHAPE)
-      const startX = 40;
-      const startY = 60;
-      const ticketWidth = 515;
-      const ticketHeight = 450;
+      // --- KARTU TIKET (BOARDING PASS) ---
+      const cardX = 30;
+      const cardY = 120;
+      const cardW = 535;
+      const cardH = 300; // Tinggi kartu
+      const splitX = 390; // Titik sobek vertikal (Pemisah Kiri & Kanan)
+
+      // 2. DROP SHADOW KARTU
+      doc.roundedRect(cardX + 4, cardY + 5, cardW, cardH, 16).fill(colors.shadow);
       
-      // Drop Shadow effect (fake)
-      doc.roundedRect(startX + 3, startY + 3, ticketWidth, ticketHeight, 12).fill("#cbd5e1");
-      // Ticket Body
-      doc.roundedRect(startX, startY, ticketWidth, ticketHeight, 12).fill(colors.white);
+      // 3. BADAN KARTU UTAMA (PUTIH)
+      doc.roundedRect(cardX, cardY, cardW, cardH, 16).fill(colors.white);
 
-      // TICKET HEADER (NAVY)
+      // 4. HEADER KARTU (WARNA BIRU)
       doc.save();
-      doc.roundedRect(startX, startY, ticketWidth, 70, 12).clip();
-      doc.rect(startX, startY, ticketWidth, 70).fill(colors.primary);
+      doc.roundedRect(cardX, cardY, cardW, 65, 16).clip();
+      doc.rect(cardX, cardY, cardW, 65).fill(colors.primaryDark);
       doc.restore();
+      // Sudut tajam di bagian bawah header agar nyambung ke kartu
+      doc.rect(cardX, cardY + 45, cardW, 20).fill(colors.primaryDark);
 
-      // Fix square corners at bottom of header
-      doc.rect(startX, startY + 50, ticketWidth, 20).fill(colors.primary);
+      // Logo & Teks Header
+      doc.fillColor(colors.accent).fontSize(22).font("Helvetica-Bold").text("DIVEXPLORE 3D", cardX + 25, cardY + 22);
+      doc.fillColor(colors.white).fontSize(12).font("Helvetica-Bold").text("E-BOARDING PASS", cardX, cardY + 28, { width: cardW - 25, align: "right", letterSpacing: 2 });
 
-      doc.fillColor(colors.warning).fontSize(20).font("Helvetica-Bold").text("DIVEXPLORE 3D", startX + 25, startY + 25);
-      doc.fillColor(colors.white).fontSize(14).font("Helvetica-Bold").text("E-BOARDING PASS", startX, startY + 28, { width: ticketWidth - 25, align: "right" });
+      // 5. GARIS SOBEK (PERFORATED VERTICAL LINE)
+      doc.moveTo(splitX, cardY + 65).lineTo(splitX, cardY + cardH).dash(6, { space: 6 }).strokeColor(colors.border).lineWidth(2).stroke();
+      doc.undash();
 
-      // LEFT COLUMN (Data)
-      doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text("KODE BOOKING", startX + 25, startY + 95);
-      doc.fillColor(colors.primary).fontSize(24).font("Helvetica-Bold").text(bookingCode, startX + 25, startY + 110);
+      // Setengah lingkaran di ujung atas dan bawah garis putus-putus (efek disobek)
+      doc.circle(splitX, cardY + 65, 10).fill(colors.bgApp);
+      doc.circle(splitX, cardY + cardH, 10).fill(colors.bgApp);
+
+      // ==========================================
+      // ZONA KIRI (INFORMASI PENUMPANG & TIKET)
+      // ==========================================
+      const leftPad = cardX + 25;
+      let curY = cardY + 95;
+
+      // Baris 1: Kode Booking & Tanggal
+      doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text("KODE BOOKING", leftPad, curY);
+      doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text("TANGGAL BERLAKU", leftPad + 180, curY);
+      curY += 15;
+      doc.fillColor(colors.textDark).fontSize(22).font("Helvetica-Bold").text(bookingCode, leftPad, curY);
+      doc.fillColor(colors.textDark).fontSize(14).font("Helvetica-Bold").text(new Date(order.createdAt).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' }), leftPad + 180, curY + 6);
+
+      // Baris 2: Nama Penumpang
+      curY += 45;
+      doc.rect(leftPad, curY - 10, splitX - leftPad - 20, 1).fill(colors.bgApp); // separator tipis
+      doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text("NAMA PENUMPANG", leftPad, curY);
+      curY += 15;
+      doc.fillColor(colors.primaryDark).fontSize(18).font("Helvetica-Bold").text(buyerName.toUpperCase(), leftPad, curY);
+
+      // Baris 3: Daftar Layanan
+      curY += 40;
+      doc.rect(leftPad, curY - 10, splitX - leftPad - 20, 1).fill(colors.bgApp);
+      doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text("LAYANAN (PAKET WISATA)", leftPad, curY);
+      curY += 15;
       
-      doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text("TANGGAL ORDER", startX + 180, startY + 95);
-      doc.fillColor(colors.textDark).fontSize(12).font("Helvetica-Bold").text(new Date(order.createdAt).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' }), startX + 180, startY + 118);
-
-      // Status Badge
-      doc.roundedRect(startX + 25, startY + 160, 80, 25, 6).fill(colors.success);
-      doc.fillColor(colors.white).fontSize(11).font("Helvetica-Bold").text("AKTIF", startX + 25, startY + 167, { width: 80, align: "center" });
-
-      // PASSENGER INFO
-      doc.rect(startX + 25, startY + 210, 320, 1).fill(colors.border);
-      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica").text("NAMA PENUMPANG", startX + 25, startY + 225);
-      doc.fillColor(colors.textDark).fontSize(14).font("Helvetica-Bold").text(buyerName.toUpperCase(), startX + 25, startY + 240);
-      
-      // TICKETS LIST
-      let itemY = startY + 280;
       if (order.items && order.items.length > 0) {
         order.items.forEach((item) => {
           const namaProduk = item.product ? item.product.nama_produk : `Produk ${item.product_id}`;
-          doc.fillColor(colors.accent).fontSize(10).font("Helvetica-Bold").text("Wisata Bahari", startX + 25, itemY);
-          doc.fillColor(colors.textDark).fontSize(12).font("Helvetica-Bold").text(namaProduk.substring(0, 40), startX + 25, itemY + 15);
-          doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text(`Qty: ${item.qty} Orang`, startX + 25, itemY + 32);
-          itemY += 55;
+          doc.fillColor(colors.textDark).fontSize(12).font("Helvetica-Bold").text(namaProduk.substring(0, 35), leftPad, curY);
+          doc.fillColor(colors.primary).fontSize(12).font("Helvetica-Bold").text(`x${item.qty} Orang`, leftPad + 260, curY);
+          curY += 20;
         });
       }
 
-      // RIGHT COLUMN (QR CODE)
-      // Divider dashed line vertical
-      doc.moveTo(startX + 360, startY + 90).lineTo(startX + 360, startY + 430).dash(5, { space: 5 }).strokeColor(colors.border).lineWidth(2).stroke();
-      doc.undash();
+      // ==========================================
+      // ZONA KANAN (QR CODE BESAR)
+      // ==========================================
+      const rightPad = splitX + 20;
+      doc.fillColor(colors.textDark).fontSize(11).font("Helvetica-Bold").text("SCAN TIKET", rightPad, cardY + 95, { width: cardW - splitX - 40, align: "center" });
+      doc.fillColor(colors.textMuted).fontSize(8).font("Helvetica").text("Tunjukkan ke Petugas", rightPad, cardY + 110, { width: cardW - splitX - 40, align: "center" });
 
       try {
-        const qrCodeDataUrl = await QRCode.toDataURL(order.id, { margin: 1, color: { dark: colors.primary, light: "#ffffff" } });
+        const qrCodeDataUrl = await QRCode.toDataURL(order.id, { margin: 0, color: { dark: colors.textDark, light: colors.white } });
         const qrBuffer = Buffer.from(qrCodeDataUrl.replace(/^data:image\/png;base64,/, ""), "base64");
         
-        doc.fillColor(colors.textMuted).fontSize(11).font("Helvetica-Bold").text("SCAN DI PINTU MASUK", startX + 375, startY + 140, { width: 120, align: "center" });
-        doc.rect(startX + 380, startY + 170, 110, 110).lineWidth(2).strokeColor(colors.accent).stroke();
-        doc.image(qrBuffer, startX + 385, startY + 175, { width: 100 });
-        doc.fillColor(colors.textDark).fontSize(9).font("Helvetica").text("E-Ticket Resmi", startX + 375, startY + 295, { width: 120, align: "center" });
+        // Bingkai QR Code
+        doc.roundedRect(rightPad - 5, cardY + 130, 115, 115, 8).lineWidth(2).strokeColor(colors.primary).stroke();
+        // Gambar QR
+        doc.image(qrBuffer, rightPad, cardY + 135, { width: 105 });
       } catch (err) {}
 
-      // PERFORATED LINE AT BOTTOM OF TICKET
-      doc.moveTo(startX, startY + ticketHeight + 20).lineTo(startX + ticketWidth, startY + ticketHeight + 20).dash(8, { space: 8 }).strokeColor(colors.textMuted).lineWidth(1).stroke();
-      doc.undash();
-      // Scissor Icon (Fake Text)
-      doc.fillColor(colors.textMuted).fontSize(14).text("✂", startX - 10, startY + ticketHeight + 13);
+      // LUNAS Badge di bawah QR
+      doc.roundedRect(rightPad, cardY + 260, 105, 25, 12).fill(colors.success);
+      doc.fillColor(colors.white).fontSize(11).font("Helvetica-Bold").text("LUNAS", rightPad, cardY + 268, { width: 105, align: "center", letterSpacing: 2 });
 
-      // FOOTER / TERMS
-      const footerY = startY + ticketHeight + 50;
-      doc.fillColor(colors.textDark).fontSize(11).font("Helvetica-Bold").text("SYARAT & KETENTUAN MASUK:", startX, footerY);
+
+      // --- FOOTER TEKS BANTUAN ---
+      const footY = cardY + cardH + 40;
+      doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica-Bold").text("CARA PENGGUNAAN:", cardX, footY);
       doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica").lineGap(4)
-         .text("1. E-Tiket ini adalah dokumen sah yang diterbitkan oleh sistem Divexplore 3D.", startX, footerY + 20)
-         .text("2. Harap tunjukkan QR Code pada tiket ini langsung dari HP Anda kepada petugas lapangan.", startX, footerY + 35)
-         .text("3. Tiket yang sudah di-scan tidak dapat digunakan berulang kali.", startX, footerY + 50)
-         .text("4. Tiba di titik kumpul maksimal 30 menit sebelum jadwal keberangkatan untuk persiapan.", startX, footerY + 65);
+         .text("1. Simpan tiket ini di HP Anda atau cetak pada kertas putih.", cardX, footY + 20)
+         .text("2. Pada hari keberangkatan, tunjukkan area QR Code secara jelas kepada penjaga gerbang wisata.", cardX, footY + 35)
+         .text("3. Tiket digital ini dilindungi oleh enkripsi otomatis Divexplore 3D.", cardX, footY + 50);
 
       doc.end();
     } catch (error) { reject(error); }
@@ -120,7 +139,7 @@ const generateEtiketBuffer = (order) => {
 };
 
 /**
- * Generate Bukti Pembayaran PDF Buffer (Modern Invoice Style)
+ * Generate Bukti Pembayaran PDF Buffer (Clean Startup Invoice)
  */
 const generateBuktiPembayaranBuffer = (order, paymentDetails) => {
   return new Promise(async (resolve, reject) => {
@@ -133,73 +152,84 @@ const generateBuktiPembayaranBuffer = (order, paymentDetails) => {
 
       const buyerName = order.user && order.user.nama_lengkap ? order.user.nama_lengkap : "Wisatawan";
       
-      // HEADER
+      // BACKGROUND WHITE (A4)
+      doc.rect(0, 0, 595, 842).fill(colors.white);
+
+      // --- HEADER ---
       doc.fillColor(colors.primary).fontSize(28).font("Helvetica-Bold").text("INVOICE", 50, 50);
-      doc.fillColor(colors.accent).fontSize(14).font("Helvetica-Bold").text("DIVEXPLORE 3D", 50, 85, { width: 495, align: "right" });
-      doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text("Lombok, Indonesia", 50, 105, { width: 495, align: "right" });
+      doc.fillColor(colors.textDark).fontSize(16).font("Helvetica-Bold").text("DIVEXPLORE 3D", 50, 85, { width: 495, align: "right" });
+      doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text("Gili Trawangan, Lombok Utara\nNTB, Indonesia 83352", 50, 105, { width: 495, align: "right", lineGap: 3 });
 
-      doc.rect(50, 130, 495, 1).fill(colors.border);
+      // Garis separator tipis elegan
+      doc.rect(50, 140, 495, 1).fill(colors.bgApp);
 
-      // INFO GRID
-      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold").text("DITAGIHKAN KEPADA", 50, 150);
-      doc.fillColor(colors.textDark).fontSize(12).font("Helvetica-Bold").text(buyerName.toUpperCase(), 50, 165);
+      // --- INFO TAGIHAN ---
+      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold").text("DITAGIHKAN KEPADA", 50, 170);
+      doc.fillColor(colors.textDark).fontSize(14).font("Helvetica-Bold").text(buyerName.toUpperCase(), 50, 185);
       
-      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold").text("KODE INVOICE", 350, 150);
-      doc.fillColor(colors.textDark).fontSize(11).font("Helvetica").text(`#INV-${order.id.substring(0,8).toUpperCase()}`, 350, 165);
+      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold").text("KODE INVOICE", 350, 170);
+      doc.fillColor(colors.textDark).fontSize(11).font("Helvetica-Bold").text(`#INV-${order.id.substring(0,8).toUpperCase()}`, 350, 185);
 
-      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold").text("TANGGAL", 350, 195);
-      doc.fillColor(colors.textDark).fontSize(11).font("Helvetica").text(new Date(order.updatedAt || order.createdAt).toLocaleDateString("id-ID"), 350, 210);
+      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold").text("TANGGAL BAYAR", 350, 215);
+      doc.fillColor(colors.textDark).fontSize(11).font("Helvetica").text(new Date(order.updatedAt || order.createdAt).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }), 350, 230);
 
-      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold").text("METODE BAYAR", 50, 200);
-      doc.fillColor(colors.textDark).fontSize(11).font("Helvetica").text(paymentDetails.payment_type.toUpperCase().replace("_", " "), 50, 215);
+      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold").text("METODE PEMBAYARAN", 50, 215);
+      doc.fillColor(colors.textDark).fontSize(11).font("Helvetica").text(paymentDetails.payment_type.toUpperCase().replace("_", " "), 50, 230);
 
-      // ITEMS TABLE (MINIMALIST)
-      let tableY = 270;
-      doc.rect(50, tableY, 495, 25).fill(colors.lightBg);
-      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold");
-      doc.text("DESKRIPSI", 60, tableY + 8);
-      doc.text("QTY", 330, tableY + 8);
-      doc.text("HARGA", 380, tableY + 8);
-      doc.text("SUBTOTAL", 460, tableY + 8);
+      // --- TABEL RINCIAN (NO GRID, CLEAN) ---
+      let tableY = 300;
+      doc.fillColor(colors.primaryDark).fontSize(10).font("Helvetica-Bold");
+      doc.text("DESKRIPSI LAYANAN", 50, tableY);
+      doc.text("QTY", 360, tableY);
+      doc.text("SUBTOTAL", 460, tableY, { width: 85, align: "right" });
 
-      tableY += 35;
+      tableY += 15;
+      doc.rect(50, tableY, 495, 2).fill(colors.primaryDark); // Garis header tebal
+
+      tableY += 15;
+      doc.fillColor(colors.textDark).font("Helvetica");
+
       if (order.items && order.items.length > 0) {
         order.items.forEach((item) => {
           const namaProduk = item.product ? item.product.nama_produk : `Produk ${item.product_id}`;
-          const harga = parseFloat(item.harga_satuan).toLocaleString("id-ID");
           const subtotal = parseFloat(item.subtotal).toLocaleString("id-ID");
 
-          doc.fillColor(colors.textDark).fontSize(10).font("Helvetica-Bold").text(namaProduk.substring(0, 45), 60, tableY);
-          doc.font("Helvetica").text(item.qty.toString(), 330, tableY);
-          doc.text(`Rp ${harga}`, 380, tableY);
-          doc.text(`Rp ${subtotal}`, 460, tableY);
+          doc.fillColor(colors.textDark).fontSize(11).font("Helvetica-Bold").text(namaProduk.substring(0, 45), 50, tableY);
+          doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text("Tiket Masuk / Akses", 50, tableY + 15);
+          
+          doc.fillColor(colors.textDark).fontSize(11).font("Helvetica").text(`${item.qty}x`, 360, tableY);
+          doc.text(`Rp ${subtotal}`, 430, tableY, { width: 115, align: "right" });
 
-          tableY += 25;
-          doc.moveTo(50, tableY).lineTo(545, tableY).dash(3, { space: 3 }).strokeColor(colors.border).lineWidth(1).stroke();
+          tableY += 35;
+          // Garis pembatas item tipis putus-putus
+          doc.moveTo(50, tableY).lineTo(545, tableY).dash(4, { space: 4 }).strokeColor(colors.border).lineWidth(1).stroke();
           doc.undash();
           tableY += 15;
         });
       }
 
-      // TOTAL BOX (FOCAL POINT)
+      // --- KOTAK TOTAL BAYAR (FOCAL POINT) ---
       tableY += 20;
-      const boxWidth = 220;
-      const boxX = 545 - boxWidth;
-      doc.roundedRect(boxX, tableY, boxWidth, 40, 6).fill(colors.primary);
+      const boxW = 280;
+      const boxH = 50;
+      const boxX = 545 - boxW;
       
-      doc.fillColor(colors.white).fontSize(12).font("Helvetica-Bold").text("TOTAL BAYAR", boxX + 15, tableY + 14);
-      doc.fillColor(colors.accent).fontSize(14).font("Helvetica-Bold").text(`Rp ${parseFloat(order.total_pembayaran).toLocaleString("id-ID")}`, boxX, tableY + 13, { width: boxWidth - 15, align: "right" });
+      doc.roundedRect(boxX, tableY, boxW, boxH, 12).fill(colors.primary);
+      
+      doc.fillColor(colors.white).fontSize(11).font("Helvetica").text("TOTAL KESELURUHAN", boxX + 20, tableY + 20);
+      doc.fillColor(colors.white).fontSize(18).font("Helvetica-Bold").text(`Rp ${parseFloat(order.total_pembayaran).toLocaleString("id-ID")}`, boxX + 130, tableY + 16, { width: boxW - 150, align: "right" });
 
-      // WATERMARK STAMP
+      // --- WATERMARK CAP LUNAS ---
       doc.save();
-      doc.rotate(-25, { origin: [300, 400] });
-      doc.fillOpacity(0.1).fillColor(colors.success).fontSize(100).font("Helvetica-Bold").text("LUNAS", 100, 350);
+      doc.rotate(-20, { origin: [300, 450] });
+      doc.fillColor(colors.success).fillOpacity(0.08).fontSize(120).font("Helvetica-Bold").text("PAID", 130, 400);
       doc.restore();
 
-      // FOOTER NOTE
-      const footerY = 750;
-      doc.rect(50, footerY - 15, 495, 1).fill(colors.border);
-      doc.fillColor(colors.textMuted).fontSize(8).font("Helvetica").text("Dokumen ini adalah bukti pembayaran digital yang sah dan diproses secara otomatis oleh sistem komputer. Tidak memerlukan tanda tangan basah.", 50, footerY, { align: "center", width: 495 });
+      // --- FOOTER TERIMA KASIH ---
+      const footerY = 740;
+      doc.rect(50, footerY - 20, 495, 1).fill(colors.bgApp);
+      doc.fillColor(colors.primary).fontSize(14).font("Helvetica-Bold").text("Terima Kasih!", 50, footerY, { align: "center", width: 495 });
+      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica").text("Tanda terima elektronik ini sah diterbitkan oleh sistem Divexplore 3D.", 50, footerY + 20, { align: "center", width: 495 });
 
       doc.end();
     } catch (error) { reject(error); }
