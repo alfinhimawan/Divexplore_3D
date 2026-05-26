@@ -66,45 +66,193 @@ const initNodemailer = async () => {
 initNodemailer();
 
 /**
- * Kirim Email Invoice beserta attachment PDF (KAI-Style Ready)
+ * Kirim Email Invoice beserta 2 attachment PDF (KAI-Style)
  */
-const sendInvoiceEmail = async (userEmail, order, pdfBuffer) => {
+const sendInvoiceEmail = async (userEmail, order, buffers, paymentDetails) => {
   if (!transporter) return;
 
   try {
+    const buyerName = order.user && order.user.nama_lengkap ? order.user.nama_lengkap : "Wisatawan";
+    const paymentDate = new Date(order.updatedAt || order.createdAt).toLocaleString("id-ID");
+    const paymentMethod = paymentDetails && paymentDetails.payment_type ? paymentDetails.payment_type.toUpperCase().replace("_", " ") : "TRANSFER BANK";
+    
+    // Generate Items HTML for Detail Pemesanan
+    let itemsDetailHtml = "";
+    let itemsRincianHtml = "";
+    
+    if (order.items && order.items.length > 0) {
+      order.items.forEach(item => {
+        const productName = item.product ? item.product.nama_produk : `Produk ${item.product_id}`;
+        const harga = parseFloat(item.harga_satuan).toLocaleString("id-ID");
+        const subtotal = parseFloat(item.subtotal).toLocaleString("id-ID");
+        
+        // Kotak 2: Detail
+        itemsDetailHtml += `
+          <div style="margin-top: 15px;">
+            <p style="margin: 0; font-size: 14px; color: #111827; font-weight: bold;">${productName.toUpperCase()}</p>
+            <p style="margin: 5px 0 0 0; font-size: 12px; color: #6b7280;">Jumlah Tiket : ${item.qty} Orang/Item</p>
+          </div>
+        `;
+
+        // Kotak 3: Rincian
+        itemsRincianHtml += `
+          <tr>
+            <td style="padding: 10px 0; font-size: 13px; color: #374151; border-bottom: 1px dashed #e5e7eb;">
+              ${productName}<br>
+              <span style="color: #6b7280; font-size: 11px;">Tiket Wisata/Item</span>
+            </td>
+            <td style="padding: 10px 0; font-size: 13px; color: #374151; text-align: center; border-bottom: 1px dashed #e5e7eb;">x${item.qty}</td>
+            <td style="padding: 10px 0; font-size: 13px; color: #374151; text-align: right; border-bottom: 1px dashed #e5e7eb;">Rp${harga}</td>
+          </tr>
+        `;
+      });
+    }
+
+    // KAI-Style HTML Layout
     const htmlContent = `
-      <h2 style="color: #1f2937; margin-top: 0;">Halo, Wisatawan! 👋</h2>
-      <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Terima kasih atas pembayaran Anda. Kami dengan senang hati menginformasikan bahwa pesanan Anda telah <strong style="color: #059669;">LUNAS</strong> dan sukses dikonfirmasi oleh sistem kami.</p>
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 650px; margin: 0 auto; background-color: #f8fafc; padding: 20px;">
       
-      <div style="background-color: #f8fafc; border-left: 4px solid #0ea5e9; padding: 15px 20px; margin: 25px 0; border-radius: 4px;">
-        <p style="margin: 0 0 10px 0; color: #374151; font-weight: 600;">Detail Reservasi Wisata Bahari & UMKM:</p>
-        <p style="margin: 5px 0; color: #4b5563;">Order ID: <span style="color: #111827; font-weight: 600;">#${order.id.substring(0,8).toUpperCase()}</span></p>
-        <p style="margin: 5px 0; color: #4b5563;">Total Bayar: <span style="color: #059669; font-weight: 600;">Rp ${parseFloat(order.total_pembayaran).toLocaleString("id-ID")}</span></p>
-        <p style="margin: 5px 0; color: #4b5563;">Status: <span style="background-color: #10b981; color: white; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; letter-spacing: 0.5px;">LUNAS</span></p>
+      <!-- HEADER -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
+        <tr>
+          <td>
+            <h1 style="color: #0369a1; font-style: italic; margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px;">DIVEXPLORE <span style="color: #f59e0b;">3D</span></h1>
+          </td>
+          <td align="right">
+            <span style="background-color: #1e3a8a; color: white; padding: 5px 12px; border-radius: 4px; font-size: 16px; font-weight: bold; font-style: italic;">e-TICKET</span>
+          </td>
+        </tr>
+      </table>
+
+      <!-- GREETING -->
+      <div style="margin-bottom: 25px;">
+        <p style="margin: 0 0 5px 0; font-size: 14px; color: #4b5563;">Halo, ${buyerName}</p>
+        <p style="margin: 0 0 10px 0; font-size: 16px; color: #111827; font-weight: bold;">Pemesanan Anda Berhasil Dibayar.</p>
+        <p style="margin: 0; font-size: 13px; color: #4b5563; line-height: 1.5;">Pemesanan Anda telah berhasil dibayar. Silakan cek e-tiket yang terlampir di e-mail ini atau di aplikasi Divexplore 3D.<br><br>Berikut detail transaksi Anda :</p>
       </div>
-      
-      <p style="color: #4b5563; font-size: 15px; line-height: 1.6;">Sebagai referensi sah (Invoice Pembayaran), kami telah melampirkan dokumen resmi dari Divexplore 3D pada email ini. Tunjukkan atau simpan dokumen ini jika diperlukan.</p>
-      
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="https://divexplore-3d.com/user/orders" style="background-color: #f59e0b; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);">Lihat Pesanan Anda Sekarang</a>
+
+      <!-- KOTAK 1: STATUS TRANSAKSI -->
+      <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+        <table width="100%" cellpadding="4" cellspacing="0" style="font-size: 13px;">
+          <tr>
+            <td style="color: #6b7280; width: 40%;">Status</td>
+            <td align="right" style="color: #10b981; font-weight: bold;">Lunas</td>
+          </tr>
+          <tr>
+            <td style="color: #6b7280;">Kode Booking</td>
+            <td align="right" style="color: #111827;">${order.id.substring(0,8).toUpperCase()}</td>
+          </tr>
+          <tr>
+            <td style="color: #6b7280;">Kode Pembayaran</td>
+            <td align="right" style="color: #111827;">${paymentDetails.transaction_id}</td>
+          </tr>
+          <tr>
+            <td style="color: #6b7280;">Waktu Pembayaran</td>
+            <td align="right" style="color: #111827;">${paymentDate}</td>
+          </tr>
+          <tr>
+            <td style="color: #6b7280;">Metode Pembayaran</td>
+            <td align="right" style="color: #111827;">${paymentMethod}</td>
+          </tr>
+          <tr>
+            <td colspan="2"><hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 10px 0;"></td>
+          </tr>
+          <tr>
+            <td style="color: #111827; font-weight: bold;">Total Pembayaran</td>
+            <td align="right" style="color: #111827; font-weight: bold;">Rp${parseFloat(order.total_pembayaran).toLocaleString("id-ID")}</td>
+          </tr>
+        </table>
       </div>
+
+      <!-- KOTAK 2: DETAIL PEMESANAN -->
+      <div style="margin-bottom: 20px;">
+        <p style="margin: 0 0 10px 0; font-size: 13px; color: #111827; font-weight: bold;">Detail Pemesanan</p>
+        <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td><span style="background-color: #0369a1; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">WISATA BAHARI</span></td>
+              <td align="right"><span style="background-color: #8b5cf6; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Eksklusif</span></td>
+            </tr>
+          </table>
+          
+          ${itemsDetailHtml}
+
+          <div style="margin-top: 15px; padding: 10px; background-color: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px;">
+            <p style="margin: 0 0 5px 0; font-size: 12px; color: #6b7280;">Pemesan :</p>
+            <p style="margin: 0; font-size: 13px; color: #111827; font-weight: bold;">${buyerName}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- KOTAK 3: RINCIAN PEMBAYARAN -->
+      <div style="margin-bottom: 20px;">
+        <p style="margin: 0 0 10px 0; font-size: 13px; color: #111827; font-weight: bold;">Rincian Pembayaran</p>
+        <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            ${itemsRincianHtml}
+            <tr>
+              <td colspan="2" style="padding: 15px 0 10px 0; font-size: 13px; color: #6b7280;">Subtotal</td>
+              <td align="right" style="padding: 15px 0 10px 0; font-size: 13px; color: #111827;">Rp${parseFloat(order.total_pembayaran).toLocaleString("id-ID")}</td>
+            </tr>
+            <tr>
+              <td colspan="3"><hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 5px 0;"></td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding: 10px 0; font-size: 13px; color: #111827; font-weight: bold;">Total Pembayaran</td>
+              <td align="right" style="padding: 10px 0; font-size: 13px; color: #111827; font-weight: bold;">Rp${parseFloat(order.total_pembayaran).toLocaleString("id-ID")}</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- KOTAK 4: ECO TOURISM (Carbon Footprint Alternative) -->
+      <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+        <p style="margin: 0 0 10px 0; font-size: 13px; color: #166534; font-weight: bold;">🌿 Eco Tourism Contribution</p>
+        <div style="background-color: #ffffff; border: 1px solid #dcfce7; border-radius: 6px; padding: 10px;">
+          <p style="margin: 0; font-size: 12px; color: #15803d; line-height: 1.5;">Dengan memesan paket wisata bahari ini, Anda turut menyumbang <strong>Rp5.000</strong> untuk pelestarian terumbu karang dan kebersihan pantai di area wisata. Mari jaga kelestarian laut bersama-sama!</p>
+        </div>
+        <div style="margin-top: 15px; text-align: center;">
+          <a href="https://divexplore-3d.com/eco" style="background-color: #22c55e; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">Informasi Lengkap</a>
+        </div>
+      </div>
+
+      <!-- FOOTER TEXT -->
+      <div style="margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 15px;">
+        <p style="margin: 0 0 10px 0; font-size: 11px; color: #6b7280; line-height: 1.5;">Email ini dibuat otomatis, mohon untuk tidak membalas, jika ada pertanyaan atau membutuhkan bantuan silakan hubungi call center kami di 021-121 atau melalui email di <a href="mailto:cs@divexplore-3d.com" style="color: #0369a1;">cs@divexplore-3d.com</a></p>
+        <p style="margin: 0 0 15px 0; font-size: 11px; color: #6b7280;">Terimakasih telah bertransaksi menggunakan aplikasi Divexplore 3D.</p>
+        
+        <div style="background-color: #1e1b4b; border-radius: 8px; padding: 15px;">
+          <p style="margin: 0 0 5px 0; font-size: 12px; color: #ffffff; font-weight: bold;">Divexplore 3D Indonesia</p>
+          <p style="margin: 0 0 2px 0; font-size: 10px; color: #cbd5e1;">Jl. Pariwisata Bahari No.1, Jakarta Selatan, Indonesia 12345</p>
+          <p style="margin: 0 0 2px 0; font-size: 10px; color: #cbd5e1;">No Telepon : 022-4230031</p>
+          <p style="margin: 0 0 5px 0; font-size: 10px; color: #cbd5e1;">Email : <a href="mailto:cs@divexplore-3d.com" style="color: #93c5fd; text-decoration: none;">cs@divexplore-3d.com</a></p>
+          <p style="margin: 10px 0 0 0; font-size: 11px; color: #ffffff; font-weight: bold;">Download App Divexplore 3D</p>
+        </div>
+      </div>
+    </div>
     `;
 
+    const bookingCode = order.id.substring(0,8).toUpperCase();
     const info = await transporter.sendMail({
       from: `"Divexplore-3D" <${process.env.SMTP_USER}>`,
       to: userEmail,
-      subject: `✅ Invoice Lunas: Order #${order.id.substring(0,8).toUpperCase()}`,
-      html: baseHtmlTemplate("Invoice Reservasi", htmlContent),
+      subject: `✅ E-Ticket & Invoice: Order #${bookingCode}`,
+      html: htmlContent,
       attachments: [
         {
-          filename: `Invoice_Divexplore_${order.id.substring(0,8)}.pdf`,
-          content: pdfBuffer,
+          filename: `E-tiket (${bookingCode}).pdf`,
+          content: buffers.etiketBuffer,
+          contentType: "application/pdf",
+        },
+        {
+          filename: `Bukti Pembayaran (${paymentDetails.transaction_id}).pdf`,
+          content: buffers.buktiBuffer,
           contentType: "application/pdf",
         },
       ],
     });
 
-    logger.info("Email Invoice terkirim!");
+    logger.info("Email Invoice terkirim dengan 2 attachment (E-tiket & Bukti)!");
     logger.info(`Preview Email Invoice: ${nodemailer.getTestMessageUrl(info)}`);
   } catch (error) {
     logger.error("Gagal mengirim email invoice:", error);

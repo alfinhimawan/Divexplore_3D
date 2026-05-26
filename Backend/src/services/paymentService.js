@@ -241,12 +241,30 @@ const handleMidtransWebhook = async (payload) => {
         if (pembeli && pembeli.email) {
           const pdfService = require("./pdfService");
           const emailService = require("./emailService");
-          // Muat ulang order tanpa transaksi untuk data lengkap
+          
+          // Muat ulang order tanpa transaksi untuk data lengkap (termasuk user dan detail product)
           const orderFull = await Order.findByPk(order.id, {
-            include: [{ association: "items" }]
+            include: [
+              { 
+                association: "items", 
+                include: [{ association: "product" }] 
+              },
+              { association: "user" }
+            ]
           });
-          const pdfBuffer = await pdfService.generateInvoiceBuffer(orderFull || order);
-          await emailService.sendInvoiceEmail(pembeli.email, orderFull || order, pdfBuffer);
+
+          const paymentDetails = {
+            payment_type: payment_type || "bank_transfer",
+            transaction_id: transaction_id || "N/A"
+          };
+
+          // Generate 2 PDF: E-tiket dan Bukti Pembayaran
+          const etiketBuffer = await pdfService.generateEtiketBuffer(orderFull);
+          const buktiBuffer = await pdfService.generateBuktiPembayaranBuffer(orderFull, paymentDetails);
+          
+          // Kirim email
+          await emailService.sendInvoiceEmail(pembeli.email, orderFull, { etiketBuffer, buktiBuffer }, paymentDetails);
+          
           logger.info(`[Email] Invoice berhasil terkirim ke ${pembeli.email}`);
         } else {
           logger.warn(`[Email] Pembeli tidak ditemukan atau tidak punya email untuk order ${order.id}`);
