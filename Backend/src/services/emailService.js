@@ -118,9 +118,7 @@ const sendInvoiceEmail = async (userEmail, order, buffers, paymentDetails) => {
           <td>
             <h1 style="color: #0369a1; font-style: italic; margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px;">DIVEXPLORE <span style="color: #f59e0b;">3D</span></h1>
           </td>
-          <td align="right">
-            <span style="background-color: #1e3a8a; color: white; padding: 5px 12px; border-radius: 4px; font-size: 16px; font-weight: bold; font-style: italic;">e-TICKET</span>
-          </td>
+
         </tr>
       </table>
 
@@ -205,27 +203,18 @@ const sendInvoiceEmail = async (userEmail, order, buffers, paymentDetails) => {
         </div>
       </div>
 
-      <!-- KOTAK 4: ECO TOURISM (Carbon Footprint Alternative) -->
-      <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
-        <p style="margin: 0 0 10px 0; font-size: 13px; color: #166534; font-weight: bold;">🌿 Eco Tourism Contribution</p>
-        <div style="background-color: #ffffff; border: 1px solid #dcfce7; border-radius: 6px; padding: 10px;">
-          <p style="margin: 0; font-size: 12px; color: #15803d; line-height: 1.5;">Dengan memesan paket wisata bahari ini, Anda turut menyumbang <strong>Rp5.000</strong> untuk pelestarian terumbu karang dan kebersihan pantai di area wisata. Mari jaga kelestarian laut bersama-sama!</p>
-        </div>
-        <div style="margin-top: 15px; text-align: center;">
-          <a href="https://divexplore-3d.com/eco" style="background-color: #22c55e; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;">Informasi Lengkap</a>
-        </div>
-      </div>
+
 
       <!-- FOOTER TEXT -->
       <div style="margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 15px;">
-        <p style="margin: 0 0 10px 0; font-size: 11px; color: #6b7280; line-height: 1.5;">Email ini dibuat otomatis, mohon untuk tidak membalas, jika ada pertanyaan atau membutuhkan bantuan silakan hubungi call center kami di 021-121 atau melalui email di <a href="mailto:cs@divexplore-3d.com" style="color: #0369a1;">cs@divexplore-3d.com</a></p>
+        <p style="margin: 0 0 10px 0; font-size: 11px; color: #6b7280; line-height: 1.5;">Email ini dibuat otomatis, mohon untuk tidak membalas, jika ada pertanyaan atau membutuhkan bantuan silakan hubungi call center kami di 021-121 atau melalui email di <a href="mailto:admin@divexplore-3d.com" style="color: #0369a1;">admin@divexplore-3d.com</a></p>
         <p style="margin: 0 0 15px 0; font-size: 11px; color: #6b7280;">Terimakasih telah bertransaksi menggunakan aplikasi Divexplore 3D.</p>
         
         <div style="background-color: #1e1b4b; border-radius: 8px; padding: 15px;">
           <p style="margin: 0 0 5px 0; font-size: 12px; color: #ffffff; font-weight: bold;">Divexplore 3D Indonesia</p>
-          <p style="margin: 0 0 2px 0; font-size: 10px; color: #cbd5e1;">Jl. Pariwisata Bahari No.1, Jakarta Selatan, Indonesia 12345</p>
+          <p style="margin: 0 0 2px 0; font-size: 10px; color: #cbd5e1;">Gili Trawangan, Kec. Pemenang, Kabupaten Lombok Utara, Nusa Tenggara Barat 83352</p>
           <p style="margin: 0 0 2px 0; font-size: 10px; color: #cbd5e1;">No Telepon : 022-4230031</p>
-          <p style="margin: 0 0 5px 0; font-size: 10px; color: #cbd5e1;">Email : <a href="mailto:cs@divexplore-3d.com" style="color: #93c5fd; text-decoration: none;">cs@divexplore-3d.com</a></p>
+          <p style="margin: 0 0 5px 0; font-size: 10px; color: #cbd5e1;">Email : <a href="mailto:admin@divexplore-3d.com" style="color: #93c5fd; text-decoration: none;">admin@divexplore-3d.com</a></p>
           <p style="margin: 10px 0 0 0; font-size: 11px; color: #ffffff; font-weight: bold;">Download App Divexplore 3D</p>
         </div>
       </div>

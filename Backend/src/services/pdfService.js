@@ -2,119 +2,117 @@
 const PDFDocument = require("pdfkit");
 const QRCode = require("qrcode");
 
-// --- CONFIGURATION ---
-const primaryColor = "#0369a1"; // Divexplore Blue
-const accentColor = "#f59e0b"; // Orange
-const textColor = "#333333";
-const lightGray = "#f3f4f6";
-
-// Helper function to draw header
-const drawHeader = async (doc, order, title) => {
-  doc.rect(0, 0, 595, 120).fill(primaryColor);
-  
-  doc.fillColor("#ffffff")
-     .fontSize(24)
-     .font("Helvetica-Bold")
-     .text("DIVEXPLORE 3D", 40, 40);
-     
-  doc.fontSize(12)
-     .font("Helvetica")
-     .text(title, 40, 70, { characterSpacing: 2 });
-
-  try {
-    const qrCodeDataUrl = await QRCode.toDataURL(order.id, {
-      margin: 1,
-      color: { dark: primaryColor, light: "#ffffff" },
-    });
-    const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, "");
-    const qrBuffer = Buffer.from(base64Data, "base64");
-    
-    doc.rect(455, 20, 100, 100).fill("#ffffff");
-    doc.image(qrBuffer, 460, 25, { width: 90 });
-  } catch (err) {
-    console.error("Gagal generate QR Code PDF:", err);
-  }
+// --- MODERN COLOR PALETTE ---
+const colors = {
+  primary: "#0f172a", // Slate 900 (Dark Navy)
+  accent: "#0ea5e9", // Light Blue
+  warning: "#f59e0b", // Orange
+  success: "#10b981", // Emerald
+  textDark: "#1e293b", // Slate 800
+  textMuted: "#64748b", // Slate 500
+  lightBg: "#f8fafc", // Slate 50
+  border: "#e2e8f0", // Slate 200
+  white: "#ffffff"
 };
 
 /**
- * Generate E-Tiket PDF Buffer
+ * Generate E-Tiket PDF Buffer (Boarding Pass Style)
  */
 const generateEtiketBuffer = (order) => {
   return new Promise(async (resolve, reject) => {
     try {
-      const doc = new PDFDocument({
-        margin: 0,
-        size: "A4",
-        info: { Title: `E-Tiket - ${order.id}`, Author: "Divexplore 3D" },
-      });
-
+      const doc = new PDFDocument({ margin: 40, size: "A4", info: { Title: `E-Tiket - ${order.id}`, Author: "Divexplore 3D" }});
       const buffers = [];
       doc.on("data", (chunk) => buffers.push(chunk));
       doc.on("end", () => resolve(Buffer.concat(buffers)));
       doc.on("error", (err) => reject(err));
 
-      await drawHeader(doc, order, "E-TIKET WISATA BAHARI");
-
-      // --- ORDER INFO ---
-      doc.fillColor(textColor);
-      doc.rect(40, 140, 515, 80).fillAndStroke(lightGray, "#e5e7eb");
-      
-      doc.fillColor(primaryColor).fontSize(10).font("Helvetica-Bold").text("KODE BOOKING", 60, 155);
-      doc.fillColor(accentColor).fontSize(22).font("Helvetica-Bold").text(order.id.substring(0, 8).toUpperCase(), 60, 175);
-
-      doc.fillColor(textColor).fontSize(10).font("Helvetica").text("Tanggal Pemesanan", 300, 155)
-         .font("Helvetica-Bold").text(new Date(order.createdAt).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }), 300, 170);
-
-      doc.font("Helvetica").text("Status Tiket", 300, 190).fillColor("#10b981").font("Helvetica-Bold").text("AKTIF", 370, 190);
-
-      // --- CUSTOMER INFO ---
-      doc.fillColor(textColor);
+      const bookingCode = order.id.substring(0, 8).toUpperCase();
       const buyerName = order.user && order.user.nama_lengkap ? order.user.nama_lengkap : "Wisatawan";
-      const buyerEmail = order.user && order.user.email ? order.user.email : "-";
       
-      doc.fontSize(14).font("Helvetica-Bold").text("DATA PENUMPANG", 40, 240);
-      doc.moveTo(40, 260).lineTo(555, 260).lineWidth(1).strokeColor(primaryColor).stroke();
+      // BACKGROUND
+      doc.rect(0, 0, 595, 842).fill(colors.lightBg);
 
-      doc.fontSize(11).font("Helvetica-Bold").text("Nama Lengkap", 40, 275).font("Helvetica").text(buyerName, 40, 290);
-      doc.font("Helvetica-Bold").text("Email", 300, 275).font("Helvetica").text(buyerEmail, 300, 290);
+      // MAIN TICKET WRAPPER (TICKET SHAPE)
+      const startX = 40;
+      const startY = 60;
+      const ticketWidth = 515;
+      const ticketHeight = 450;
+      
+      // Drop Shadow effect (fake)
+      doc.roundedRect(startX + 3, startY + 3, ticketWidth, ticketHeight, 12).fill("#cbd5e1");
+      // Ticket Body
+      doc.roundedRect(startX, startY, ticketWidth, ticketHeight, 12).fill(colors.white);
 
-      // --- ITEM DETAILS (No Prices) ---
-      doc.fontSize(14).font("Helvetica-Bold").text("DETAIL PAKET WISATA", 40, 340);
-      doc.moveTo(40, 360).lineTo(555, 360).lineWidth(1).strokeColor(primaryColor).stroke();
+      // TICKET HEADER (NAVY)
+      doc.save();
+      doc.roundedRect(startX, startY, ticketWidth, 70, 12).clip();
+      doc.rect(startX, startY, ticketWidth, 70).fill(colors.primary);
+      doc.restore();
 
-      let tableY = 375;
-      doc.rect(40, tableY, 515, 25).fill(primaryColor);
-      doc.fillColor("#ffffff").fontSize(10).font("Helvetica-Bold");
-      doc.text("No", 50, tableY + 8);
-      doc.text("Deskripsi Layanan", 80, tableY + 8);
-      doc.text("Jumlah (Orang/Item)", 400, tableY + 8);
+      // Fix square corners at bottom of header
+      doc.rect(startX, startY + 50, ticketWidth, 20).fill(colors.primary);
 
-      tableY += 25;
-      doc.fillColor(textColor).font("Helvetica");
+      doc.fillColor(colors.warning).fontSize(20).font("Helvetica-Bold").text("DIVEXPLORE 3D", startX + 25, startY + 25);
+      doc.fillColor(colors.white).fontSize(14).font("Helvetica-Bold").text("E-BOARDING PASS", startX, startY + 28, { width: ticketWidth - 25, align: "right" });
 
+      // LEFT COLUMN (Data)
+      doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text("KODE BOOKING", startX + 25, startY + 95);
+      doc.fillColor(colors.primary).fontSize(24).font("Helvetica-Bold").text(bookingCode, startX + 25, startY + 110);
+      
+      doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text("TANGGAL ORDER", startX + 180, startY + 95);
+      doc.fillColor(colors.textDark).fontSize(12).font("Helvetica-Bold").text(new Date(order.createdAt).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' }), startX + 180, startY + 118);
+
+      // Status Badge
+      doc.roundedRect(startX + 25, startY + 160, 80, 25, 6).fill(colors.success);
+      doc.fillColor(colors.white).fontSize(11).font("Helvetica-Bold").text("AKTIF", startX + 25, startY + 167, { width: 80, align: "center" });
+
+      // PASSENGER INFO
+      doc.rect(startX + 25, startY + 210, 320, 1).fill(colors.border);
+      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica").text("NAMA PENUMPANG", startX + 25, startY + 225);
+      doc.fillColor(colors.textDark).fontSize(14).font("Helvetica-Bold").text(buyerName.toUpperCase(), startX + 25, startY + 240);
+      
+      // TICKETS LIST
+      let itemY = startY + 280;
       if (order.items && order.items.length > 0) {
-        order.items.forEach((item, index) => {
-          if (index % 2 === 0) doc.rect(40, tableY, 515, 30).fill(lightGray);
+        order.items.forEach((item) => {
           const namaProduk = item.product ? item.product.nama_produk : `Produk ${item.product_id}`;
-          doc.fillColor(textColor);
-          doc.text((index + 1).toString(), 50, tableY + 10);
-          doc.text(namaProduk.substring(0, 50), 80, tableY + 10);
-          doc.text(item.qty.toString(), 400, tableY + 10);
-          tableY += 30;
+          doc.fillColor(colors.accent).fontSize(10).font("Helvetica-Bold").text("Wisata Bahari", startX + 25, itemY);
+          doc.fillColor(colors.textDark).fontSize(12).font("Helvetica-Bold").text(namaProduk.substring(0, 40), startX + 25, itemY + 15);
+          doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text(`Qty: ${item.qty} Orang`, startX + 25, itemY + 32);
+          itemY += 55;
         });
-      } else {
-        doc.text("Tidak ada detail perjalanan.", 50, tableY + 10);
-        tableY += 30;
       }
 
-      // --- FOOTER ---
-      const footerY = 680;
-      doc.moveTo(40, footerY).lineTo(555, footerY).lineWidth(1).strokeColor("#d1d5db").stroke();
-      doc.fillColor("#6b7280").fontSize(9).font("Helvetica-Bold").text("INFORMASI PENTING:", 40, footerY + 15);
-      doc.font("Helvetica").fontSize(8)
-         .text("1. E-Tiket ini adalah tanda masuk yang sah. Harap tunjukkan dokumen ini kepada petugas saat berada di lokasi.", 40, footerY + 30)
-         .text("2. Jaga kerahasiaan Kode Booking dan QR Code Anda dari pihak yang tidak berkepentingan.", 40, footerY + 45)
-         .text("3. Tiba di titik kumpul maksimal 30 menit sebelum jadwal keberangkatan kapal.", 40, footerY + 60);
+      // RIGHT COLUMN (QR CODE)
+      // Divider dashed line vertical
+      doc.moveTo(startX + 360, startY + 90).lineTo(startX + 360, startY + 430).dash(5, { space: 5 }).strokeColor(colors.border).lineWidth(2).stroke();
+      doc.undash();
+
+      try {
+        const qrCodeDataUrl = await QRCode.toDataURL(order.id, { margin: 1, color: { dark: colors.primary, light: "#ffffff" } });
+        const qrBuffer = Buffer.from(qrCodeDataUrl.replace(/^data:image\/png;base64,/, ""), "base64");
+        
+        doc.fillColor(colors.textMuted).fontSize(11).font("Helvetica-Bold").text("SCAN DI PINTU MASUK", startX + 375, startY + 140, { width: 120, align: "center" });
+        doc.rect(startX + 380, startY + 170, 110, 110).lineWidth(2).strokeColor(colors.accent).stroke();
+        doc.image(qrBuffer, startX + 385, startY + 175, { width: 100 });
+        doc.fillColor(colors.textDark).fontSize(9).font("Helvetica").text("E-Ticket Resmi", startX + 375, startY + 295, { width: 120, align: "center" });
+      } catch (err) {}
+
+      // PERFORATED LINE AT BOTTOM OF TICKET
+      doc.moveTo(startX, startY + ticketHeight + 20).lineTo(startX + ticketWidth, startY + ticketHeight + 20).dash(8, { space: 8 }).strokeColor(colors.textMuted).lineWidth(1).stroke();
+      doc.undash();
+      // Scissor Icon (Fake Text)
+      doc.fillColor(colors.textMuted).fontSize(14).text("✂", startX - 10, startY + ticketHeight + 13);
+
+      // FOOTER / TERMS
+      const footerY = startY + ticketHeight + 50;
+      doc.fillColor(colors.textDark).fontSize(11).font("Helvetica-Bold").text("SYARAT & KETENTUAN MASUK:", startX, footerY);
+      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica").lineGap(4)
+         .text("1. E-Tiket ini adalah dokumen sah yang diterbitkan oleh sistem Divexplore 3D.", startX, footerY + 20)
+         .text("2. Harap tunjukkan QR Code pada tiket ini langsung dari HP Anda kepada petugas lapangan.", startX, footerY + 35)
+         .text("3. Tiket yang sudah di-scan tidak dapat digunakan berulang kali.", startX, footerY + 50)
+         .text("4. Tiba di titik kumpul maksimal 30 menit sebelum jadwal keberangkatan untuk persiapan.", startX, footerY + 65);
 
       doc.end();
     } catch (error) { reject(error); }
@@ -122,83 +120,86 @@ const generateEtiketBuffer = (order) => {
 };
 
 /**
- * Generate Bukti Pembayaran PDF Buffer
+ * Generate Bukti Pembayaran PDF Buffer (Modern Invoice Style)
  */
 const generateBuktiPembayaranBuffer = (order, paymentDetails) => {
   return new Promise(async (resolve, reject) => {
     try {
-      const doc = new PDFDocument({
-        margin: 0,
-        size: "A4",
-        info: { Title: `Bukti Pembayaran - ${order.id}`, Author: "Divexplore 3D" },
-      });
-
+      const doc = new PDFDocument({ margin: 50, size: "A4", info: { Title: `Bukti Pembayaran - ${order.id}`, Author: "Divexplore 3D" }});
       const buffers = [];
       doc.on("data", (chunk) => buffers.push(chunk));
       doc.on("end", () => resolve(Buffer.concat(buffers)));
       doc.on("error", (err) => reject(err));
 
-      await drawHeader(doc, order, "BUKTI PEMBAYARAN");
-
-      // --- ORDER INFO ---
-      doc.fillColor(textColor);
-      doc.rect(40, 140, 515, 80).fillAndStroke(lightGray, "#e5e7eb");
-      
-      doc.fillColor(primaryColor).fontSize(10).font("Helvetica-Bold").text("KODE TRANSAKSI", 60, 155);
-      doc.fillColor(textColor).fontSize(14).font("Helvetica-Bold").text(order.id.substring(0, 18).toUpperCase(), 60, 175);
-      
-      doc.fillColor(primaryColor).fontSize(10).font("Helvetica-Bold").text("TANGGAL BAYAR", 300, 155);
-      doc.fillColor(textColor).fontSize(10).font("Helvetica").text(new Date(order.updatedAt || order.createdAt).toLocaleString("id-ID"), 300, 170);
-
-      doc.fillColor(primaryColor).fontSize(10).font("Helvetica-Bold").text("METODE BAYAR", 420, 155);
-      doc.fillColor(textColor).fontSize(10).font("Helvetica").text(paymentDetails.payment_type.toUpperCase().replace("_", " "), 420, 170);
-
-      doc.font("Helvetica").text("Status Transaksi", 60, 195).fillColor("#10b981").font("Helvetica-Bold").text("LUNAS", 150, 195);
-
-      // --- CUSTOMER INFO ---
-      doc.fillColor(textColor);
       const buyerName = order.user && order.user.nama_lengkap ? order.user.nama_lengkap : "Wisatawan";
       
-      doc.fontSize(14).font("Helvetica-Bold").text("DIBAYAR OLEH", 40, 240);
-      doc.moveTo(40, 260).lineTo(555, 260).lineWidth(1).strokeColor(primaryColor).stroke();
-      doc.fontSize(11).font("Helvetica").text(buyerName, 40, 275);
+      // HEADER
+      doc.fillColor(colors.primary).fontSize(28).font("Helvetica-Bold").text("INVOICE", 50, 50);
+      doc.fillColor(colors.accent).fontSize(14).font("Helvetica-Bold").text("DIVEXPLORE 3D", 50, 85, { width: 495, align: "right" });
+      doc.fillColor(colors.textMuted).fontSize(10).font("Helvetica").text("Lombok, Indonesia", 50, 105, { width: 495, align: "right" });
 
-      // --- ITEM DETAILS (With Prices) ---
-      doc.fontSize(14).font("Helvetica-Bold").text("RINCIAN PEMBAYARAN", 40, 320);
-      doc.moveTo(40, 340).lineTo(555, 340).lineWidth(1).strokeColor(primaryColor).stroke();
+      doc.rect(50, 130, 495, 1).fill(colors.border);
 
-      let tableY = 355;
-      doc.rect(40, tableY, 515, 25).fill(primaryColor);
-      doc.fillColor("#ffffff").fontSize(10).font("Helvetica-Bold");
-      doc.text("Deskripsi", 50, tableY + 8);
-      doc.text("Qty", 350, tableY + 8);
-      doc.text("Harga", 400, tableY + 8);
-      doc.text("Subtotal", 480, tableY + 8);
+      // INFO GRID
+      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold").text("DITAGIHKAN KEPADA", 50, 150);
+      doc.fillColor(colors.textDark).fontSize(12).font("Helvetica-Bold").text(buyerName.toUpperCase(), 50, 165);
+      
+      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold").text("KODE INVOICE", 350, 150);
+      doc.fillColor(colors.textDark).fontSize(11).font("Helvetica").text(`#INV-${order.id.substring(0,8).toUpperCase()}`, 350, 165);
 
-      tableY += 25;
-      doc.fillColor(textColor).font("Helvetica");
+      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold").text("TANGGAL", 350, 195);
+      doc.fillColor(colors.textDark).fontSize(11).font("Helvetica").text(new Date(order.updatedAt || order.createdAt).toLocaleDateString("id-ID"), 350, 210);
 
+      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold").text("METODE BAYAR", 50, 200);
+      doc.fillColor(colors.textDark).fontSize(11).font("Helvetica").text(paymentDetails.payment_type.toUpperCase().replace("_", " "), 50, 215);
+
+      // ITEMS TABLE (MINIMALIST)
+      let tableY = 270;
+      doc.rect(50, tableY, 495, 25).fill(colors.lightBg);
+      doc.fillColor(colors.textMuted).fontSize(9).font("Helvetica-Bold");
+      doc.text("DESKRIPSI", 60, tableY + 8);
+      doc.text("QTY", 330, tableY + 8);
+      doc.text("HARGA", 380, tableY + 8);
+      doc.text("SUBTOTAL", 460, tableY + 8);
+
+      tableY += 35;
       if (order.items && order.items.length > 0) {
-        order.items.forEach((item, index) => {
-          if (index % 2 === 0) doc.rect(40, tableY, 515, 30).fill(lightGray);
+        order.items.forEach((item) => {
           const namaProduk = item.product ? item.product.nama_produk : `Produk ${item.product_id}`;
           const harga = parseFloat(item.harga_satuan).toLocaleString("id-ID");
           const subtotal = parseFloat(item.subtotal).toLocaleString("id-ID");
 
-          doc.fillColor(textColor);
-          doc.text(namaProduk.substring(0, 45), 50, tableY + 10);
-          doc.text(item.qty.toString(), 350, tableY + 10);
-          doc.text(`Rp ${harga}`, 400, tableY + 10);
-          doc.text(`Rp ${subtotal}`, 480, tableY + 10);
-          tableY += 30;
+          doc.fillColor(colors.textDark).fontSize(10).font("Helvetica-Bold").text(namaProduk.substring(0, 45), 60, tableY);
+          doc.font("Helvetica").text(item.qty.toString(), 330, tableY);
+          doc.text(`Rp ${harga}`, 380, tableY);
+          doc.text(`Rp ${subtotal}`, 460, tableY);
+
+          tableY += 25;
+          doc.moveTo(50, tableY).lineTo(545, tableY).dash(3, { space: 3 }).strokeColor(colors.border).lineWidth(1).stroke();
+          doc.undash();
+          tableY += 15;
         });
       }
 
-      // --- TOTAL PAYMENT ---
-      doc.moveTo(40, tableY + 10).lineTo(555, tableY + 10).lineWidth(2).strokeColor(primaryColor).stroke();
-      tableY += 25;
-      doc.fontSize(12).font("Helvetica-Bold").text("TOTAL PEMBAYARAN:", 300, tableY);
-      doc.fillColor(accentColor).fontSize(14).text(`Rp ${parseFloat(order.total_pembayaran).toLocaleString("id-ID")}`, 430, tableY - 2, { align: "right" });
+      // TOTAL BOX (FOCAL POINT)
+      tableY += 20;
+      const boxWidth = 220;
+      const boxX = 545 - boxWidth;
+      doc.roundedRect(boxX, tableY, boxWidth, 40, 6).fill(colors.primary);
+      
+      doc.fillColor(colors.white).fontSize(12).font("Helvetica-Bold").text("TOTAL BAYAR", boxX + 15, tableY + 14);
+      doc.fillColor(colors.accent).fontSize(14).font("Helvetica-Bold").text(`Rp ${parseFloat(order.total_pembayaran).toLocaleString("id-ID")}`, boxX, tableY + 13, { width: boxWidth - 15, align: "right" });
+
+      // WATERMARK STAMP
+      doc.save();
+      doc.rotate(-25, { origin: [300, 400] });
+      doc.fillOpacity(0.1).fillColor(colors.success).fontSize(100).font("Helvetica-Bold").text("LUNAS", 100, 350);
+      doc.restore();
+
+      // FOOTER NOTE
+      const footerY = 750;
+      doc.rect(50, footerY - 15, 495, 1).fill(colors.border);
+      doc.fillColor(colors.textMuted).fontSize(8).font("Helvetica").text("Dokumen ini adalah bukti pembayaran digital yang sah dan diproses secara otomatis oleh sistem komputer. Tidak memerlukan tanda tangan basah.", 50, footerY, { align: "center", width: 495 });
 
       doc.end();
     } catch (error) { reject(error); }
