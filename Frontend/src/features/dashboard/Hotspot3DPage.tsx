@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect, useLayoutEffect, useMemo, Suspense } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, Suspense, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { api } from '../../utils/api';
-import { OrbitControls, Html, Float, Sparkles, useGLTF, Center, Environment, ContactShadows, MeshTransmissionMaterial, SpotLight } from '@react-three/drei';
+import { OrbitControls, Html, Sparkles, useGLTF, Center, Environment, ContactShadows, MeshTransmissionMaterial, SpotLight } from '@react-three/drei';
 import * as THREE from 'three';
 import {
   Box,
@@ -20,7 +20,22 @@ import Header from '../../components/common/Header';
 
 
 // Reusable Hotspot Component
-function HotspotMarker({ data, onClick, isSelected }: { data: any, onClick: (data: any) => void, isSelected: boolean }) {
+export interface HotspotData {
+  id: string | number;
+  position: [number, number, number];
+  title: string;
+  price: string;
+  rawPrice: number;
+  desc: string;
+  image: string;
+  icon: React.ReactNode;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  addons?: any[];
+  location?: string;
+  category?: string;
+}
+
+function HotspotMarker({ data, onClick, isSelected }: { data: HotspotData, onClick: (data: HotspotData) => void, isSelected: boolean }) {
   const meshRef = useRef<THREE.Group>(null);
 
   // Simple floating animation (Gunakan angka tetap agar tidak NaN)
@@ -63,10 +78,12 @@ function HotspotMarker({ data, onClick, isSelected }: { data: any, onClick: (dat
               {data.icon}
               <span className={styles.hotspotTitle}>{data.title}</span>
             </div>
-            <span className={styles.hotspotPrice}>
-              {data.price}
-              <span className={styles.hotspotUnit}>/orang</span>
-            </span>
+            {isSelected && (
+              <span className={styles.hotspotPrice}>
+                {data.price}
+                <span className={styles.hotspotUnit}>/orang</span>
+              </span>
+            )}
           </div>
         </div>
       </Html>
@@ -76,7 +93,8 @@ function HotspotMarker({ data, onClick, isSelected }: { data: any, onClick: (dat
 
 // Komponen 3D Model Ocean v5 (dengan Animasi & Material Custom)
 function OceanModel() {
-  const { scene } = useGLTF('/ocean_v5.glb');
+  const { scene: originalScene } = useGLTF('/ocean_v5.glb');
+  const scene = useMemo(() => originalScene.clone(), [originalScene]);
 
   // Referensi untuk menyimpan objek agar bisa dianimasikan
   const ikanRefs = useRef<THREE.Object3D[]>([]);
@@ -86,12 +104,8 @@ function OceanModel() {
     ikanRefs.current = [];
     diverRefs.current = [];
 
-    // Auto-Scale
-    const box = new THREE.Box3().setFromObject(scene);
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const scale = 20 / maxDim;
-    scene.scale.setScalar(scale);
+    // Menggunakan skala asli karena script Auto-Scale sebelumnya membuat model menjadi raksasa
+    scene.scale.setScalar(1);
 
     scene.traverse((obj) => {
       const name = obj.name.toLowerCase().trim();
@@ -169,23 +183,21 @@ function OceanModel() {
 }
 
 // Komponen Gelembung Air (Procedural)
+const INITIAL_BUBBLES = Array.from({ length: 150 }).map(() => ({
+  x: (Math.random() - 0.5) * 60,
+  y: (Math.random() - 0.5) * 30,
+  z: (Math.random() - 0.5) * 60,
+  scale: Math.random() * 0.15 + 0.05,
+  speed: Math.random() * 0.03 + 0.01,
+}));
+
 function GelembungAir() {
   const groupRef = useRef<THREE.Group>(null)
-
-  const bubbles = useMemo(() => {
-    return Array.from({ length: 150 }).map(() => ({
-      x: (Math.random() - 0.5) * 60,
-      y: (Math.random() - 0.5) * 30,
-      z: (Math.random() - 0.5) * 60,
-      scale: Math.random() * 0.15 + 0.05,
-      speed: Math.random() * 0.03 + 0.01,
-    }))
-  }, [])
 
   useFrame(() => {
     if (groupRef.current) {
       groupRef.current.children.forEach((bubble, i) => {
-        bubble.position.y += bubbles[i].speed
+        bubble.position.y += INITIAL_BUBBLES[i].speed
         if (bubble.position.y > 20) bubble.position.y = -5
       })
     }
@@ -193,7 +205,7 @@ function GelembungAir() {
 
   return (
     <group ref={groupRef}>
-      {bubbles.map((b, i) => (
+      {INITIAL_BUBBLES.map((b, i) => (
         <mesh key={i} position={[b.x, b.y, b.z]} scale={b.scale}>
           <sphereGeometry args={[1, 16, 16]} />
           <meshStandardMaterial color="#ffffff" transparent opacity={0.3} roughness={0} />
@@ -207,7 +219,7 @@ function GelembungAir() {
 useGLTF.preload('/ocean_v5.glb');
 
 // The 3D Scene Wrapper
-function OceanScene({ hotspots, selectedId, onSelect }: { hotspots: any[], selectedId: any, onSelect: (data: any) => void }) {
+function OceanScene({ hotspots, selectedId, onSelect }: { hotspots: HotspotData[], selectedId: string | number | undefined, onSelect: (data: HotspotData) => void }) {
   return (
     <>
       {/* Latar Belakang & Kabut Laut Dalam Pekat */}
@@ -274,7 +286,7 @@ function OceanScene({ hotspots, selectedId, onSelect }: { hotspots: any[], selec
       </Suspense>
 
       {/* Hotspots */}
-      {hotspots.map((spot: any) => (
+      {hotspots.map((spot: HotspotData) => (
         <HotspotMarker
           key={spot.id}
           data={spot}
@@ -296,9 +308,14 @@ function OceanScene({ hotspots, selectedId, onSelect }: { hotspots: any[], selec
 
 export default function Hotspot3DPage() {
   const navigate = useNavigate();
-  const [hotspots, setHotspots] = useState<any[]>([]);
-  const [selectedHotspot, setSelectedHotspot] = useState<any>(null);
+  const [hotspots, setHotspots] = useState<HotspotData[]>([]);
+  const [selectedHotspot, setSelectedHotspot] = useState<HotspotData | null>(null);
   const [isBundled, setIsBundled] = useState(false);
+
+  const handleSelectHotspot = (data: HotspotData) => {
+    setSelectedHotspot(data);
+    setIsBundled(false);
+  };
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -309,19 +326,20 @@ export default function Hotspot3DPage() {
         // Batasi hanya 3 produk utama
         const mainProducts = products.slice(0, 3);
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const spots = mainProducts.map((p: any, i: number) => {
           // KOORDINAT TETAP (FIXED) - Dijamin tidak akan lari ke pojok
           let pos: [number, number, number] = [0, 0, 0];
 
           if (i === 0) {
-            // Sharing Boat (Kiri - Area Karang/Pasir)
-            pos = [-7, -2, -2];
+            // Sharing Boat (Kiri - Dekat Penyelam / Karang)
+            pos = [-9, -1, 1];
           } else if (i === 1) {
-            // Discovery Scuba (Tengah Atas - Area Kumpulan Ikan)
-            pos = [0, 3, -4];
+            // Discovery Scuba (Kiri Atas - Area Air Jernih Bebas Ikan)
+            pos = [-4, 4, -5];
           } else if (i === 2) {
-            // Drone (Kanan - Area Kapal Karam)
-            pos = [6, -1, -3];
+            // Drone (Kanan - Area Air Jernih Kanan)
+            pos = [8, 2, 0];
           }
 
           const nameL = p.nama_produk.toLowerCase();
@@ -361,10 +379,7 @@ export default function Hotspot3DPage() {
     fetchProducts();
   }, []);
 
-  // Reset bundle selection when switching to another product
-  useEffect(() => {
-    setIsBundled(false);
-  }, [selectedHotspot?.id]);
+
 
   const getTotalPrice = () => {
     if (!selectedHotspot) return 'Rp 0';
@@ -403,13 +418,10 @@ export default function Hotspot3DPage() {
         {/* 3D Canvas Column */}
         <div className={styles.canvasContainer}>
           <Canvas camera={{ position: [0, 2, 15], fov: 50 }}>
-            <OceanScene hotspots={hotspots} selectedId={selectedHotspot?.id} onSelect={setSelectedHotspot} />
+            <OceanScene hotspots={hotspots} selectedId={selectedHotspot?.id} onSelect={handleSelectHotspot} />
           </Canvas>
 
-          {/* Bottom Badge */}
-          <div className={styles.locationBadge}>
-            Gili Trawangan
-          </div>
+
         </div>
 
         {/* Product Detail Sidebar */}

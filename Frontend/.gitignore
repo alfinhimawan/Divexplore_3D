@@ -12,6 +12,9 @@ node_modules
 dist-ssr
 *.local
 
+# Large 3D Models
+public/ocean_v5.glb
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
