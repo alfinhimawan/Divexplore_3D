@@ -236,43 +236,46 @@ const handleMidtransWebhook = async (payload) => {
       transaction_status === "settlement" ||
       transaction_status === "capture"
     ) {
-      try {
-        const pembeli = await User.findByPk(order.user_id);
-        if (pembeli && pembeli.email) {
-          const pdfService = require("./pdfService");
-          const emailService = require("./emailService");
-          
-          // Muat ulang order tanpa transaksi untuk data lengkap (termasuk user dan detail product)
-          const orderFull = await Order.findByPk(order.id, {
-            include: [
-              { 
-                association: "items", 
-                include: [{ association: "product" }] 
-              },
-              { association: "user" }
-            ]
-          });
+      // Menjalankan proses PDF dan Email secara Asynchronous (Background Job)
+      // agar tidak menahan response Webhook Midtrans yang memiliki batas timeout.
+      (async () => {
+        try {
+          const pembeli = await User.findByPk(order.user_id);
+          if (pembeli && pembeli.email) {
+            const pdfService = require("./pdfService");
+            const emailService = require("./emailService");
+            
+            // Muat ulang order tanpa transaksi untuk data lengkap (termasuk user dan detail product)
+            const orderFull = await Order.findByPk(order.id, {
+              include: [
+                { 
+                  association: "items", 
+                  include: [{ association: "product" }] 
+                },
+                { association: "user" }
+              ]
+            });
 
-          const paymentDetails = {
-            payment_type: payment_type || "bank_transfer",
-            transaction_id: transaction_id || "N/A"
-          };
+            const paymentDetails = {
+              payment_type: payment_type || "bank_transfer",
+              transaction_id: transaction_id || "N/A"
+            };
 
-          // Generate 2 PDF: E-tiket dan Bukti Pembayaran
-          const etiketBuffer = await pdfService.generateEtiketBuffer(orderFull);
-          const buktiBuffer = await pdfService.generateBuktiPembayaranBuffer(orderFull, paymentDetails);
-          
-          // Kirim email
-          await emailService.sendInvoiceEmail(pembeli.email, orderFull, { etiketBuffer, buktiBuffer }, paymentDetails);
-          
-          logger.info(`[Email] Invoice berhasil terkirim ke ${pembeli.email}`);
-        } else {
-          logger.warn(`[Email] Pembeli tidak ditemukan atau tidak punya email untuk order ${order.id}`);
+            // Generate 2 PDF: E-tiket dan Bukti Pembayaran
+            const etiketBuffer = await pdfService.generateEtiketBuffer(orderFull);
+            const buktiBuffer = await pdfService.generateBuktiPembayaranBuffer(orderFull, paymentDetails);
+            
+            // Kirim email
+            await emailService.sendInvoiceEmail(pembeli.email, orderFull, { etiketBuffer, buktiBuffer }, paymentDetails);
+            
+            logger.info(`[Email] Invoice berhasil terkirim ke ${pembeli.email} (Background)`);
+          } else {
+            logger.warn(`[Email] Pembeli tidak ditemukan atau tidak punya email untuk order ${order.id}`);
+          }
+        } catch (emailErr) {
+          logger.error(`[Email] Gagal mengirim invoice di background: ${emailErr.message}`);
         }
-      } catch (emailErr) {
-        // Error email tidak boleh membatalkan transaksi yang sudah berhasil
-        logger.error(`[Email] Gagal mengirim invoice: ${emailErr.message}`);
-      }
+      })();
     }
 
     return order;
